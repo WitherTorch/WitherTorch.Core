@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,7 +21,8 @@ namespace WitherTorch.Core
                     Server server = null;
                     try
                     {
-                        if ((server = Activator.CreateInstance(software) as Server) != null)
+                        RegisterToken registerToken = new RegisterToken();
+                        if ((server = Activator.CreateInstance(software, registerToken) as Server) != null && registerToken)
                             result = server.GetSoftwareID();
                     }
                     catch (Exception) { }
@@ -62,6 +64,31 @@ namespace WitherTorch.Core
                 }
             }
             return null;
+        }
+    }
+
+    public class RegisterToken : StrongBox<bool>
+    {
+        internal protected RegisterToken()
+        {
+            Value = true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Cancel()
+        {
+            Value = false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Reset()
+        {
+            Value = true;
+        }
+
+        public static implicit operator bool(RegisterToken a)
+        {
+            return a.Value;
         }
     }
 }

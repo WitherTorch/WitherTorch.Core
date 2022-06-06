@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 #if NET472
 using System.Net;
+using System.Runtime.CompilerServices;
 #elif NET5_0
 using System.Net.Http;
 #endif
@@ -35,9 +36,12 @@ namespace WitherTorch.Core.Servers
         IPropertyFile[] propertyFiles = new IPropertyFile[1];
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
 
-        public Fabric() : base()
+        public Fabric() : base() { }
+
+        // 註冊時會執行這個函式
+        public Fabric(RegisterToken token) : base(token)
         {
-            if (versionList == null)
+            if (versionList == null && token)
             {
                 LoadVersionList();
             }

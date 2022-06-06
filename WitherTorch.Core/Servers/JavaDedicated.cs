@@ -11,6 +11,7 @@ using System.Net.Http;
 #endif
 using System.Text;
 using WitherTorch.Core.Utils;
+using System.Runtime.CompilerServices;
 
 namespace WitherTorch.Core.Servers
 {
@@ -27,10 +28,10 @@ namespace WitherTorch.Core.Servers
         IPropertyFile[] propertyFiles = new IPropertyFile[1];
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
 
+        public JavaDedicated() : base() { }
+
         // 註冊時會執行這個函式
-        public JavaDedicated() : base()
-        {
-        }
+        public JavaDedicated(RegisterToken token) : base(token) { }
 
         private void InstallSoftware()
         {

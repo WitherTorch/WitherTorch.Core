@@ -14,6 +14,7 @@ using System.Text;
 using WitherTorch.Core.Utils;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace WitherTorch.Core.Servers
 {
@@ -38,10 +39,12 @@ namespace WitherTorch.Core.Servers
         protected SystemProcess process;
         internal static string[] versions;
 
+        public Paper() : base() { }
+
         // 註冊時會執行這個函式
-        public Paper() : base()
+        public Paper(RegisterToken token) : base(token)
         {
-            if (versions == null)
+            if (versions == null && token)
             {
                 LoadVersionList();
             }

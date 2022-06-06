@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 using WitherTorch.Core.Utils;
+using System.Runtime.CompilerServices;
 #if NET472
 using System.Net;
 using System.ComponentModel;
@@ -30,7 +31,9 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         private IPropertyFile[] propertyFiles = new IPropertyFile[2];
 
-        public PowerNukkit()
+        public PowerNukkit() { }
+
+        public PowerNukkit(RegisterToken _)
         {
             if (versions == null)
             {

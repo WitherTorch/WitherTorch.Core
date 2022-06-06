@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using WitherTorch.Core.Utils;
 
@@ -21,10 +22,13 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         protected SystemProcess process;
 
+        public CraftBukkit() : base() { }
+
         // 註冊時會執行這個函式
-        public CraftBukkit() : base()
+        public CraftBukkit(RegisterToken token) : base(token)
         {
-            SpigotAPI.Initialize();
+            if (token)
+                SpigotAPI.Initialize();
         }
 
         InstallTask installingTask;
