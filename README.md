@@ -8,7 +8,8 @@ WitherTorch 是一個 Minecraft 伺服器的開服軟體
 [Discord](https://discord.gg/F7YNJ5m) | [License](LICENSE)
 
 ## 適用框架和相依的套件
-此核心有 .NET Framework 4.7.2 和 .NET 5.0 兩種版本。<br/><
+此核心有 .NET Framework 4.7.2 和 .NET 5.0 兩種版本。<br/>
+<br/>
 相依的套件有:
 <ul>
   <li>[Newtonsoft.Json](https://github.com/JamesNK/Newtonsoft.Json)</li>
