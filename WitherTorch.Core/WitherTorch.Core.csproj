@@ -8,9 +8,15 @@
 	<Deterministic>False</Deterministic>
     <Authors>WitherTorch 製作組</Authors>
     <Product>WitherTorch</Product>
-    <Description>WitherTorch's Core Library</Description>
+    <Description>WitherTorch 的核心程式庫</Description>
     <Copyright>Copyright © WitherTorch 製作組 2022</Copyright>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+    <PackageProjectUrl>https://github.com/WitherTorch/WitherTorch.Core</PackageProjectUrl>
+    <Version>1.8-alpha-3.2</Version>
+    <PackageIcon>withertorch_core_128.png</PackageIcon>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>minecraft;minecraft-server</PackageTags>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net472|AnyCPU'">
@@ -65,6 +71,10 @@
   <ItemGroup>
     <Reference Include="System.IO.Compression" Condition="'$(TargetFramework)' == 'net472'" />
 	<Reference Include="System.Net.Http" Condition="'$(TargetFramework)' == 'net472'" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Resources\withertorch_core_128.png" Pack="true" PackagePath=""/>
   </ItemGroup>
 
 </Project>
