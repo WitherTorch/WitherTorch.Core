@@ -11,7 +11,7 @@ WitherTorch 是一個 Minecraft 伺服器的開服軟體
 
 ### (非必要) 引入命名空間
 WitherTorch 的命名空間很長，建議在撰寫前先把相關的命名空間引入進來
-```charp
+```csharp
 using WitherTorch.Core;
 using WitherTorch.Core.Server;
 ```
