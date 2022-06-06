@@ -3,7 +3,7 @@
 
 WitherTorch 是一個 Minecraft 伺服器的開服軟體
 
-其核心(也就是此存放庫之內容)可供第三方開發者使用
+其核心(也就是此存放庫的內容)可供第三方開發者使用
 
 [Discord](https://discord.gg/F7YNJ5m)
 
