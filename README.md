@@ -1,3 +1,4 @@
+![WitherTorch Core Icon](withertorch_core.png)
 # WitherTorch 的核心程式庫
 
 WitherTorch 是一個 Minecraft 伺服器的開服軟體
