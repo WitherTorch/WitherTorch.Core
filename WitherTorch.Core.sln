@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32002.185
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WitherTorch.Core", "WitherTorch.Core\WitherTorch.Core.csproj", "{CD0EC518-44E8-45F9-AD3C-49E4C454CD44}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{704CC958-9B36-4604-956E-B985F17C4A41}"
+	ProjectSection(SolutionItems) = preProject
+		GlobalAssemblyInfo.cs = GlobalAssemblyInfo.cs
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WitherTorch.Windows.ScriptRuntime.Test", "WitherTorch.Windows.ScriptRuntime.Test\WitherTorch.Windows.ScriptRuntime.Test.csproj", "{9F237073-93CE-430B-9CE8-BF5463724B6C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CD0EC518-44E8-45F9-AD3C-49E4C454CD44}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD0EC518-44E8-45F9-AD3C-49E4C454CD44}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD0EC518-44E8-45F9-AD3C-49E4C454CD44}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD0EC518-44E8-45F9-AD3C-49E4C454CD44}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C2230E61-85B1-42A8-AAEA-EED140B54CB9}
+	EndGlobalSection
+EndGlobal
