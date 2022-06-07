@@ -36,7 +36,7 @@ namespace WitherTorch.Core.Servers
         IPropertyFile[] propertyFiles = new IPropertyFile[1];
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
 
-        static Fabric()
+        public Fabric()
         {
             SoftwareRegistrationDelegate += Initialize;
             SoftwareID = "fabric";

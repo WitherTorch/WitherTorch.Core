@@ -39,7 +39,7 @@ namespace WitherTorch.Core.Servers
         protected SystemProcess process;
         internal static string[] versions;
 
-        static Paper()
+        public Paper()
         {
             SoftwareRegistrationDelegate += Initialize;
             SoftwareID = "paper";

@@ -22,7 +22,7 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         protected SystemProcess process;
 
-        static CraftBukkit()
+        public CraftBukkit()
         {
             SoftwareRegistrationDelegate += SpigotAPI.Initialize;
             SoftwareID = "craftbukkit";

@@ -31,7 +31,7 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         private IPropertyFile[] propertyFiles = new IPropertyFile[2];
 
-        static PowerNukkit()
+        public PowerNukkit()
         {
             SoftwareRegistrationDelegate += Initialize;
             SoftwareID = "powerNukkit";

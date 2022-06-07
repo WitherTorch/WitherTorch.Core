@@ -28,7 +28,7 @@ namespace WitherTorch.Core.Servers
         IPropertyFile[] propertyFiles = new IPropertyFile[1];
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
 
-        static JavaDedicated()
+        public JavaDedicated()
         {
             SoftwareID = "javaDedicated";
         }

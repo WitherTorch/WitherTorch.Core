@@ -23,7 +23,7 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         protected SystemProcess process;
 
-        static Spigot()
+        public Spigot()
         {
             SoftwareRegistrationDelegate += SpigotAPI.Initialize;
             SoftwareID = "spigot";
@@ -70,7 +70,6 @@ namespace WitherTorch.Core.Servers
         {
             return propertyFiles;
         }
-
 
         /// <inheritdoc/>
         public override string[] GetSoftwareVersions()

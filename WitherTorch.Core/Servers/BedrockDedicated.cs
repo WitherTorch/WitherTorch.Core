@@ -28,7 +28,7 @@ namespace WitherTorch.Core.Servers
         private IPropertyFile[] propertyFiles = new IPropertyFile[1];
         private static string[] versions;
 
-        static BedrockDedicated()
+        public BedrockDedicated()
         {
             SoftwareRegistrationDelegate += LoadVersionList;
             SoftwareID = "bedrockDedicated";

@@ -39,7 +39,7 @@ namespace WitherTorch.Core.Servers
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
         private static MojangAPI.VersionInfo mc1_3_2, mc1_5_2;
 
-        static Forge()
+        public Forge()
         {
             SoftwareRegistrationDelegate += Initialize;
             SoftwareID = "forge";
