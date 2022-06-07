@@ -28,7 +28,7 @@ namespace WitherTorch.Core
 
         public static void RegisterServerSoftware<T>() where T : Server<T>, new()
         {
-            if (!Server<T>.isInited)
+            if (Server<T>.isNeedInitialize)
             {
                 new T().Dispose();
             }
