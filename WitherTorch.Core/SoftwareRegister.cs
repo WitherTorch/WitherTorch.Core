@@ -31,26 +31,30 @@ namespace WitherTorch.Core
             string softwareID = Server<T>.SoftwareID;
             if (!string.IsNullOrEmpty(softwareID))
             {
-                if (WTCore.RegisterSoftwareTimeout == Timeout.Infinite)
+                if (Server<T>.SoftwareRegistrationDelegate != null)
                 {
-                    try
+
+                    if (WTCore.RegisterSoftwareTimeout == Timeout.Infinite)
                     {
-                        Server<T>.SoftwareRegistrationDelegate();
-                    }
-                    catch (Exception)
-                    {
-                        return;
-                    }
-                }
-                else
-                {
-                    using (CancellationTokenSource tokenSource = new CancellationTokenSource())
-                    {
-                        Task result = Task.Run(Server<T>.SoftwareRegistrationDelegate);
-                        if (!result.Wait(WTCore.RegisterSoftwareTimeout, tokenSource.Token))
+                        try
                         {
-                            tokenSource.Cancel();
+                            Server<T>.SoftwareRegistrationDelegate();
+                        }
+                        catch (Exception)
+                        {
                             return;
+                        }
+                    }
+                    else
+                    {
+                        using (CancellationTokenSource tokenSource = new CancellationTokenSource())
+                        {
+                            Task result = Task.Run(Server<T>.SoftwareRegistrationDelegate);
+                            if (!result.Wait(WTCore.RegisterSoftwareTimeout, tokenSource.Token))
+                            {
+                                tokenSource.Cancel();
+                                return;
+                            }
                         }
                     }
                 }
