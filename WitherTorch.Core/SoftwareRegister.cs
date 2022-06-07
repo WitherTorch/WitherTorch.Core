@@ -18,7 +18,7 @@ namespace WitherTorch.Core
         [Obsolete("此方法效率較慢，建議使用 RegisterServerSoftware<T>() 代替")]
         public static void RegisterServerSoftware(Type type)
         {
-            if (type != null && type.IsSubclassOf(typeof(Server<>)))
+            if (type != null && type.IsSubclassOf(typeof(Server<>).MakeGenericType(type)))
             {
                 if (_genericMethodInfo == null)
                     _genericMethodInfo = typeof(SoftwareRegister).GetMethod("RegisterServerSoftware", BindingFlags.Static | BindingFlags.Public, Type.DefaultBinder, Type.EmptyTypes, null);
