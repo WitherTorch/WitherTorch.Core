@@ -11,7 +11,7 @@ namespace WitherTorch.Core.Servers
 
         protected AbstractJavaEditionServer()
         {
-            if (IsInInit)                
+            if (IsInit)                
                 SoftwareRegistrationDelegate += Utils.MojangAPI.Initialize; //呼叫 Mojang API 進行版本列表提取
         }
 

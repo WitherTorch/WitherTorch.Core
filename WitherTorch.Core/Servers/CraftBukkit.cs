@@ -24,7 +24,7 @@ namespace WitherTorch.Core.Servers
 
         public CraftBukkit()
         {
-            if (IsInInit)
+            if (IsInit)
             {
                 SoftwareRegistrationDelegate += SpigotAPI.Initialize;
                 SoftwareID = "craftbukkit";

@@ -25,7 +25,7 @@ namespace WitherTorch.Core.Servers
 
         public Spigot()
         {
-            if (IsInInit)
+            if (IsInit)
             {
                 SoftwareRegistrationDelegate += SpigotAPI.Initialize;
                 SoftwareID = "spigot";

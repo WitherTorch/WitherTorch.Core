@@ -30,7 +30,7 @@ namespace WitherTorch.Core.Servers
 
         public BedrockDedicated()
         {
-            if (IsInInit)
+            if (IsInit)
             {
                 SoftwareRegistrationDelegate += LoadVersionList;
                 SoftwareID = "bedrockDedicated";

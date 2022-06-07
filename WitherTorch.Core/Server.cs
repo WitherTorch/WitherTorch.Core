@@ -22,7 +22,7 @@ namespace WitherTorch.Core
         /// 如果為 <c>true</c>, 軟體類別需初始化 <c>SoftwareRegistrationDelegate</c> 和 <c>SoftwareID</c> 欄位<br/>
         /// 如果為 <c>false</c>, 軟體類別應將此物件當作一般伺服器實體對待
         /// </summary>
-        protected bool IsInInit { get; private set; }
+        protected readonly bool IsInit;
 
         // 面向外部的空參數建構子
         public Server()
@@ -30,15 +30,15 @@ namespace WitherTorch.Core
             if (isNeedInitialize)
             {
                 isNeedInitialize = false;
-                IsInInit = true;
+                IsInit = true;
             }
             else
             {
-                IsInInit = false;
+                IsInit = false;
             }
         }
 
-        public override string GetSoftwareID()
+        internal override string GetSoftwareID()
         {
             return SoftwareID;
         }
@@ -48,8 +48,9 @@ namespace WitherTorch.Core
     /// </summary>
     public abstract class Server : IDisposable
     {
-        private string _software;
         private string _name;
+        private bool disposedValue;
+
         public event EventHandler ServerNameChanged;
 
         // 內部空參數建構子 (防止有第三方伺服器軟體類別繼承自它)
@@ -120,7 +121,6 @@ namespace WitherTorch.Core
                 else
                 {
                     Server server = (Server)Activator.CreateInstance(softwareType);
-                    server._software = softwareID;
                     server.ServerInfoJson = serverInformation;
                     server.ServerDirectory = Path.GetFullPath(serverDirectory);
                     server.ServerName = serverInformation["name"]?.Value<string>();
@@ -161,7 +161,6 @@ namespace WitherTorch.Core
                 else
                 {
                     Server server = (Server)Activator.CreateInstance(softwareType);
-                    server._software = softwareID;
                     server.ServerInfoJson = serverInformation;
                     server.ServerDirectory = serverDirectory;
                     server.ServerName = serverInformation["name"]?.Value<string>();
@@ -225,7 +224,6 @@ namespace WitherTorch.Core
             if (SoftwareRegister.registeredServerSoftwares.ContainsKey(softwareType))
             {
                 Server server = Activator.CreateInstance(softwareType) as Server;
-                server._software = server.GetSoftwareID();
                 server.ServerDirectory = serverDirectory;
                 if (server.CreateServer())
                 {
@@ -261,7 +259,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 取得伺服器軟體ID
         /// </summary>
-        public abstract string GetSoftwareID();
+        internal abstract string GetSoftwareID();
         /// <summary>
         /// 更改伺服器軟體版本
         /// </summary>
@@ -295,7 +293,7 @@ namespace WitherTorch.Core
             if (ServerInfoJson == null)
                 ServerInfoJson = new JsonPropertyFile(configuationPath, true, true);
             ServerInfoJson["name"] = new JValue(ServerName);
-            ServerInfoJson["software"] = new JValue(_software);
+            ServerInfoJson["software"] = new JValue(GetSoftwareID());
             if (OnServerSaving())
             {
                 ServerInfoJson.Save(false);
@@ -320,9 +318,35 @@ namespace WitherTorch.Core
         /// </summary>
         /// <returns>是否成功儲存伺服器</returns>
         protected abstract bool OnServerSaving();
-        ///<inheritdoc/>
-        public virtual void Dispose()
+
+        protected virtual void Dispose(bool disposing)
         {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    // TODO: 處置受控狀態 (受控物件)
+                }
+
+                // TODO: 釋出非受控資源 (非受控物件) 並覆寫完成項
+                // TODO: 將大型欄位設為 Null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: 僅有當 'Dispose(bool disposing)' 具有會釋出非受控資源的程式碼時，才覆寫完成項
+        // ~Server()
+        // {
+        //     // 請勿變更此程式碼。請將清除程式碼放入 'Dispose(bool disposing)' 方法
+        //     Dispose(disposing: false);
+        // }
+
+        ///<inheritdoc/>
+        public void Dispose()
+        {
+            // 請勿變更此程式碼。請將清除程式碼放入 'Dispose(bool disposing)' 方法
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

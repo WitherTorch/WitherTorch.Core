@@ -30,7 +30,7 @@ namespace WitherTorch.Core.Servers
 
         public JavaDedicated()
         {
-            if (IsInInit)
+            if (IsInit)
                 SoftwareID = "javaDedicated";
         }
 

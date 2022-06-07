@@ -38,7 +38,7 @@ namespace WitherTorch.Core.Servers
 
         public Fabric()
         {
-            if (IsInInit)
+            if (IsInit)
             {
                 SoftwareRegistrationDelegate += Initialize;
                 SoftwareID = "fabric";
