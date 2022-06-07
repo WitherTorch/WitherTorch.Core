@@ -17,6 +17,8 @@
     <PackageIcon>withertorch_core_128.png</PackageIcon>
     <RepositoryType>git</RepositoryType>
     <PackageTags>minecraft;minecraft-server</PackageTags>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net472|AnyCPU'">
@@ -74,6 +76,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
     <None Include="Resources\withertorch_core_128.png" Pack="true" PackagePath="" />
   </ItemGroup>
 
