@@ -41,8 +41,11 @@ namespace WitherTorch.Core.Servers
 
         public Paper()
         {
-            SoftwareRegistrationDelegate += Initialize;
-            SoftwareID = "paper";
+            if (isNeedInitialize)
+            {
+                SoftwareRegistrationDelegate += Initialize;
+                SoftwareID = "paper";
+            }
         }
 
         // 註冊時會執行這個函式

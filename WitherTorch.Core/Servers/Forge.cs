@@ -41,8 +41,11 @@ namespace WitherTorch.Core.Servers
 
         public Forge()
         {
-            SoftwareRegistrationDelegate += Initialize;
-            SoftwareID = "forge";
+            if (IsInInit)
+            {
+                SoftwareRegistrationDelegate += Initialize;
+                SoftwareID = "forge";
+            }
         }
 
         private static void Initialize()

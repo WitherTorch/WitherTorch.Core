@@ -8,11 +8,11 @@ namespace WitherTorch.Core.Servers
     public abstract class AbstractJavaEditionServer<T> : Server<T> where T : AbstractJavaEditionServer<T>
     {
         protected Utils.MojangAPI.VersionInfo mojangVersionInfo;
-        
+
         protected AbstractJavaEditionServer()
         {
-            //呼叫 Mojang API 進行版本列表提取
-            SoftwareRegistrationDelegate += Utils.MojangAPI.Initialize;
+            if (IsInInit)                
+                SoftwareRegistrationDelegate += Utils.MojangAPI.Initialize; //呼叫 Mojang API 進行版本列表提取
         }
 
         /// <summary>
