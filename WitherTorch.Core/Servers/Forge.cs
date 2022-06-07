@@ -22,7 +22,7 @@ namespace WitherTorch.Core.Servers
     /// <summary>
     /// Forge 伺服器
     /// </summary>
-    public class Forge : AbstractJavaEditionServer
+    public class Forge : AbstractJavaEditionServer<Forge>
     {
         private const string manifestListURL = "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml";
         private const string downloadURLPrefix = "https://maven.minecraftforge.net/net/minecraftforge/forge/";
@@ -39,19 +39,20 @@ namespace WitherTorch.Core.Servers
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
         private static MojangAPI.VersionInfo mc1_3_2, mc1_5_2;
 
-        public Forge() : base() { }
-
-        public Forge(RegisterToken token) : base(token)
+        static Forge()
         {
-            if (token)
+            SoftwareRegistrationDelegate += Initialize;
+            SoftwareID = "forge";
+        }
+
+        private static void Initialize()
+        {
+            if (versions == null)
             {
-                if (versions == null)
-                {
-                    LoadVersionList();
-                }
-                if (mc1_3_2.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.3.2", out mc1_3_2);
-                if (mc1_5_2.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.5.2", out mc1_5_2);
+                LoadVersionList();
             }
+            if (mc1_3_2.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.3.2", out mc1_3_2);
+            if (mc1_5_2.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.5.2", out mc1_5_2);
         }
 
         internal static void LoadVersionList()
@@ -107,7 +108,7 @@ namespace WitherTorch.Core.Servers
             var comparer = MojangAPI.VersionComparer.Instance;
             if (comparer == null)
             {
-                using (AutoResetEvent trigger = new AutoResetEvent(false))
+                using (ManualResetEvent trigger = new ManualResetEvent(false))
                 {
                     void trig(object sender, EventArgs e)
                     {
@@ -370,11 +371,6 @@ namespace WitherTorch.Core.Servers
         public override IPropertyFile[] GetServerPropertyFiles()
         {
             return propertyFiles;
-        }
-
-        public override string GetSoftwareID()
-        {
-            return "forge";
         }
 
         public override string[] GetSoftwareVersions()

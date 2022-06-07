@@ -18,7 +18,7 @@ namespace WitherTorch.Core.Servers
     /// <summary>
     /// Java 原版伺服器
     /// </summary>
-    public class JavaDedicated : AbstractJavaEditionServer
+    public class JavaDedicated : AbstractJavaEditionServer<JavaDedicated>
     {
         protected bool _isStarted;
 
@@ -28,10 +28,10 @@ namespace WitherTorch.Core.Servers
         IPropertyFile[] propertyFiles = new IPropertyFile[1];
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
 
-        public JavaDedicated() : base() { }
-
-        // 註冊時會執行這個函式
-        public JavaDedicated(RegisterToken token) : base(token) { }
+        static JavaDedicated()
+        {
+            SoftwareID = "javaDedicated";
+        }
 
         private void InstallSoftware()
         {
@@ -132,12 +132,6 @@ namespace WitherTorch.Core.Servers
         public override IPropertyFile[] GetServerPropertyFiles()
         {
             return propertyFiles;
-        }
-
-        /// <inheritdoc/>
-        public override string GetSoftwareID()
-        {
-            return "javaDedicated";
         }
 
         /// <inheritdoc/>

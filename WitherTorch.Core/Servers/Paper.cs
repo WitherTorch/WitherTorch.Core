@@ -21,7 +21,7 @@ namespace WitherTorch.Core.Servers
     /// <summary>
     /// Paper 伺服器
     /// </summary>
-    public class Paper : AbstractJavaEditionServer
+    public class Paper : AbstractJavaEditionServer<Paper>
     {
         private const string manifestListURL = "https://api.papermc.io/v2/projects/paper";
         private const string manifestListURL2 = "https://api.papermc.io/v2/projects/paper/versions/{0}";
@@ -39,12 +39,16 @@ namespace WitherTorch.Core.Servers
         protected SystemProcess process;
         internal static string[] versions;
 
-        public Paper() : base() { }
+        static Paper()
+        {
+            SoftwareRegistrationDelegate += Initialize;
+            SoftwareID = "paper";
+        }
 
         // 註冊時會執行這個函式
-        public Paper(RegisterToken token) : base(token)
+        private static void Initialize()
         {
-            if (versions == null && token)
+            if (versions == null)
             {
                 LoadVersionList();
             }
@@ -185,12 +189,6 @@ namespace WitherTorch.Core.Servers
         public override IPropertyFile[] GetServerPropertyFiles()
         {
             return propertyFiles;
-        }
-
-        /// <inheritdoc/>
-        public override string GetSoftwareID()
-        {
-            return "paper";
         }
 
         /// <inheritdoc/>

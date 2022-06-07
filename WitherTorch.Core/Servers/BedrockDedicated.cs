@@ -16,7 +16,7 @@ namespace WitherTorch.Core.Servers
     /// <summary>
     /// Bedrock 原版伺服器
     /// </summary>
-    public class BedrockDedicated : Server
+    public class BedrockDedicated : Server<BedrockDedicated>
     {
         private const string manifestListURL = "https://withertorch-bds-helper.vercel.app/api/latest";
         private const string downloadURLForLinux = "https://minecraft.azureedge.net/bin-linux/bedrock-server-{0}.zip";
@@ -28,14 +28,9 @@ namespace WitherTorch.Core.Servers
         private IPropertyFile[] propertyFiles = new IPropertyFile[1];
         private static string[] versions;
 
-        public BedrockDedicated() { }
-
-        public BedrockDedicated(RegisterToken _)
+        static BedrockDedicated()
         {
-            if (versions == null)
-            {
-                LoadVersionList();
-            }
+            SoftwareRegistrationDelegate += LoadVersionList;
         }
 
         private static void LoadVersionList()

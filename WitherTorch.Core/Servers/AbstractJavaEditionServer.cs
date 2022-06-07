@@ -5,24 +5,14 @@ namespace WitherTorch.Core.Servers
     /// <summary>
     /// 此類別為 Java 版伺服器軟體之基底類別，無法直接使用
     /// </summary>
-    public abstract class AbstractJavaEditionServer : Server
+    public abstract class AbstractJavaEditionServer<T> : Server<T> where T : AbstractJavaEditionServer<T>
     {
         protected Utils.MojangAPI.VersionInfo mojangVersionInfo;
-
-        /// <summary>
-        /// Java 版伺服器軟體的基底建構式
-        /// </summary>
-        protected AbstractJavaEditionServer()
+        
+        static AbstractJavaEditionServer()
         {
-        }
-
-        /// <summary>
-        /// Java 版伺服器軟體的基底註冊建構式<br/>
-        /// 此建構式會自動呼叫 Mojang API 進行版本列表提取，無須在繼承類別中重複呼叫
-        /// </summary>
-        protected AbstractJavaEditionServer(RegisterToken _)
-        {
-            Utils.MojangAPI.Initialize();
+            //呼叫 Mojang API 進行版本列表提取
+            SoftwareRegistrationDelegate += Utils.MojangAPI.Initialize;
         }
 
         /// <summary>

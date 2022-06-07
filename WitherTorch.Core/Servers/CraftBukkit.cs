@@ -11,7 +11,7 @@ namespace WitherTorch.Core.Servers
     /// <summary>
     /// CraftBukkit 伺服器
     /// </summary>
-    public class CraftBukkit : AbstractJavaEditionServer
+    public class CraftBukkit : AbstractJavaEditionServer<CraftBukkit>
     {
         protected bool _isStarted;
         IPropertyFile[] propertyFiles = new IPropertyFile[2];
@@ -22,13 +22,10 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         protected SystemProcess process;
 
-        public CraftBukkit() : base() { }
-
-        // 註冊時會執行這個函式
-        public CraftBukkit(RegisterToken token) : base(token)
+        static CraftBukkit()
         {
-            if (token)
-                SpigotAPI.Initialize();
+            SoftwareRegistrationDelegate += SpigotAPI.Initialize;
+            SoftwareID = "craftbukkit";
         }
 
         InstallTask installingTask;
@@ -71,12 +68,6 @@ namespace WitherTorch.Core.Servers
         public override IPropertyFile[] GetServerPropertyFiles()
         {
             return propertyFiles;
-        }
-
-        /// <inheritdoc/>
-        public override string GetSoftwareID()
-        {
-            return "craftbukkit";
         }
 
         /// <inheritdoc/>

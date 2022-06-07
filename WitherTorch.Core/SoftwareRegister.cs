@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,47 +12,49 @@ namespace WitherTorch.Core
     {
         internal static Dictionary<Type, string> registeredServerSoftwares = new Dictionary<Type, string>();
         public static Type[] RegisteredServerSoftwares => registeredServerSoftwares.Keys.ToArray();
-        public static void RegisterServerSoftware(Type software)
+
+        private static MethodInfo _genericMethodInfo;
+
+        [Obsolete("此方法效率較慢，建議使用 RegisterServerSoftware<T>() 代替")]
+        public static void RegisterServerSoftware(Type type)
         {
-            if (software != null && software.IsSubclassOf(typeof(Server)))
+            if (type != null && type.IsSubclassOf(typeof(Server<>)))
             {
-                string SoftwareRun()
-                {
-                    string result = null;
-                    Server server = null;
-                    try
-                    {
-                        RegisterToken registerToken = new RegisterToken();
-                        if ((server = Activator.CreateInstance(software, new object[] { registerToken }) as Server) != null && registerToken)
-                            result = server.GetSoftwareID();
-                    }
-                    catch (Exception) { }
-                    finally
-                    {
-                        server?.Dispose();
-                    }
-                    return result;
-                }
+                if (_genericMethodInfo == null)
+                    _genericMethodInfo = typeof(SoftwareRegister).GetMethod("RegisterServerSoftware", BindingFlags.Static | BindingFlags.Public, Type.DefaultBinder, Type.EmptyTypes, null);
+                _genericMethodInfo.MakeGenericMethod(type).Invoke(null, null);
+            }
+        }
+
+        public static void RegisterServerSoftware<T>() where T : Server<T>
+        {
+            string softwareID = Server<T>.SoftwareID;
+            if (!string.IsNullOrEmpty(softwareID))
+            {
                 if (WTCore.RegisterSoftwareTimeout == Timeout.Infinite)
                 {
-                    string result = SoftwareRun();
-                    registeredServerSoftwares.Add(software, result);
+                    try
+                    {
+                        Server<T>.SoftwareRegistrationDelegate();
+                    }
+                    catch (Exception)
+                    {
+                        return;
+                    }
                 }
                 else
                 {
                     using (CancellationTokenSource tokenSource = new CancellationTokenSource())
                     {
-                        Task<string> result = Task.Run(SoftwareRun);
-                        if (result.Wait(WTCore.RegisterSoftwareTimeout, tokenSource.Token))
-                        {
-                            registeredServerSoftwares.Add(software, result.Result);
-                        }
-                        else
+                        Task result = Task.Run(Server<T>.SoftwareRegistrationDelegate);
+                        if (!result.Wait(WTCore.RegisterSoftwareTimeout, tokenSource.Token))
                         {
                             tokenSource.Cancel();
+                            return;
                         }
                     }
                 }
+                registeredServerSoftwares.Add(typeof(T), softwareID);
             }
         }
         internal static Type GetSoftwareFromID(string id)
@@ -67,28 +70,36 @@ namespace WitherTorch.Core
         }
     }
 
-    public class RegisterToken : StrongBox<bool>
+    public class RegisterToken : IStrongBox
     {
+        bool value;
+
         internal protected RegisterToken()
         {
-            Value = true;
+            value = true;
+        }
+
+        public object Value
+        {
+            get => value;
+            set => this.value = value as bool? ?? true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Cancel()
         {
-            Value = false;
+            value = false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Reset()
         {
-            Value = true;
+            value = true;
         }
 
         public static implicit operator bool(RegisterToken a)
         {
-            return a.Value;
+            return a.value;
         }
     }
 }

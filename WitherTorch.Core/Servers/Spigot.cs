@@ -11,7 +11,7 @@ namespace WitherTorch.Core.Servers
     /// <summary>
     /// Spigot 伺服器
     /// </summary>
-    public class Spigot : AbstractJavaEditionServer
+    public class Spigot : AbstractJavaEditionServer<Spigot>
     {
         protected bool _isStarted;
         IPropertyFile[] propertyFiles = new IPropertyFile[3];
@@ -23,12 +23,10 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         protected SystemProcess process;
 
-        public Spigot() : base() { }
-
-        // 註冊時會執行這個函式
-        public Spigot(RegisterToken token) : base(token)
+        static Spigot()
         {
-            SpigotAPI.Initialize();
+            SoftwareRegistrationDelegate += SpigotAPI.Initialize;
+            SoftwareID = "spigot";
         }
 
         InstallTask installingTask;

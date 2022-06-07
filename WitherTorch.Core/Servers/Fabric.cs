@@ -21,7 +21,7 @@ namespace WitherTorch.Core.Servers
     /// <summary>
     /// Fabric 伺服器
     /// </summary>
-    public class Fabric : AbstractJavaEditionServer
+    public class Fabric : AbstractJavaEditionServer<Fabric>
     {
         private const string UserAgent = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36";
         private const string manifestListURL = "https://meta.fabricmc.net/v2/versions/game";
@@ -36,18 +36,21 @@ namespace WitherTorch.Core.Servers
         IPropertyFile[] propertyFiles = new IPropertyFile[1];
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
 
-        public Fabric() : base() { }
-
-        // 註冊時會執行這個函式
-        public Fabric(RegisterToken token) : base(token)
+        static Fabric()
         {
-            if (versionList == null && token)
+            SoftwareRegistrationDelegate += Initialize;
+            SoftwareID = "fabric";
+        }
+
+        private static void Initialize()
+        {
+            if (versionList == null)
             {
                 LoadVersionList();
             }
         }
 
-        internal static void LoadVersionList()
+        private static void LoadVersionList()
         {
             versionList = new List<string>();
             try
@@ -167,11 +170,6 @@ namespace WitherTorch.Core.Servers
         public override IPropertyFile[] GetServerPropertyFiles()
         {
             return propertyFiles;
-        }
-
-        public override string GetSoftwareID()
-        {
-            return "fabric";
         }
 
         public override string[] GetSoftwareVersions()

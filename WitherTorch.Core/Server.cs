@@ -5,6 +5,20 @@ using System.IO;
 namespace WitherTorch.Core
 {
     /// <summary>
+    /// 表示一個伺服器，這個類別是虛擬泛型類別
+    /// </summary>
+    public abstract class Server<T> : Server where T : Server<T>
+    {
+        // 面向外部的空參數建構子
+        public Server() : base() { }
+        
+        internal protected static Action SoftwareRegistrationDelegate { get; protected set; }
+        /// <summary>
+        /// 取得伺服器軟體ID
+        /// </summary>
+        public static string SoftwareID { get; protected set; }
+    }
+    /// <summary>
     /// 表示一個伺服器，這個類別是虛擬類別
     /// </summary>
     public abstract class Server : IDisposable
@@ -12,6 +26,12 @@ namespace WitherTorch.Core
         private string _software;
         private string _name;
         public event EventHandler ServerNameChanged;
+
+        // 內部空參數建構子 (防止有第三方伺服器軟體類別繼承自它)
+        internal Server()
+        {
+        }
+
         /// <summary>
         /// 伺服器名稱
         /// </summary>
@@ -32,10 +52,6 @@ namespace WitherTorch.Core
         /// 取得人類可讀(human-readable)的軟體版本
         /// </summary>
         public abstract string GetReadableVersion();
-        /// <summary>
-        /// 取得伺服器軟體ID
-        /// </summary>
-        public abstract string GetSoftwareID();
         /// <summary>
         /// 取得伺服器軟體所有的可用版本
         /// </summary>

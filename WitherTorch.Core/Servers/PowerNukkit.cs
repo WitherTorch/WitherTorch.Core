@@ -18,7 +18,7 @@ using System.Net.Http;
 
 namespace WitherTorch.Core.Servers
 {
-    public class PowerNukkit : Server
+    public class PowerNukkit : Server<PowerNukkit>
     {
         private const string UserAgent = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36";
         private const string manifestListURL = "https://repo1.maven.org/maven2/org/powernukkit/powernukkit/maven-metadata.xml";
@@ -31,9 +31,13 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         private IPropertyFile[] propertyFiles = new IPropertyFile[2];
 
-        public PowerNukkit() { }
+        static PowerNukkit()
+        {
+            SoftwareRegistrationDelegate += Initialize;
+            SoftwareID = "powerNukkit";
+        }
 
-        public PowerNukkit(RegisterToken _)
+        private static void Initialize()
         {
             if (versions == null)
             {
@@ -160,11 +164,6 @@ namespace WitherTorch.Core.Servers
         public override IPropertyFile[] GetServerPropertyFiles()
         {
             return propertyFiles;
-        }
-
-        public override string GetSoftwareID()
-        {
-            return "powerNukkit";
         }
 
         public override string[] GetSoftwareVersions()
