@@ -36,10 +36,10 @@ namespace WitherTorch.Core.Servers
         IPropertyFile[] propertyFiles = new IPropertyFile[1];
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
 
-        public Fabric() : base() { }
+        protected Fabric() : base() { }
 
         // 註冊時會執行這個函式
-        public Fabric(RegisterToken token) : base(token)
+        protected Fabric(RegisterToken token) : base(token)
         {
             if (versionList == null && token)
             {

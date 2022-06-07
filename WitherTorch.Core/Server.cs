@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
 namespace WitherTorch.Core
@@ -78,7 +79,7 @@ namespace WitherTorch.Core
                 }
                 else
                 {
-                    Server server = (Server)Activator.CreateInstance(softwareType);
+                    Server server = (Server)Activator.CreateInstance(softwareType, true);
                     server._software = softwareID;
                     server.ServerInfoJson = serverInformation;
                     server.ServerDirectory = Path.GetFullPath(serverDirectory);
@@ -119,7 +120,7 @@ namespace WitherTorch.Core
                 }
                 else
                 {
-                    Server server = (Server)Activator.CreateInstance(softwareType);
+                    Server server = (Server)Activator.CreateInstance(softwareType, true);
                     server._software = softwareID;
                     server.ServerInfoJson = serverInformation;
                     server.ServerDirectory = serverDirectory;
@@ -183,7 +184,7 @@ namespace WitherTorch.Core
         {
             if (SoftwareRegister.registeredServerSoftwares.ContainsKey(softwareType))
             {
-                Server server = Activator.CreateInstance(softwareType) as Server;
+                Server server = Activator.CreateInstance(softwareType, true) as Server;
                 server._software = server.GetSoftwareID();
                 server.ServerDirectory = serverDirectory;
                 if (server.CreateServer())

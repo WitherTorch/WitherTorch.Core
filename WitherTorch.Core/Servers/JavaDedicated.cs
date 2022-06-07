@@ -28,10 +28,10 @@ namespace WitherTorch.Core.Servers
         IPropertyFile[] propertyFiles = new IPropertyFile[1];
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
 
-        public JavaDedicated() : base() { }
+        protected JavaDedicated() : base() { }
 
         // 註冊時會執行這個函式
-        public JavaDedicated(RegisterToken token) : base(token) { }
+        protected JavaDedicated(RegisterToken token) : base(token) { }
 
         private void InstallSoftware()
         {

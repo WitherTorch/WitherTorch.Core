@@ -23,10 +23,10 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         protected SystemProcess process;
 
-        public Spigot() : base() { }
+        protected Spigot() : base() { }
 
         // 註冊時會執行這個函式
-        public Spigot(RegisterToken token) : base(token)
+        protected Spigot(RegisterToken token) : base(token)
         {
             SpigotAPI.Initialize();
         }

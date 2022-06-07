@@ -22,10 +22,10 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         protected SystemProcess process;
 
-        public CraftBukkit() : base() { }
+        protected CraftBukkit() : base() { }
 
         // 註冊時會執行這個函式
-        public CraftBukkit(RegisterToken token) : base(token)
+        protected CraftBukkit(RegisterToken token) : base(token)
         {
             if (token)
                 SpigotAPI.Initialize();

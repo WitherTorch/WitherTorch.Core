@@ -12,9 +12,7 @@ namespace WitherTorch.Core.Servers
         /// <summary>
         /// Java 版伺服器軟體的基底建構式
         /// </summary>
-        protected AbstractJavaEditionServer()
-        {
-        }
+        protected AbstractJavaEditionServer() { }
 
         /// <summary>
         /// Java 版伺服器軟體的基底註冊建構式<br/>
