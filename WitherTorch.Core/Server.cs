@@ -34,7 +34,7 @@ namespace WitherTorch.Core
             }
             else
             {
-                IsInInit = true;
+                IsInInit = false;
             }
         }
 
