@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace WitherTorch.Core
 {
-    public class SoftwareRegister
+    public sealed class SoftwareRegister
     {
         internal static Dictionary<Type, string> registeredServerSoftwares = new Dictionary<Type, string>();
         public static Type[] RegisteredServerSoftwares => registeredServerSoftwares.Keys.ToArray();
