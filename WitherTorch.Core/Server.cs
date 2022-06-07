@@ -15,7 +15,7 @@ namespace WitherTorch.Core
         /// </summary>
         internal protected static string SoftwareID { get; protected set; }
 
-        internal static bool isNeedInitialize = false;
+        internal static bool isNeedInitialize = true;
 
         // 面向外部的空參數建構子
         public Server()
