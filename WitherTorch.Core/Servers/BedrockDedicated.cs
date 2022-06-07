@@ -31,6 +31,7 @@ namespace WitherTorch.Core.Servers
         static BedrockDedicated()
         {
             SoftwareRegistrationDelegate += LoadVersionList;
+            SoftwareID = "bedrockDedicated";
         }
 
         private static void LoadVersionList()
@@ -275,11 +276,6 @@ namespace WitherTorch.Core.Servers
         public override IPropertyFile[] GetServerPropertyFiles()
         {
             return propertyFiles;
-        }
-
-        public override string GetSoftwareID()
-        {
-            return "bedrockDedicated";
         }
 
         public override string[] GetSoftwareVersions()

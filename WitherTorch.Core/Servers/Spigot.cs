@@ -71,11 +71,6 @@ namespace WitherTorch.Core.Servers
             return propertyFiles;
         }
 
-        /// <inheritdoc/>
-        public override string GetSoftwareID()
-        {
-            return "spigot";
-        }
 
         /// <inheritdoc/>
         public override string[] GetSoftwareVersions()

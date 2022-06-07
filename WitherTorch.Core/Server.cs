@@ -14,9 +14,13 @@ namespace WitherTorch.Core
         
         internal protected static Action SoftwareRegistrationDelegate { get; protected set; }
         /// <summary>
-        /// 取得伺服器軟體ID
+        /// 伺服器軟體ID
         /// </summary>
-        public static string SoftwareID { get; protected set; }
+        internal protected static string SoftwareID { get; protected set; }
+        public override string GetSoftwareID()
+        {
+            return SoftwareID;
+        }
     }
     /// <summary>
     /// 表示一個伺服器，這個類別是虛擬類別
@@ -233,6 +237,10 @@ namespace WitherTorch.Core
         /// </summary>
         /// <returns>是否成功建立伺服器</returns>
         protected abstract bool CreateServer();
+        /// <summary>
+        /// 取得伺服器軟體ID
+        /// </summary>
+        public abstract string GetSoftwareID();
         /// <summary>
         /// 更改伺服器軟體版本
         /// </summary>
