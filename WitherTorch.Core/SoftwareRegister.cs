@@ -22,7 +22,7 @@ namespace WitherTorch.Core
                     try
                     {
                         RegisterToken registerToken = new RegisterToken();
-                        if ((server = Activator.CreateInstance(software, registerToken) as Server) != null && registerToken)
+                        if ((server = Activator.CreateInstance(software, new object[] { registerToken }) as Server) != null && registerToken)
                             result = server.GetSoftwareID();
                     }
                     catch (Exception) { }
