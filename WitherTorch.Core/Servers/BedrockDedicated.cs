@@ -28,9 +28,9 @@ namespace WitherTorch.Core.Servers
         private IPropertyFile[] propertyFiles = new IPropertyFile[1];
         private static string[] versions;
 
-        protected BedrockDedicated() { }
+        public BedrockDedicated() { }
 
-        protected BedrockDedicated(RegisterToken token)
+        public BedrockDedicated(RegisterToken _)
         {
             if (versions == null)
             {

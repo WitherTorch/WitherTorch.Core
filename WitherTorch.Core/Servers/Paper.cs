@@ -39,10 +39,10 @@ namespace WitherTorch.Core.Servers
         protected SystemProcess process;
         internal static string[] versions;
 
-        protected Paper() : base() { }
+        public Paper() : base() { }
 
         // 註冊時會執行這個函式
-        protected Paper(RegisterToken token) : base(token)
+        public Paper(RegisterToken token) : base(token)
         {
             if (versions == null && token)
             {

@@ -31,12 +31,11 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         private IPropertyFile[] propertyFiles = new IPropertyFile[2];
 
-        protected PowerNukkit() { }
+        public PowerNukkit() { }
 
-        // 註冊時會執行這個函式
-        protected PowerNukkit(RegisterToken token)
+        public PowerNukkit(RegisterToken _)
         {
-            if (versions == null && token)
+            if (versions == null)
             {
                 LoadVersionList();
             }
