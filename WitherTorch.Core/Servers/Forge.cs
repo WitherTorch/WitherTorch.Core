@@ -126,7 +126,7 @@ namespace WitherTorch.Core.Servers
                     comparer = MojangAPI.VersionComparer.Instance;
                 }
             }
-            versionKeys.Sort();
+            versionKeys.Sort(comparer);
             versionKeys.Reverse();
             foreach (string key in versionKeys)
             {
