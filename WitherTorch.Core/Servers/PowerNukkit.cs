@@ -33,7 +33,7 @@ namespace WitherTorch.Core.Servers
 
         public PowerNukkit()
         {
-            if (isNeedInitialize)
+            if (IsInInit)
             {
                 SoftwareRegistrationDelegate += Initialize;
                 SoftwareID = "powerNukkit";

@@ -41,7 +41,7 @@ namespace WitherTorch.Core.Servers
 
         public Paper()
         {
-            if (isNeedInitialize)
+            if (IsInInit)
             {
                 SoftwareRegistrationDelegate += Initialize;
                 SoftwareID = "paper";
