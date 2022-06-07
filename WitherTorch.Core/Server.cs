@@ -11,12 +11,17 @@ namespace WitherTorch.Core
     {
         // 面向外部的空參數建構子
         public Server() : base() { }
-        
         internal protected static Action SoftwareRegistrationDelegate { get; protected set; }
         /// <summary>
         /// 伺服器軟體ID
         /// </summary>
         internal protected static string SoftwareID { get; protected set; }
+
+        internal static bool isInited = false;
+        static Server()
+        {
+            isInited = true;
+        }
         public override string GetSoftwareID()
         {
             return SoftwareID;

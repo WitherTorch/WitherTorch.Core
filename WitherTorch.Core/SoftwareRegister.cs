@@ -26,19 +26,24 @@ namespace WitherTorch.Core
             }
         }
 
-        public static void RegisterServerSoftware<T>() where T : Server<T>
+        public static void RegisterServerSoftware<T>() where T : Server<T>, new()
         {
+            if (!Server<T>.isInited)
+            {
+                new T().Dispose();
+            }
             string softwareID = Server<T>.SoftwareID;
+            Action regDelegate = Server<T>.SoftwareRegistrationDelegate;
             if (!string.IsNullOrEmpty(softwareID))
             {
-                if (Server<T>.SoftwareRegistrationDelegate != null)
+                if (regDelegate != null)
                 {
 
                     if (WTCore.RegisterSoftwareTimeout == Timeout.Infinite)
                     {
                         try
                         {
-                            Server<T>.SoftwareRegistrationDelegate();
+                            regDelegate();
                         }
                         catch (Exception)
                         {
@@ -49,7 +54,7 @@ namespace WitherTorch.Core
                     {
                         using (CancellationTokenSource tokenSource = new CancellationTokenSource())
                         {
-                            Task result = Task.Run(Server<T>.SoftwareRegistrationDelegate);
+                            Task result = Task.Run(regDelegate);
                             if (!result.Wait(WTCore.RegisterSoftwareTimeout, tokenSource.Token))
                             {
                                 tokenSource.Cancel();
