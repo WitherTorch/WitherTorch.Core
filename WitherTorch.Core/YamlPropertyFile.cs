@@ -35,6 +35,10 @@ namespace WitherTorch.Core
                     reader.Close();
                 }
             }
+            else if (create && currentObject == null)
+            {
+                currentObject = new JObject();
+            }
         }
 
         public override void Save(bool force)
