@@ -147,8 +147,21 @@ namespace WitherTorch.Core
                     }
                     if (!hasCacheFile)
                     {
-                        string value = Guid.NewGuid().ToString("N");
-                        tokenObject.Add("value", value);
+                        string value = null;
+                        bool hasKey = false;
+                        if (tokenObject.TryGetValue("value", out JToken valueToken))
+                        {
+                            value = valueToken?.Value<string>();
+                            hasKey = true;
+                        }
+                        if (value == null)
+                        {
+                            value = Guid.NewGuid().ToString("N");
+                            if (hasKey)
+                                tokenObject["value"] = value;
+                            else
+                                tokenObject.Add("value", value);
+                        }
                         path = Path.Combine(WTCore.CachePath, "./" + value);
                     }
                     try
