@@ -34,8 +34,9 @@ namespace WitherTorch.Core
 #elif NET472
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-            private unsafe void GetNoStylingMessage(char* charPointer, ref char* charPointerEnd)
+            private unsafe void GetNoStylingMessage(char* charPointer, char** charPointerEndPtr)
             {
+                char* charPointerEnd = *charPointerEndPtr;
                 char* movablePointer = charPointer;
                 char* sizingPointer = charPointer;
                 int stylingState = 0;
@@ -93,7 +94,7 @@ namespace WitherTorch.Core
                         }
                         movablePointer++;
                     }
-                    charPointerEnd = sizingPointer;
+                    *charPointerEndPtr = sizingPointer;
                 }
             }
 
@@ -112,7 +113,7 @@ namespace WitherTorch.Core
                         char* moveablePointer = charPointer;
                         char* charPointerEnd = charPointer + length;
                         if (noStyling)
-                            GetNoStylingMessage(charPointer, ref charPointerEnd);
+                            GetNoStylingMessage(charPointer, &charPointerEnd);
                         bool successed = true;
                         bool hasContent = true;
                         ProcessedMessage.MessageTime time = ProcessedMessage.MessageTime.Empty;
