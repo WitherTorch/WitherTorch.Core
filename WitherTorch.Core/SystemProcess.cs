@@ -51,6 +51,9 @@ namespace WitherTorch.Core
         {
             if (InnerProcess == sender)
             {
+                InnerProcess.ErrorDataReceived -= Process_ErrorDataReceived;
+                InnerProcess.OutputDataReceived -= Process_OutputDataReceived;
+                InnerProcess.Exited -= Process_Exited;
                 InnerProcess.Dispose();
                 InnerProcess = null;
                 OnProcessEnded(this);
