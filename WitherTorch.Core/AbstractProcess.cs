@@ -9,9 +9,7 @@ namespace WitherTorch.Core
         /// </summary>
         public int ID { get; set; }
         public delegate void ProcessMessageEventHandler(object sender, ProcessMessageEventArgs e);
-        public delegate void InputedCommandEventHandler(object sender, InputedCommandEventArgs e);
         public event ProcessMessageEventHandler MessageRecived;
-        public event InputedCommandEventHandler InputedCommand;
         public event EventHandler ProcessStarted;
         public event EventHandler ProcessEnded;
 
@@ -30,9 +28,8 @@ namespace WitherTorch.Core
             ProcessEnded?.Invoke(sender, e ?? EventArgs.Empty);
         }
 
-        public void InputCommand(string command = "")
+        public virtual void InputCommand(string command = "")
         {
-            InputedCommand?.Invoke(this, new InputedCommandEventArgs(command));
         }
 
         public abstract bool IsAlive();
@@ -47,14 +44,7 @@ namespace WitherTorch.Core
             Message = msg;
         }
     }
-    public class InputedCommandEventArgs : EventArgs
-    {
-        public string Message { get; private set; }
-        public InputedCommandEventArgs(string msg = "")
-        {
-            Message = msg;
-        }
-    }
+
     public class Process : AbstractProcess
     {
         bool isAlive = false;

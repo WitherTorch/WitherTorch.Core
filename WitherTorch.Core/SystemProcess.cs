@@ -17,6 +17,12 @@ namespace WitherTorch.Core
             return InnerProcess != null && !InnerProcess.HasExited;
         }
 
+        public override void InputCommand(string command = "")
+        {
+            if (!string.IsNullOrWhiteSpace(command))
+                InnerProcess?.StandardInput.WriteLine(command);
+        }
+
         public virtual void StartProcess(ProcessStartInfo startInfo)
         {
             if (WTCore.RedirectSystemProcessStream)
@@ -33,18 +39,32 @@ namespace WitherTorch.Core
             {
                 process.BeginErrorReadLine();
                 process.BeginOutputReadLine();
-                process.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs e) { OnMessageRecived(process, new ProcessMessageEventArgs(true, e.Data == null ? "" : e.Data)); };
-                process.OutputDataReceived += delegate (object sender, DataReceivedEventArgs e) { OnMessageRecived(process, new ProcessMessageEventArgs(false, e.Data == null ? "" : e.Data)); };
-                InputedCommand += delegate (object sender, InputedCommandEventArgs e) { if (!string.IsNullOrWhiteSpace(e.Message)) process.StandardInput.WriteLine(e.Message); };
+                process.ErrorDataReceived += Process_ErrorDataReceived;
+                process.OutputDataReceived += Process_OutputDataReceived;
             }
-            process.Exited += delegate
-            {
-                InnerProcess?.Dispose();
-                InnerProcess = null;
-                OnProcessEnded(this);
-            };
+            process.Exited += Process_Exited;
             InnerProcess = process;
             OnProcessStarted(this);
+        }
+
+        private void Process_Exited(object sender, EventArgs e)
+        {
+            if (InnerProcess == sender)
+            {
+                InnerProcess.Dispose();
+                InnerProcess = null;
+                OnProcessEnded(this);
+            }
+        }
+
+        private void Process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            OnMessageRecived(this, new ProcessMessageEventArgs(true, e.Data ?? string.Empty));
+        }
+
+        private void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            OnMessageRecived(this, new ProcessMessageEventArgs(false, e.Data ?? string.Empty));
         }
 
         protected virtual void Dispose(bool disposing)
