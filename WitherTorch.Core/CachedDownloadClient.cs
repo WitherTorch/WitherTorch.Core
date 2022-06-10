@@ -1,24 +1,35 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net;
-using System.Text;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace WitherTorch.Core
 {
-    public class CachedDownloadClient
+    public class CachedDownloadClient : IDisposable
     {
         internal const string UserAgent = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36";
         private static volatile JsonPropertyFile cacheFile;
-        public static CachedDownloadClient Instance { get; private set; } = new CachedDownloadClient();
+        private static CachedDownloadClient _inst;
+        public static CachedDownloadClient Instance
+        {
+            [MethodImpl(MethodImplOptions.Synchronized)]
+            get
+            {
+                if (_inst == null || _inst.disposedValue)
+                {
+                    _inst = new CachedDownloadClient();
+                }
+                return _inst;
+            }
+        }
         volatile System.Net.Http.HttpClient _client;
         volatile static Task cacheSavingTask;
         volatile static CancellationTokenSource cacheSavingTaskToken;
+        private bool disposedValue;
+
+        [MethodImpl(MethodImplOptions.Synchronized)]
         private static void SaveCacheFile()
         {
             Thread.Sleep(1000);
@@ -187,6 +198,40 @@ namespace WitherTorch.Core
             }
 
             return result;
+        }
+
+        ~CachedDownloadClient()
+        {
+            // 請勿變更此程式碼。請將清除程式碼放入 'Dispose(bool disposing)' 方法
+            Dispose(disposing: false);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    // TODO: 處置受控狀態 (受控物件)
+                }
+                // TODO: 釋出非受控資源 (非受控物件) 並覆寫完成項
+                _client.Dispose();
+                if (cacheSavingTask != null && !cacheSavingTask.IsCompleted)
+                {
+                    cacheSavingTaskToken.Cancel();
+                    cacheSavingTaskToken.Dispose();
+                }
+                SaveCacheFile();
+                // TODO: 將大型欄位設為 Null
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // 請勿變更此程式碼。請將清除程式碼放入 'Dispose(bool disposing)' 方法
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
