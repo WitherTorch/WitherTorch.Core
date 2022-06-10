@@ -178,6 +178,7 @@ namespace WitherTorch.Core.Servers
 #endif
             bool needInstall = false;
             InstallTask installingTask = new InstallTask(this);
+            OnInstallSoftware(installingTask);
             string downloadURL = null;
             if (URLBuilder == null)
             {
@@ -230,13 +231,27 @@ namespace WitherTorch.Core.Servers
                 client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
                 {
                     client.Dispose();
-                    if (needInstall)
+                    if (e.Error != null || e.Cancelled == true)
                     {
-                        RunInstaller(installingTask, installerLocation);
+                        installingTask.OnInstallFailed();
                     }
                     else
                     {
-                        installingTask.OnInstallFinished();
+                        if (needInstall)
+                        {
+                            try
+                            {
+                                RunInstaller(installingTask, installerLocation);
+                            }
+                            catch (Exception)
+                            {
+                                installingTask.OnInstallFailed();
+                            }
+                        }
+                        else
+                        {
+                            installingTask.OnInstallFinished();
+                        }
                     }
                 };
                 installingTask.ChangeStatus(status);
@@ -249,7 +264,6 @@ namespace WitherTorch.Core.Servers
                 {
                     client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + ".jar"));
                 }
-                OnInstallSoftware(installingTask);
 #elif NET5_0
                 System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
                 progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
@@ -265,47 +279,30 @@ namespace WitherTorch.Core.Servers
                         installingTask.ChangePercentage(e.ProgressPercentage);
                     }
                 };
-                OnInstallSoftware(installingTask);
-                System.Threading.Tasks.Task.Run(async () =>
+                Task.Run(async () =>
                 {
-                    Stream dataStream = await client.GetStreamAsync(new Uri(downloadURL));
-                    FileStream fileStream;
-                    string installerLocation = null;
-                    if (needInstall)
+                    try
                     {
-                        installerLocation = Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + "-installer.jar");
-                        fileStream = new FileStream(installerLocation, FileMode.Create);
-                    }
-                    else
-                    {
-                        fileStream = new FileStream(Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + ".jar"), FileMode.Create);
-                    }
-                    byte[] buffer = new byte[1 << 20];
-                    while (true)
-                    {
-                        int length = dataStream.Read(buffer, 0, buffer.Length);
-                        if (length > 0)
+                        string installerLocation;
+                        if (needInstall)
                         {
-                            fileStream.Write(buffer, 0, length);
+                            installerLocation = Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + "-installer.jar");
                         }
                         else
                         {
-                            break;
+                            installerLocation = Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + ".jar");
                         }
+                        await InstallUtils.HttpDownload(client, downloadURL, installerLocation);
+                        if (needInstall)
+                            RunInstaller(installingTask, installerLocation);
+                        else
+                            installingTask.OnInstallFinished();
                     }
-                    dataStream.Close();
-                    fileStream.Close();
-                    await dataStream.DisposeAsync();
-                    await fileStream.DisposeAsync();
+                    catch (Exception)
+                    {
+                        installingTask.OnInstallFailed();
+                    }
                     client.Dispose();
-                    if (needInstall)
-                    {
-                        RunInstaller(installingTask, installerLocation);
-                    }
-                    else
-                    {
-                        installingTask.OnInstallFinished();
-                    }
                 });
 #endif
             }

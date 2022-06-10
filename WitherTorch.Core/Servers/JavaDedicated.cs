@@ -36,6 +36,8 @@ namespace WitherTorch.Core.Servers
 
         private void InstallSoftware()
         {
+            InstallTask installingTask = new InstallTask(this);
+            OnInstallSoftware(installingTask);
             string manifestURL = mojangVersionInfo.ManifestURL;
             if (!string.IsNullOrEmpty(manifestURL))
             {
@@ -48,7 +50,6 @@ namespace WitherTorch.Core.Servers
                 JObject jsonObject = JsonConvert.DeserializeObject<JObject>(client.GetStringAsync(manifestURL).Result);
 #endif
                 string downloadURL = jsonObject.GetValue("downloads")["server"]["url"].ToString();
-                InstallTask installingTask = new InstallTask(this);
                 DownloadStatus status = new DownloadStatus(downloadURL, 0);
                 installingTask.ChangeStatus(status);
 #if NET472
@@ -61,10 +62,16 @@ namespace WitherTorch.Core.Servers
                 client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
                 {
                     client.Dispose();
-                    installingTask.OnInstallFinished();
+                    if (e.Error != null || e.Cancelled)
+                    {
+                        installingTask.OnInstallFailed();
+                    }
+                    else
+                    {
+                        installingTask.OnInstallFinished();
+                    }
                 };
                 client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"));
-                OnInstallSoftware(installingTask);
 #elif NET5_0
                 System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
                 progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
@@ -73,32 +80,24 @@ namespace WitherTorch.Core.Servers
                     installingTask.OnStatusChanged();
                     installingTask.ChangePercentage(e.ProgressPercentage);
                 };
-                OnInstallSoftware(installingTask);
                 System.Threading.Tasks.Task.Run(async () =>
                 {
-                    Stream dataStream = await client.GetStreamAsync(new Uri(downloadURL));
-                    FileStream fileStream = new FileStream(System.IO.Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"), FileMode.Create);
-                    byte[] buffer = new byte[1 << 20];
-                    while (true)
+                    try
                     {
-                        int length = dataStream.Read(buffer, 0, buffer.Length);
-                        if (length > 0)
-                        {
-                            fileStream.Write(buffer, 0, length);
-                        }
-                        else
-                        {
-                            break;
-                        }
+                        await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"));
+                        installingTask.OnInstallFinished();
                     }
-                    dataStream.Close();
-                    fileStream.Close();
-                    await dataStream.DisposeAsync();
-                    await fileStream.DisposeAsync();
+                    catch (Exception)
+                    {
+                        installingTask.OnInstallFailed();
+                    }
                     client.Dispose();
-                    installingTask.OnInstallFinished();
                 });
 #endif
+            }
+            else
+            {
+                installingTask.OnInstallFailed();
             }
         }
         /// <inheritdoc/>

@@ -104,6 +104,8 @@ namespace WitherTorch.Core.Servers
 
         public void InstallSoftware()
         {
+            InstallTask installingTask = new InstallTask(this);
+            OnInstallSoftware(installingTask);
 #if NET472
             WebClient client = new WebClient();
 #elif NET5_0
@@ -122,6 +124,7 @@ namespace WitherTorch.Core.Servers
                     downloadURL = string.Format(downloadURLForWindows, versionString);
                     break;
                 default:
+                    installingTask.OnInstallFailed();
                     return;
             }
 #elif NET5_0
@@ -135,19 +138,92 @@ namespace WitherTorch.Core.Servers
             }
             else
             {
+                installingTask.OnInstallFailed();
                 return;
             }
 #endif
-            InstallTask installingTask = new InstallTask(this);
             DownloadStatus status = new DownloadStatus(downloadURL, 0);
             installingTask.ChangeStatus(status);
 #if NET472
             client.OpenReadCompleted += async delegate (object sender, OpenReadCompletedEventArgs e)
             {
-                await System.Threading.Tasks.Task.Run(() =>
+                await Task.Run(() =>
                 {
-                    using (ZipArchive archive = new ZipArchive(e.Result, ZipArchiveMode.Read, false))
+                    try
                     {
+                        using (ZipArchive archive = new ZipArchive(e.Result, ZipArchiveMode.Read, false))
+                        {
+                            System.Collections.ObjectModel.ReadOnlyCollection<ZipArchiveEntry> entries = archive.Entries;
+                            System.Collections.Generic.IEnumerator<ZipArchiveEntry> enumerator = entries.GetEnumerator();
+                            int currentCount = 0;
+                            int count = entries.Count;
+                            while (enumerator.MoveNext())
+                            {
+                                ZipArchiveEntry entry = enumerator.Current;
+                                string filePath = Path.GetFullPath(Path.Combine(ServerDirectory, entry.FullName));
+                                if (filePath.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal)) // Is Directory
+                                {
+                                    if (!Directory.Exists(filePath))
+                                        Directory.CreateDirectory(filePath);
+                                }
+                                else // Is File
+                                {
+                                    switch (entry.FullName)
+                                    {
+                                        case "allowlist.json":
+                                        case "whitelist.json":
+                                        case "permissions.json":
+                                        case "server.properties":
+                                            if (!File.Exists(filePath))
+                                            {
+                                                goto default;
+                                            }
+                                            break;
+                                        default:
+                                            {
+                                                entry.ExtractToFile(filePath, true);
+                                            }
+                                            break;
+                                    }
+                                }
+                                currentCount++;
+                                status.Percentage = currentCount * 100.0 / count;
+                                System.Threading.Tasks.Task.Run(() =>
+                                {
+                                    installingTask.OnStatusChanged();
+                                    installingTask.ChangePercentage(status.Percentage);
+                                });
+                            }
+                        }
+                        client.Dispose();
+                        installingTask.ChangePercentage(100);
+                        installingTask.OnInstallFinished();
+                    }
+                    catch (Exception)
+                    {
+                        installingTask.OnInstallFailed();
+                    }
+                });
+            };
+            client.OpenReadAsync(new Uri(downloadURL));
+#elif NET5_0
+            System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
+            progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
+            {
+                status.Percentage = e.ProgressPercentage;
+                installingTask.OnStatusChanged();
+                installingTask.ChangePercentage(e.ProgressPercentage * 0.65);
+            };
+            Task.Run(async () =>
+            {
+                try
+                {
+                    using (Stream dataStream = await client.GetStreamAsync(new Uri(downloadURL)))
+                    using (ZipArchive archive = new ZipArchive(dataStream, ZipArchiveMode.Read, false))
+                    {
+                        installingTask.ChangePercentage(65);
+                        DecompessionStatus decompessionStatus = new DecompessionStatus();
+                        installingTask.ChangeStatus(decompessionStatus);
                         System.Collections.ObjectModel.ReadOnlyCollection<ZipArchiveEntry> entries = archive.Entries;
                         System.Collections.Generic.IEnumerator<ZipArchiveEntry> enumerator = entries.GetEnumerator();
                         int currentCount = 0;
@@ -183,80 +259,19 @@ namespace WitherTorch.Core.Servers
                             }
                             currentCount++;
                             status.Percentage = currentCount * 100.0 / count;
-                            System.Threading.Tasks.Task.Run(() =>
-                            {
-                                installingTask.OnStatusChanged();
-                                installingTask.ChangePercentage(status.Percentage);
-                            });
+                            installingTask.OnStatusChanged();
+                            installingTask.ChangePercentage(65 + decompessionStatus.Percentage * 0.35);
                         }
+                        dataStream.Close();
                     }
                     client.Dispose();
                     installingTask.ChangePercentage(100);
                     installingTask.OnInstallFinished();
-                });
-            };
-            client.OpenReadAsync(new Uri(downloadURL));
-            OnInstallSoftware(installingTask);
-#elif NET5_0
-            System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
-            progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
-            {
-                status.Percentage = e.ProgressPercentage;
-                installingTask.OnStatusChanged();
-                installingTask.ChangePercentage(e.ProgressPercentage * 0.65);
-            };
-            OnInstallSoftware(installingTask);
-            System.Threading.Tasks.Task.Run(async () =>
-            {
-                using (Stream dataStream = await client.GetStreamAsync(new Uri(downloadURL)))
-                using (ZipArchive archive = new ZipArchive(dataStream, ZipArchiveMode.Read, false))
-                {
-                    installingTask.ChangePercentage(65);
-                    DecompessionStatus decompessionStatus = new DecompessionStatus();
-                    installingTask.ChangeStatus(decompessionStatus);
-                    System.Collections.ObjectModel.ReadOnlyCollection<ZipArchiveEntry> entries = archive.Entries;
-                    System.Collections.Generic.IEnumerator<ZipArchiveEntry> enumerator = entries.GetEnumerator();
-                    int currentCount = 0;
-                    int count = entries.Count;
-                    while (enumerator.MoveNext())
-                    {
-                        ZipArchiveEntry entry = enumerator.Current;
-                        string filePath = Path.GetFullPath(Path.Combine(ServerDirectory, entry.FullName));
-                        if (filePath.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal)) // Is Directory
-                        {
-                            if (!Directory.Exists(filePath))
-                                Directory.CreateDirectory(filePath);
-                        }
-                        else // Is File
-                        {
-                            switch (entry.FullName)
-                            {
-                                case "allowlist.json":
-                                case "whitelist.json":
-                                case "permissions.json":
-                                case "server.properties":
-                                    if (!File.Exists(filePath))
-                                    {
-                                        goto default;
-                                    }
-                                    break;
-                                default:
-                                    {
-                                        entry.ExtractToFile(filePath, true);
-                                    }
-                                    break;
-                            }
-                        }
-                        currentCount++;
-                        status.Percentage = currentCount * 100.0 / count;
-                        installingTask.OnStatusChanged();
-                        installingTask.ChangePercentage(65 + decompessionStatus.Percentage * 0.35);
-                    }
-                    dataStream.Close();
                 }
-                client.Dispose();
-                installingTask.ChangePercentage(100);
-                installingTask.OnInstallFinished();
+                catch (Exception)
+                {
+                    installingTask.OnInstallFailed();
+                }
             });
 #endif
         }
