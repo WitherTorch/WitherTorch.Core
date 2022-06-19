@@ -312,6 +312,10 @@ namespace WitherTorch.Core.Servers
                 serverInfoJson["java.preArgs"] = environment.JavaPreArguments;
                 serverInfoJson["java.postArgs"] = environment.JavaPostArguments;
             }
+            else
+            {
+                serverInfoJson["java"] = null;
+            }
             return true;
         }
 
