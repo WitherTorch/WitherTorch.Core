@@ -314,7 +314,9 @@ namespace WitherTorch.Core.Servers
             }
             else
             {
-                serverInfoJson["java"] = null;
+                serverInfoJson["java.path"] = null;
+                serverInfoJson["java.preArgs"] = null;
+                serverInfoJson["java.postArgs"] = null;
             }
             return true;
         }
