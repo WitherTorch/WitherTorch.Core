@@ -53,11 +53,6 @@ namespace WitherTorch.Core
 
         public event EventHandler ServerNameChanged;
 
-        // 內部空參數建構子 (防止有第三方伺服器軟體類別繼承自它)
-        internal Server()
-        {
-        }
-
         /// <summary>
         /// 伺服器名稱
         /// </summary>
