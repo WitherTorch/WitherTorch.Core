@@ -53,6 +53,11 @@ namespace WitherTorch.Core
 
         public event EventHandler ServerNameChanged;
 
+        // 內部空參數建構子 (防止有第三方伺服器軟體類別繼承自它)
+        internal Server()
+        {
+        }
+
         /// <summary>
         /// 伺服器名稱
         /// </summary>
@@ -314,6 +319,13 @@ namespace WitherTorch.Core
         /// <returns>是否成功儲存伺服器</returns>
         protected abstract bool OnServerSaving();
 
+        /// <summary>
+        /// 伺服器物件的標籤，可供操作者儲存額外的伺服器資訊<br/>
+        /// 伺服器軟體本身不應使用該屬性。
+        /// </summary>
+        public object Tag { get; set; }
+
+        #region Disposing
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
@@ -343,5 +355,6 @@ namespace WitherTorch.Core
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+        #endregion
     }
 }
