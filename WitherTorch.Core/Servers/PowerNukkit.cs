@@ -209,10 +209,10 @@ namespace WitherTorch.Core.Servers
             }
         }
 
-        public override void UpdateServer()
+        public override bool UpdateServer()
         {
             if (versions == null) LoadVersionList();
-            ChangeVersion(Array.IndexOf(versions, versionString));
+            return ChangeVersion(Array.IndexOf(versions, versionString));
         }
 
         protected override bool CreateServer()

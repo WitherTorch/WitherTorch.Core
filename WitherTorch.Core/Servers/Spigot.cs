@@ -199,9 +199,9 @@ namespace WitherTorch.Core.Servers
             return true;
         }
 
-        public override void UpdateServer()
+        public override bool UpdateServer()
         {
-            ChangeVersion(Array.IndexOf(SpigotAPI.Versions, versionString));
+            return ChangeVersion(Array.IndexOf(SpigotAPI.Versions, versionString));
         }
     }
 }

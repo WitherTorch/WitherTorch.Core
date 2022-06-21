@@ -553,10 +553,10 @@ namespace WitherTorch.Core.Servers
             return true;
         }
 
-        public override void UpdateServer()
+        public override bool UpdateServer()
         {
             if (versions == null) LoadVersionList();
-            ChangeVersion(Array.IndexOf(versions, versionString));
+            return ChangeVersion(Array.IndexOf(versions, versionString));
         }
 
     }

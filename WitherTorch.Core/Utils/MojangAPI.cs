@@ -118,7 +118,7 @@ namespace WitherTorch.Core.Utils
 
             }
             VersionDictionary = versionPairs;
-            Versions = versionPairs.Any() ? versionPairs.Keys.ToArray() : Array.Empty<string>();
+            versions = versionPairs.Any() ? versionPairs.Keys.ToArray() : Array.Empty<string>();
         }
 
         public sealed class VersionComparer : IComparer<string>

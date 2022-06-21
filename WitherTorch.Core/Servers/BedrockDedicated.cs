@@ -326,9 +326,9 @@ namespace WitherTorch.Core.Servers
         {
         }
 
-        public override void UpdateServer()
+        public override bool UpdateServer()
         {
-            ChangeVersion(default);
+            return ChangeVersion(default);
         }
 
         protected override bool CreateServer()

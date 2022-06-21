@@ -264,7 +264,7 @@ namespace WitherTorch.Core
         /// 更改伺服器軟體版本
         /// </summary>
         /// <param name="versionIndex">軟體傳回的版本索引值</param>
-        /// <returns>是否成功建立伺服器</returns>
+        /// <returns>是否成功更改伺服器軟體版本</returns>
         public abstract bool ChangeVersion(int versionIndex);
         /// <summary>
         /// 取得當前的處理序物件
@@ -277,7 +277,8 @@ namespace WitherTorch.Core
         /// <summary>
         /// 子類別應覆寫此方法為更新伺服器軟體的程式碼
         /// </summary>
-        public abstract void UpdateServer();
+        /// <returns>是否成功開始更新伺服器軟體</returns>
+        public abstract bool UpdateServer();
         public delegate void ServerInstallingEventHandler(InstallTask task);
         public event ServerInstallingEventHandler ServerInstalling;
         protected void OnInstallSoftware(InstallTask task)
