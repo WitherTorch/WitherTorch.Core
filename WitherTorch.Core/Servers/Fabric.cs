@@ -333,7 +333,7 @@ namespace WitherTorch.Core.Servers
 
         public override void UpdateServer()
         {
-            ChangeVersion(versionList.IndexOf(versionString));
+            ChangeVersion(Array.IndexOf(versions, versionString));
         }
     }
 }
