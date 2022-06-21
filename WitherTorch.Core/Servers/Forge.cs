@@ -555,6 +555,7 @@ namespace WitherTorch.Core.Servers
 
         public override void UpdateServer()
         {
+            if (versions == null) LoadVersionList();
             ChangeVersion(Array.IndexOf(versions, versionString));
         }
 

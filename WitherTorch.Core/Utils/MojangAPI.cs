@@ -22,7 +22,18 @@ namespace WitherTorch.Core.Utils
     {
         private const string manifestListURL = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
         public static Dictionary<string, VersionInfo> VersionDictionary { get; private set; }
-        public static string[] Versions { get; private set; }
+        private static string[] versions;
+        public static string[] Versions
+        {
+            get
+            {
+                if (versions == null)
+                {
+                    LoadVersionList();
+                }
+                return versions;
+            }
+        }
         public struct VersionInfo : IComparable<string>, IComparable<VersionInfo>
         {
             public string ManifestURL;
