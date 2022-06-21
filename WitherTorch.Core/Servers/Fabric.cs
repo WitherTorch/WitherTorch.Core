@@ -26,7 +26,7 @@ namespace WitherTorch.Core.Servers
         private const string UserAgent = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36";
         private const string manifestListURL = "https://meta.fabricmc.net/v2/versions/game";
         private const string manifestListURLForLoader = "https://meta.fabricmc.net/v2/versions/loader";
-        internal static List<string> versionList;
+        internal static string[] versions;
         protected bool _isStarted;
 
         protected SystemProcess process;
@@ -40,22 +40,13 @@ namespace WitherTorch.Core.Servers
         {
             if (IsInit)
             {
-                SoftwareRegistrationDelegate += Initialize;
                 SoftwareID = "fabric";
-            }
-        }
-
-        private static void Initialize()
-        {
-            if (versionList == null)
-            {
-                LoadVersionList();
             }
         }
 
         private static void LoadVersionList()
         {
-            versionList = new List<string>();
+            List<string> versionList = new List<string>();
             try
             {
                 string manifestString = CachedDownloadClient.Instance.DownloadString(manifestListURL);
@@ -97,15 +88,17 @@ namespace WitherTorch.Core.Servers
                     comparer = MojangAPI.VersionComparer.Instance;
                 }
             }
-            versionList.Sort(comparer);
-            versionList.Reverse();
+            versions = versionList.ToArray();
+            Array.Sort(versions, comparer);
+            Array.Reverse(versions);
         }
 
         public override bool ChangeVersion(int versionIndex)
         {
             try
             {
-                versionString = versionList[versionIndex];
+                if (versions == null) LoadVersionList();
+                versionString = versions[versionIndex];
                 BuildVersionInfo();
                 fabricVersion = GetLatestFabricLoaderVersion();
                 _cache = null;
@@ -122,7 +115,8 @@ namespace WitherTorch.Core.Servers
         {
             try
             {
-                versionString = versionList[versionIndex];
+                if (versions == null) LoadVersionList();
+                versionString = versions[versionIndex];
                 BuildVersionInfo();
                 this.fabricVersion = fabricVersion;
                 _cache = null;
@@ -177,7 +171,11 @@ namespace WitherTorch.Core.Servers
 
         public override string[] GetSoftwareVersions()
         {
-            return versionList.ToArray();
+            if (versions == null)
+            {
+                LoadVersionList();
+            }
+            return versions;
         }
 
         public static string GetLatestFabricLoaderVersion()

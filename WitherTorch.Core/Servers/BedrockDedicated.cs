@@ -32,7 +32,6 @@ namespace WitherTorch.Core.Servers
         {
             if (IsInit)
             {
-                SoftwareRegistrationDelegate += LoadVersionList;
                 SoftwareID = "bedrockDedicated";
             }
         }
@@ -97,6 +96,7 @@ namespace WitherTorch.Core.Servers
 
         public override bool ChangeVersion(int versionIndex)
         {
+            if (versions == null) LoadVersionList();
             versionString = versions[0];
             InstallSoftware();
             return true;
@@ -298,6 +298,7 @@ namespace WitherTorch.Core.Servers
 
         public override string[] GetSoftwareVersions()
         {
+            if (versions == null) LoadVersionList();
             return versions;
         }
 

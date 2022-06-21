@@ -50,10 +50,6 @@ namespace WitherTorch.Core.Servers
 
         private static void Initialize()
         {
-            if (versions == null)
-            {
-                LoadVersionList();
-            }
             if (mc1_3_2.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.3.2", out mc1_3_2);
             if (mc1_5_2.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.5.2", out mc1_5_2);
         }
@@ -126,19 +122,21 @@ namespace WitherTorch.Core.Servers
                     comparer = MojangAPI.VersionComparer.Instance;
                 }
             }
-            versionKeys.Sort(comparer);
-            versionKeys.Reverse();
-            foreach (string key in versionKeys)
+            versions = versionKeys.ToArray();
+            Array.Sort(versions, comparer);
+            Array.Reverse(versions);
+            for (int i = 0;i< versions.Length; i++)
             {
+                string key = versions[i];
                 versionDict.Add(key, preparingVersionDict[key]);
             }
-            versions = versionKeys.ToArray();
         }
 
         public bool ChangeVersion(int versionIndex, string forgeVersion)
         {
             try
             {
+                if (versions == null) LoadVersionList();
                 versionString = versions[versionIndex];
                 BuildVersionInfo();
                 Tuple<string, string> selectedVersion;
@@ -375,6 +373,10 @@ namespace WitherTorch.Core.Servers
 
         public override string[] GetSoftwareVersions()
         {
+            if (versions == null)
+            {
+                LoadVersionList();
+            }
             return versions;
         }
 

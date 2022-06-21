@@ -43,17 +43,7 @@ namespace WitherTorch.Core.Servers
         {
             if (IsInit)
             {
-                SoftwareRegistrationDelegate += Initialize;
                 SoftwareID = "paper";
-            }
-        }
-
-        // 註冊時會執行這個函式
-        private static void Initialize()
-        {
-            if (versions == null)
-            {
-                LoadVersionList();
             }
         }
 
@@ -164,6 +154,7 @@ namespace WitherTorch.Core.Servers
         {
             try
             {
+                if (versions == null) LoadVersionList();
                 versionString = versions[versionIndex];
                 BuildVersionInfo();
                 InstallSoftware();
@@ -196,6 +187,10 @@ namespace WitherTorch.Core.Servers
         /// <inheritdoc/>
         public override string[] GetSoftwareVersions()
         {
+            if (versions == null)
+            {
+                LoadVersionList();
+            }
             return versions;
         }
 

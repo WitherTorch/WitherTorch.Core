@@ -35,16 +35,7 @@ namespace WitherTorch.Core.Servers
         {
             if (IsInit)
             {
-                SoftwareRegistrationDelegate += Initialize;
                 SoftwareID = "powerNukkit";
-            }
-        }
-
-        private static void Initialize()
-        {
-            if (versions == null)
-            {
-                LoadVersionList();
             }
         }
 
@@ -82,6 +73,10 @@ namespace WitherTorch.Core.Servers
 
         public override bool ChangeVersion(int versionIndex)
         {
+            if (versions == null)
+            {
+                LoadVersionList();
+            }
             versionString = versions[versionIndex];
             InstallSoftware();
             return true;
@@ -170,6 +165,10 @@ namespace WitherTorch.Core.Servers
 
         public override string[] GetSoftwareVersions()
         {
+            if (versions == null)
+            {
+                LoadVersionList();
+            }
             return versions;
         }
 

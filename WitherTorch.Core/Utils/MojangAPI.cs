@@ -84,14 +84,20 @@ namespace WitherTorch.Core.Utils
                     {
                         foreach (var token in manifestJSON.GetValue("versions").ToObject<JArray>())
                         {
-                            VersionInfo info = new VersionInfo()
+                            try
                             {
-                                ManifestURL = token["url"].ToString(),
-                                VersionType = token["type"].ToString(),
-                                ReleaseDate = DateTime.Parse(token["releaseTime"].ToString())
-                            };
-                            if (info.ReleaseDate.Month == 4 && info.ReleaseDate.Day == 1) continue; // 過濾愚人節版本
-                            versionPairs.Add(token["id"].ToString(), info);
+                                VersionInfo info = new VersionInfo()
+                                {
+                                    ManifestURL = token["url"].ToString(),
+                                    VersionType = token["type"].ToString(),
+                                    ReleaseDate = DateTime.Parse(token["releaseTime"].ToString())
+                                };
+                                if (info.ReleaseDate.Month == 4 && info.ReleaseDate.Day == 1) continue; // 過濾愚人節版本
+                                versionPairs.Add(token["id"].ToString(), info);
+                            }
+                            catch (Exception)
+                            {
+                            }
                         }
                     }
                 }

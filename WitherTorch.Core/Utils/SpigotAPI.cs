@@ -19,7 +19,18 @@ namespace WitherTorch.Core.Utils
         private const string manifestListURL = "https://hub.spigotmc.org/nexus/content/groups/public/org/spigotmc/spigot-api/maven-metadata.xml";
         private const string manifestListURL2 = "https://hub.spigotmc.org/nexus/content/groups/public/org/spigotmc/spigot-api/{0}/maven-metadata.xml";
 
-        public static string[] Versions { get; private set; }
+        private static string[] versions;
+        public static string[] Versions
+        {
+            get
+            {
+                if (versions == null)
+                {
+                    LoadVersionList();
+                }
+                return versions;
+            }
+        }
         public static Dictionary<string, string> VersionDictionary { get; private set; }
 
         private static volatile bool _isInInitialize = false;
@@ -72,7 +83,7 @@ namespace WitherTorch.Core.Utils
             {
                 VersionDictionary.Add(item.Key, item.Value);
             }
-            Versions = VersionDictionary.Keys.ToArray();
+            versions = VersionDictionary.Keys.ToArray();
         }
 
         public static int GetBuildNumber(string version)
