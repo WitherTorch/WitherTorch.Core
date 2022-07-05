@@ -22,7 +22,18 @@ namespace WitherTorch.Core.Utils
     {
         private const string manifestListURL = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
         public static Dictionary<string, VersionInfo> VersionDictionary { get; private set; }
-        public static string[] Versions { get; private set; }
+        private static string[] versions;
+        public static string[] Versions
+        {
+            get
+            {
+                if (versions == null)
+                {
+                    LoadVersionList();
+                }
+                return versions;
+            }
+        }
         public struct VersionInfo : IComparable<string>, IComparable<VersionInfo>
         {
             public string ManifestURL;
@@ -84,14 +95,20 @@ namespace WitherTorch.Core.Utils
                     {
                         foreach (var token in manifestJSON.GetValue("versions").ToObject<JArray>())
                         {
-                            VersionInfo info = new VersionInfo()
+                            try
                             {
-                                ManifestURL = token["url"].ToString(),
-                                VersionType = token["type"].ToString(),
-                                ReleaseDate = DateTime.Parse(token["releaseTime"].ToString())
-                            };
-                            if (info.ReleaseDate.Month == 4 && info.ReleaseDate.Day == 1) continue; // 過濾愚人節版本
-                            versionPairs.Add(token["id"].ToString(), info);
+                                VersionInfo info = new VersionInfo()
+                                {
+                                    ManifestURL = token["url"].ToString(),
+                                    VersionType = token["type"].ToString(),
+                                    ReleaseDate = DateTime.Parse(token["releaseTime"].ToString())
+                                };
+                                if (info.ReleaseDate.Month == 4 && info.ReleaseDate.Day == 1) continue; // 過濾愚人節版本
+                                versionPairs.Add(token["id"].ToString(), info);
+                            }
+                            catch (Exception)
+                            {
+                            }
                         }
                     }
                 }
@@ -101,7 +118,7 @@ namespace WitherTorch.Core.Utils
 
             }
             VersionDictionary = versionPairs;
-            Versions = versionPairs.Any() ? versionPairs.Keys.ToArray() : Array.Empty<string>();
+            versions = versionPairs.Any() ? versionPairs.Keys.ToArray() : Array.Empty<string>();
         }
 
         public sealed class VersionComparer : IComparer<string>

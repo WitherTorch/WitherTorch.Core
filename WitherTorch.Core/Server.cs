@@ -264,7 +264,7 @@ namespace WitherTorch.Core
         /// 更改伺服器軟體版本
         /// </summary>
         /// <param name="versionIndex">軟體傳回的版本索引值</param>
-        /// <returns>是否成功建立伺服器</returns>
+        /// <returns>是否成功更改伺服器軟體版本</returns>
         public abstract bool ChangeVersion(int versionIndex);
         /// <summary>
         /// 取得當前的處理序物件
@@ -277,7 +277,8 @@ namespace WitherTorch.Core
         /// <summary>
         /// 子類別應覆寫此方法為更新伺服器軟體的程式碼
         /// </summary>
-        public abstract void UpdateServer();
+        /// <returns>是否成功開始更新伺服器軟體</returns>
+        public abstract bool UpdateServer();
         public delegate void ServerInstallingEventHandler(InstallTask task);
         public event ServerInstallingEventHandler ServerInstalling;
         protected void OnInstallSoftware(InstallTask task)
@@ -319,6 +320,13 @@ namespace WitherTorch.Core
         /// <returns>是否成功儲存伺服器</returns>
         protected abstract bool OnServerSaving();
 
+        /// <summary>
+        /// 伺服器物件的標籤，可供操作者儲存額外的伺服器資訊<br/>
+        /// 伺服器軟體本身不應使用該屬性。
+        /// </summary>
+        public object Tag { get; set; }
+
+        #region Disposing
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
@@ -348,5 +356,6 @@ namespace WitherTorch.Core
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+        #endregion
     }
 }

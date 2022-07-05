@@ -54,7 +54,18 @@ namespace WitherTorch.Core
                 if (value == null)
                 {
                     if (!isInitialized) Initialize();
-                    currentObject.SelectToken(key, false)?.Remove();
+                    JToken token = currentObject.SelectToken(key, false);
+                    if (token is JValue val)
+                    {
+                        if (val?.Parent is JProperty property && property?.Parent is JObject obj)
+                        {
+                            obj?.Remove(property.Name);
+                        }
+                    }
+                    else
+                    {
+                        token?.Remove();
+                    }
                 }
                 else
                 {

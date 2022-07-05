@@ -26,7 +26,6 @@ namespace WitherTorch.Core.Servers
         {
             if (IsInit)
             {
-                SoftwareRegistrationDelegate += SpigotAPI.Initialize;
                 SoftwareID = "craftbukkit";
             }
         }
@@ -189,11 +188,17 @@ namespace WitherTorch.Core.Servers
                 serverInfoJson["java.preArgs"] = environment.JavaPreArguments;
                 serverInfoJson["java.postArgs"] = environment.JavaPostArguments;
             }
+            else
+            {
+                serverInfoJson["java.path"] = null;
+                serverInfoJson["java.preArgs"] = null;
+                serverInfoJson["java.postArgs"] = null;
+            }
             return true;
         }
-        public override void UpdateServer()
+        public override bool UpdateServer()
         {
-            ChangeVersion(Array.IndexOf(SpigotAPI.Versions, versionString));
+            return ChangeVersion(Array.IndexOf(SpigotAPI.Versions, versionString));
         }
     }
 }

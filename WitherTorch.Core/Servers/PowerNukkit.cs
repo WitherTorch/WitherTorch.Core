@@ -35,16 +35,7 @@ namespace WitherTorch.Core.Servers
         {
             if (IsInit)
             {
-                SoftwareRegistrationDelegate += Initialize;
                 SoftwareID = "powerNukkit";
-            }
-        }
-
-        private static void Initialize()
-        {
-            if (versions == null)
-            {
-                LoadVersionList();
             }
         }
 
@@ -82,6 +73,10 @@ namespace WitherTorch.Core.Servers
 
         public override bool ChangeVersion(int versionIndex)
         {
+            if (versions == null)
+            {
+                LoadVersionList();
+            }
             versionString = versions[versionIndex];
             InstallSoftware();
             return true;
@@ -170,6 +165,10 @@ namespace WitherTorch.Core.Servers
 
         public override string[] GetSoftwareVersions()
         {
+            if (versions == null)
+            {
+                LoadVersionList();
+            }
             return versions;
         }
 
@@ -210,9 +209,10 @@ namespace WitherTorch.Core.Servers
             }
         }
 
-        public override void UpdateServer()
+        public override bool UpdateServer()
         {
-            ChangeVersion(Array.IndexOf(versions, versionString));
+            if (versions == null) LoadVersionList();
+            return ChangeVersion(Array.IndexOf(versions, versionString));
         }
 
         protected override bool CreateServer()
@@ -267,6 +267,12 @@ namespace WitherTorch.Core.Servers
                 serverInfoJson["java.path"] = environment.JavaPath;
                 serverInfoJson["java.preArgs"] = environment.JavaPreArguments;
                 serverInfoJson["java.postArgs"] = environment.JavaPostArguments;
+            }
+            else
+            {
+                serverInfoJson["java.path"] = null;
+                serverInfoJson["java.preArgs"] = null;
+                serverInfoJson["java.postArgs"] = null;
             }
             return true;
         }

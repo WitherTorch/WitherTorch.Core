@@ -238,12 +238,18 @@ namespace WitherTorch.Core.Servers
                 serverInfoJson["java.preArgs"] = environment.JavaPreArguments;
                 serverInfoJson["java.postArgs"] = environment.JavaPostArguments;
             }
+            else
+            {
+                serverInfoJson["java.path"] = null;
+                serverInfoJson["java.preArgs"] = null;
+                serverInfoJson["java.postArgs"] = null;
+            }
             return true;
         }
 
-        public override void UpdateServer()
+        public override bool UpdateServer()
         {
-            ChangeVersion(Array.IndexOf(MojangAPI.Versions, versionString));
+            return ChangeVersion(Array.IndexOf(MojangAPI.Versions, versionString));
         }
     }
 }
