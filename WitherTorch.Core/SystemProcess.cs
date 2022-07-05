@@ -13,8 +13,15 @@ namespace WitherTorch.Core
 
         public override bool IsAlive()
         {
-            InnerProcess?.Refresh();
-            return InnerProcess != null && !InnerProcess.HasExited;
+            try
+            {
+                InnerProcess?.Refresh();
+                return InnerProcess != null && !InnerProcess.HasExited;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
         }
 
         public override void InputCommand(string command = "")
