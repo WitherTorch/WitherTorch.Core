@@ -52,6 +52,7 @@ namespace WitherTorch.Core.Servers
         {
             if (mc1_3_2.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.3.2", out mc1_3_2);
             if (mc1_5_2.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.5.2", out mc1_5_2);
+            LoadVersionList();
         }
 
         internal static void LoadVersionList()
