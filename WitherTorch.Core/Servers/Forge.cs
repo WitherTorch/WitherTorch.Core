@@ -399,9 +399,14 @@ namespace WitherTorch.Core.Servers
                     string path = Path.Combine(ServerDirectory, "forge-" + fullVersionString + ".jar");
                     if (File.Exists(path))
                     {
+                        string javaPath = javaRuntimeEnvironment.JavaPath;
+                        if (javaPath is null || !File.Exists(javaPath))
+                        {
+                            javaPath = RuntimeEnvironment.JavaDefault.JavaPath;
+                        }
                         startInfo = new ProcessStartInfo
                         {
-                            FileName = javaRuntimeEnvironment.JavaPath ?? RuntimeEnvironment.JavaDefault.JavaPath,
+                            FileName = javaPath,
                             Arguments = string.Format("-Dfile.encoding=UTF8 -Dsun.stdout.encoding=UTF8 -Dsun.stderr.encoding=UTF8 {0} -jar \"{1}\" {2}"
                             , javaRuntimeEnvironment.JavaPreArguments ?? RuntimeEnvironment.JavaDefault.JavaPreArguments
                             , path
@@ -446,9 +451,14 @@ namespace WitherTorch.Core.Servers
 #endif
                         if (File.Exists(Path.Combine(ServerDirectory, "./" + argPath.Substring(1))))
                         {
+                            string javaPath = javaRuntimeEnvironment.JavaPath;
+                            if (javaPath is null || !File.Exists(javaPath))
+                            {
+                                javaPath = RuntimeEnvironment.JavaDefault.JavaPath;
+                            }
                             startInfo = new ProcessStartInfo
                             {
-                                FileName = javaRuntimeEnvironment.JavaPath ?? RuntimeEnvironment.JavaDefault.JavaPath,
+                                FileName = javaPath,
                                 Arguments = string.Format("-Dfile.encoding=UTF8 -Dsun.stdout.encoding=UTF8 -Dsun.stderr.encoding=UTF8 {0} {1} {2}"
                                 , javaRuntimeEnvironment.JavaPreArguments ?? RuntimeEnvironment.JavaDefault.JavaPreArguments
                                 , argPath

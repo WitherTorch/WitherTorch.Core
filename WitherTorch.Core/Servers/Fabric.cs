@@ -227,9 +227,14 @@ namespace WitherTorch.Core.Servers
                     string path = Path.Combine(ServerDirectory, "fabric-server-launch.jar");
                     if (File.Exists(path))
                     {
+                        string javaPath = javaRuntimeEnvironment.JavaPath;
+                        if (javaPath is null || !File.Exists(javaPath))
+                        {
+                            javaPath = RuntimeEnvironment.JavaDefault.JavaPath;
+                        }
                         ProcessStartInfo startInfo = new ProcessStartInfo
                         {
-                            FileName = javaRuntimeEnvironment.JavaPath ?? RuntimeEnvironment.JavaDefault.JavaPath,
+                            FileName = javaPath,
                             Arguments = string.Format("-Dfile.encoding=UTF8 -Dsun.stdout.encoding=UTF8 -Dsun.stderr.encoding=UTF8 {0} -jar \"{1}\" {2}"
                             , javaRuntimeEnvironment.JavaPreArguments ?? RuntimeEnvironment.JavaDefault.JavaPreArguments
                             , path

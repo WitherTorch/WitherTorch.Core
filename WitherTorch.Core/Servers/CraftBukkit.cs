@@ -160,9 +160,14 @@ namespace WitherTorch.Core.Servers
                     environment = RuntimeEnvironment.JavaDefault;
                 if (environment is JavaRuntimeEnvironment javaRuntimeEnvironment)
                 {
+                    string javaPath = javaRuntimeEnvironment.JavaPath;
+                    if (javaPath is null || !File.Exists(javaPath))
+                    {
+                        javaPath = RuntimeEnvironment.JavaDefault.JavaPath;
+                    }
                     ProcessStartInfo startInfo = new ProcessStartInfo
                     {
-                        FileName = javaRuntimeEnvironment.JavaPath ?? RuntimeEnvironment.JavaDefault.JavaPath,
+                        FileName = javaPath,
                         Arguments = string.Format("-Djline.terminal=jline.UnsupportedTerminal -Dfile.encoding=UTF8 -Dsun.stdout.encoding=UTF8 -Dsun.stderr.encoding=UTF8 {0} -jar \"{1}\" {2}"
                         , javaRuntimeEnvironment.JavaPreArguments ?? RuntimeEnvironment.JavaDefault.JavaPreArguments
                         , Path.Combine(ServerDirectory, @"craftbukkit-" + GetReadableVersion() + ".jar")
