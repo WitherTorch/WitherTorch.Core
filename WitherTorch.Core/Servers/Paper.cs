@@ -124,6 +124,29 @@ namespace WitherTorch.Core.Servers
                     }
                     else
                     {
+                        try
+                        {
+                            if (propertyFiles[3] != null)
+                            {
+                                propertyFiles[3].Dispose();
+                                propertyFiles[3] = null;
+                            }
+                            if (mc1_19.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
+                            if (GetMojangVersionInfo() >= mc1_19)
+                            {
+                                string path = Path.Combine(ServerDirectory, "./config/paper-global.yml");
+                                propertyFiles[3] = new YamlPropertyFile(path);
+                            }
+                            else
+                            {
+                                string path = Path.Combine(ServerDirectory, "./paper.yml");
+                                propertyFiles[3] = new YamlPropertyFile(path);
+                            }
+                        }
+                        catch (Exception)
+                        {
+
+                        }
                         installingTask.OnInstallFinished();
                     }
                 };
@@ -217,17 +240,6 @@ namespace WitherTorch.Core.Servers
                 propertyFiles[0] = new JavaPropertyFile(Path.Combine(ServerDirectory, "./server.properties"));
                 propertyFiles[1] = new YamlPropertyFile(Path.Combine(ServerDirectory, "./bukkit.yml"));
                 propertyFiles[2] = new YamlPropertyFile(Path.Combine(ServerDirectory, "./spigot.yml"));
-                if (mc1_19.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
-                if (GetMojangVersionInfo() >= mc1_19)
-                {
-                    string path = Path.Combine(ServerDirectory, "./config/paper-global.yml");
-                    propertyFiles[3] = new YamlPropertyFile(path);
-                }
-                else
-                {
-                    string path = Path.Combine(ServerDirectory, "./paper.yml");
-                    propertyFiles[3] = new YamlPropertyFile(path);
-                }
             }
             catch (Exception)
             {
