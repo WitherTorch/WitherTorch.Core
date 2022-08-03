@@ -38,13 +38,20 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         protected SystemProcess process;
         internal static string[] versions;
+        private static MojangAPI.VersionInfo mc1_19;
 
         public Paper()
         {
             if (IsInit)
             {
+                SoftwareRegistrationDelegate += Initialize;
                 SoftwareID = "paper";
             }
+        }
+
+        private static void Initialize()
+        {
+            if (mc1_19.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
         }
 
         internal static void LoadVersionList()
@@ -210,7 +217,17 @@ namespace WitherTorch.Core.Servers
                 propertyFiles[0] = new JavaPropertyFile(Path.Combine(ServerDirectory, "./server.properties"));
                 propertyFiles[1] = new YamlPropertyFile(Path.Combine(ServerDirectory, "./bukkit.yml"));
                 propertyFiles[2] = new YamlPropertyFile(Path.Combine(ServerDirectory, "./spigot.yml"));
-                propertyFiles[3] = new YamlPropertyFile(Path.Combine(ServerDirectory, "./paper.yml"));
+                if (mc1_19.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
+                if (GetMojangVersionInfo() >= mc1_19)
+                {
+                    string path = Path.Combine(ServerDirectory, "./config/paper-global.yml");
+                    propertyFiles[3] = new YamlPropertyFile(path);
+                }
+                else
+                {
+                    string path = Path.Combine(ServerDirectory, "./paper.yml");
+                    propertyFiles[3] = new YamlPropertyFile(path);
+                }
             }
             catch (Exception)
             {
@@ -241,7 +258,32 @@ namespace WitherTorch.Core.Servers
                 propertyFiles[0] = new JavaPropertyFile(Path.Combine(ServerDirectory, "./server.properties"));
                 propertyFiles[1] = new YamlPropertyFile(Path.Combine(ServerDirectory, "./bukkit.yml"));
                 propertyFiles[2] = new YamlPropertyFile(Path.Combine(ServerDirectory, "./spigot.yml"));
-                propertyFiles[3] = new YamlPropertyFile(Path.Combine(ServerDirectory, "./paper.yml"));
+                if (mc1_19.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
+                if (GetMojangVersionInfo() >= mc1_19)
+                {
+                    string path = Path.Combine(ServerDirectory, "./config/paper-global.yml");
+                    if (!File.Exists(path))
+                    {
+                        string alt_path = Path.Combine(ServerDirectory, "./paper.yml");
+                        if (File.Exists(alt_path))
+                        {
+                            try
+                            {
+                                File.Copy(alt_path, path, true);
+                            }
+                            catch (Exception)
+                            {
+
+                            }
+                        }
+                    }
+                    propertyFiles[3] = new YamlPropertyFile(path);
+                }
+                else
+                {
+                    string path = Path.Combine(ServerDirectory, "./paper.yml");
+                    propertyFiles[3] = new YamlPropertyFile(path);
+                }
                 string jvmPath = (serverInfoJson["java.path"] as JValue)?.ToString() ?? null;
                 string jvmPreArgs = (serverInfoJson["java.preArgs"] as JValue)?.ToString() ?? null;
                 string jvmPostArgs = (serverInfoJson["java.postArgs"] as JValue)?.ToString() ?? null;
@@ -256,6 +298,7 @@ namespace WitherTorch.Core.Servers
             }
             return true;
         }
+
         /// <inheritdoc/>
         public override void SetRuntimeEnvironment(RuntimeEnvironment environment)
         {

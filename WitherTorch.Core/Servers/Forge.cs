@@ -188,7 +188,7 @@ namespace WitherTorch.Core.Servers
                 URLBuilder.Append(downloadURLPrefix);
             }
             if (mc1_3_2.IsEmpty()) MojangAPI.VersionDictionary.TryGetValue("1.3.2", out mc1_3_2);
-            if (mojangVersionInfo < mc1_3_2) // 1.1~1.2 > Download Server Zip (i don't know why forge use zip...)
+            if (GetMojangVersionInfo() < mc1_3_2) // 1.1~1.2 > Download Server Zip (i don't know why forge use zip...)
             {
                 URLBuilder.AppendFormat("{0}/forge-{0}-server.zip", selectedVersion.Item2);
                 downloadURL = URLBuilder.ToString();
@@ -196,7 +196,7 @@ namespace WitherTorch.Core.Servers
             else
             {
                 if (mc1_5_2.IsEmpty()) MojangAPI.VersionDictionary.TryGetValue("1.5.2", out mc1_5_2);
-                if (mojangVersionInfo < mc1_5_2) // 1.3.2~1.5.1 > Download Universal Zip (i don't know why forge use zip...)
+                if (GetMojangVersionInfo() < mc1_5_2) // 1.3.2~1.5.1 > Download Universal Zip (i don't know why forge use zip...)
                 {
                     URLBuilder.AppendFormat("{0}/forge-{0}-universal.zip", selectedVersion.Item2);
                     downloadURL = URLBuilder.ToString();

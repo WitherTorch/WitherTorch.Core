@@ -64,10 +64,20 @@ namespace WitherTorch.Core.Utils
             {
                 return (a as IComparable<VersionInfo>).CompareTo(b) < 0;
             }
+            
+            public static bool operator <=(VersionInfo a, VersionInfo b)
+            {
+                return (a as IComparable<VersionInfo>).CompareTo(b) <= 0;
+            }
 
             public static bool operator >(VersionInfo a, VersionInfo b)
             {
                 return (a as IComparable<VersionInfo>).CompareTo(b) > 0;
+            }
+            
+            public static bool operator >=(VersionInfo a, VersionInfo b)
+            {
+                return (a as IComparable<VersionInfo>).CompareTo(b) >= 0;
             }
         }
 

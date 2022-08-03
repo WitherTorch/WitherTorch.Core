@@ -23,6 +23,7 @@ namespace WitherTorch.Core.Servers
         /// <summary>
         /// 取得這個伺服器的版本詳細資訊 (由 Mojang API 提供)
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Utils.MojangAPI.VersionInfo GetMojangVersionInfo()
         {
             if (mojangVersionInfo.IsEmpty()) BuildVersionInfo();
