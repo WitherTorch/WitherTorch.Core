@@ -8,6 +8,7 @@ namespace WitherTorch.Core
 {
     public class JsonPropertyFile : IPropertyFile
     {
+        protected static JsonSerializer jsonSerializer;
         protected IPropertyFileDescriptor descriptor;
         protected string _path;
         protected JObject currentObject;
@@ -82,25 +83,44 @@ namespace WitherTorch.Core
             {
                 using (StreamReader reader = new StreamReader(new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.Read)))
                 {
-                    JObject _obj = null;
+                    using (JsonTextReader jsonReader = new JsonTextReader(reader))
+                    {
+                        JObject _obj;
+                        try
+                        {
+                            if (jsonSerializer == null)
+                            {
+                                jsonSerializer = JsonSerializer.CreateDefault();
+                                jsonSerializer.Formatting = Formatting.Indented;
+                            }
+                            _obj = jsonSerializer.Deserialize(jsonReader) as JObject;
+                        }
+                        catch (Exception)
+                        {
+                            _obj = null;
+                        }
+                        if (_obj != null)
+                        {
+                            currentObject = _obj;
+                        }
+                        else if (create && currentObject == null)
+                        {
+                            currentObject = new JObject();
+                        }
+                    }
                     try
                     {
-                        _obj = JsonConvert.DeserializeObject<JObject>(reader.ReadToEnd());
+                        reader.Close();
                     }
-                    catch (Exception)
+                    catch (IOException)
                     {
-
                     }
-                    if (_obj != null)
+                    catch (NullReferenceException)
                     {
-                        currentObject = _obj;
                     }
-                    else if (create && currentObject == null)
+                    catch (ObjectDisposedException)
                     {
-                        currentObject = new JObject();
                     }
-                    GC.Collect();
-                    reader.Close();
                 }
             }
             else if (create && currentObject == null)
@@ -119,15 +139,35 @@ namespace WitherTorch.Core
             {
                 using (StreamWriter writer = new StreamWriter(new FileStream(_path, FileMode.Create, FileAccess.Write, FileShare.Read)))
                 {
+                    using (JsonTextWriter jsonWriter = new JsonTextWriter(writer))
+                    {
+                        try
+                        {
+                            if (jsonSerializer == null)
+                            {
+                                jsonSerializer = JsonSerializer.CreateDefault();
+                                jsonSerializer.Formatting = Formatting.Indented;
+                            }
+                            jsonSerializer.Serialize(jsonWriter, currentObject);
+                        }
+                        catch (Exception)
+                        {
+
+                        }
+                    }
                     try
                     {
-                        writer.Write(JsonConvert.SerializeObject(currentObject, Formatting.Indented));
                         writer.Flush();
                         writer.Close();
                     }
-                    catch (Exception)
+                    catch (IOException)
                     {
-
+                    }
+                    catch (NullReferenceException)
+                    {
+                    }
+                    catch (ObjectDisposedException)
+                    {
                     }
                 }
             }
