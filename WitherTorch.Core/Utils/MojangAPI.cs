@@ -100,7 +100,28 @@ namespace WitherTorch.Core.Utils
                 string manifestString = CachedDownloadClient.Instance.DownloadString(manifestListURL);
                 if (manifestString != null)
                 {
-                    JObject manifestJSON = JsonConvert.DeserializeObject<JObject>(manifestString);
+                    JObject manifestJSON;
+                    using (StringReader reader = new StringReader(manifestString))
+                    {
+                        using (JsonTextReader jtr = new JsonTextReader(reader))
+                        {
+                            try
+                            {
+                                manifestJSON = GlobalSerializers.JsonSerializer.Deserialize(jtr) as JObject;
+                            }
+                            catch (Exception)
+                            {
+                                manifestJSON = null;
+                            }
+                        }
+                        try
+                        {
+                            reader?.Close();
+                        }
+                        catch (Exception)
+                        {
+                        }
+                    }
                     if (manifestJSON != null)
                     {
                         foreach (var token in manifestJSON.GetValue("versions").ToObject<JArray>())

@@ -3,12 +3,12 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.IO;
+using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core
 {
     public class JsonPropertyFile : IPropertyFile
     {
-        protected static JsonSerializer jsonSerializer;
         protected IPropertyFileDescriptor descriptor;
         protected string _path;
         protected JObject currentObject;
@@ -88,12 +88,7 @@ namespace WitherTorch.Core
                         JObject _obj;
                         try
                         {
-                            if (jsonSerializer == null)
-                            {
-                                jsonSerializer = JsonSerializer.CreateDefault();
-                                jsonSerializer.Formatting = Formatting.Indented;
-                            }
-                            _obj = jsonSerializer.Deserialize(jsonReader) as JObject;
+                            _obj = GlobalSerializers.JsonSerializer.Deserialize(jsonReader) as JObject;
                         }
                         catch (Exception)
                         {
@@ -143,12 +138,7 @@ namespace WitherTorch.Core
                     {
                         try
                         {
-                            if (jsonSerializer == null)
-                            {
-                                jsonSerializer = JsonSerializer.CreateDefault();
-                                jsonSerializer.Formatting = Formatting.Indented;
-                            }
-                            jsonSerializer.Serialize(jsonWriter, currentObject);
+                            GlobalSerializers.JsonSerializer.Serialize(jsonWriter, currentObject);
                         }
                         catch (Exception)
                         {

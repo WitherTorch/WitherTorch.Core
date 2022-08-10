@@ -62,7 +62,28 @@ namespace WitherTorch.Core.Servers
                 string manifestString = CachedDownloadClient.Instance.DownloadString(manifestListURL);
                 if (manifestString != null)
                 {
-                    JObject manifestJSON = JsonConvert.DeserializeObject<JObject>(manifestString);
+                    JObject manifestJSON;
+                    using (StringReader reader = new StringReader(manifestString))
+                    {
+                        using (JsonTextReader jtr = new JsonTextReader(reader))
+                        {
+                            try
+                            {
+                                manifestJSON = GlobalSerializers.JsonSerializer.Deserialize(jtr) as JObject;
+                            }
+                            catch (Exception)
+                            {
+                                manifestJSON = null;
+                            }
+                        }
+                        try
+                        {
+                            reader?.Close();
+                        }
+                        catch (Exception)
+                        {
+                        }
+                    }
                     if (manifestJSON != null)
                     {
                         JArray versionArray = manifestJSON.GetValue("versions") as JArray;
@@ -90,18 +111,58 @@ namespace WitherTorch.Core.Servers
 
         private void InstallSoftware()
         {
-            JObject manifestJSON2 = null;
+            JObject manifestJSON;
             InstallTask installingTask = new InstallTask(this);
             OnInstallSoftware(installingTask);
 #if NET472
             WebClient client = new WebClient();
-            manifestJSON2 = JsonConvert.DeserializeObject<JObject>(client.DownloadString(string.Format(manifestListURL2, versionString)));
+            using (StringReader reader = new StringReader(client.DownloadString(string.Format(manifestListURL2, versionString))))
+            {
+                using (JsonTextReader jtr = new JsonTextReader(reader))
+                {
+                    try
+                    {
+                        manifestJSON = GlobalSerializers.JsonSerializer.Deserialize(jtr) as JObject;
+                    }
+                    catch (Exception)
+                    {
+                        manifestJSON = null;
+                    }
+                }
+                try
+                {
+                    reader?.Close();
+                }
+                catch (Exception)
+                {
+                }
+            }
 #elif NET5_0
             HttpClientHandler messageHandler = new HttpClientHandler();
             HttpClient client = new HttpClient(messageHandler);
-            manifestJSON2 = JsonConvert.DeserializeObject<JObject>(client.GetStringAsync(string.Format(manifestListURL2, versionString)).Result);
+            using (StringReader reader = new StringReader(client.GetStringAsync(string.Format(manifestListURL2, versionString)).Result))
+            {
+                using (JsonTextReader jtr = new JsonTextReader(reader))
+                {
+                    try
+                    {
+                        manifestJSON = GlobalSerializers.JsonSerializer.Deserialize(jtr) as JObject;
+                    }
+                    catch (Exception)
+                    {
+                        manifestJSON = null;
+                    }
+                }
+                try
+                {
+                    reader?.Close();
+                }
+                catch (Exception)
+                {
+                }
+            }
 #endif
-            JArray buildArray = manifestJSON2.GetValue("builds") as JArray;
+            JArray buildArray = manifestJSON.GetValue("builds") as JArray;
             if (buildArray != null && buildArray.Last is JValue rawBuildValue && rawBuildValue.Value is long build)
             {
                 this.build = build;
