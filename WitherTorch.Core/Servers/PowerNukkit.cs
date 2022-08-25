@@ -116,6 +116,7 @@ namespace WitherTorch.Core.Servers
                 {
                     client.Dispose();
                     client = null;
+                    installingTask.StopRequested -= StopRequestedHandler;
                     if (e.Error != null || e.Cancelled)
                     {
                         installingTask.OnInstallFailed();
@@ -124,7 +125,6 @@ namespace WitherTorch.Core.Servers
                     {
                         installingTask.OnInstallFinished();
                     }
-                    installingTask.StopRequested -= StopRequestedHandler;
                 };
                 client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"powernukkit-" + versionString + ".jar"));
 #elif NET5_0

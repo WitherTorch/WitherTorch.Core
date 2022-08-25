@@ -244,7 +244,7 @@ namespace WitherTorch.Core.Servers
                 };
                 client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
                 {
-                    installingTask.StopRequested += StopRequestedHandler2;
+                    installingTask.StopRequested -= StopRequestedHandler2;
                     client.Dispose();
                     client = null;
                     if(e.Error != null || e.Cancelled == true)

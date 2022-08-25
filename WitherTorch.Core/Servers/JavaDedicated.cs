@@ -87,6 +87,7 @@ namespace WitherTorch.Core.Servers
                 };
                 client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
                 {
+                    installingTask.StopRequested -= StopRequestedHandler2;
                     client = null;
                     client.Dispose();
                     if (e.Error != null || e.Cancelled)
@@ -97,7 +98,6 @@ namespace WitherTorch.Core.Servers
                     {
                         installingTask.OnInstallFinished();
                     }
-                    installingTask.StopRequested -= StopRequestedHandler2;
                 };
                 client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"));
 #elif NET5_0

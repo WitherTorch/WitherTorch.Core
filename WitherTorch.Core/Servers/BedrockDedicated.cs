@@ -215,13 +215,14 @@ namespace WitherTorch.Core.Servers
                             }
                             client.Dispose();
                             installingTask.ChangePercentage(100);
+                            installingTask.StopRequested -= StopRequestedHandler;
                             installingTask.OnInstallFinished();
                         }
                         catch (Exception)
                         {
+                            installingTask.StopRequested -= StopRequestedHandler;
                             installingTask.OnInstallFailed();
                         }
-                        installingTask.StopRequested -= StopRequestedHandler;
                     }, source.Token);
                 };
                 client.OpenReadAsync(new Uri(downloadURL));
