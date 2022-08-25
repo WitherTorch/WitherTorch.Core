@@ -116,6 +116,21 @@ namespace WitherTorch.Core.Servers
             OnInstallSoftware(installingTask);
 #if NET472
             WebClient client = new WebClient();
+            bool isStop = false;
+            void StopRequestedHandler(object sender, EventArgs e)
+            {
+                try
+                {
+                    client?.CancelAsync();
+                    client?.Dispose();
+                }
+                catch (Exception)
+                {
+                }
+                isStop = true;
+                installingTask.StopRequested -= StopRequestedHandler;
+            }
+            installingTask.StopRequested += StopRequestedHandler;
             using (StringReader reader = new StringReader(client.DownloadString(string.Format(manifestListURL2, versionString))))
             {
                 using (JsonTextReader jtr = new JsonTextReader(reader))
@@ -140,6 +155,11 @@ namespace WitherTorch.Core.Servers
 #elif NET5_0
             HttpClientHandler messageHandler = new HttpClientHandler();
             HttpClient client = new HttpClient(messageHandler);
+            bool isStop = false;
+            installingTask.StopRequested += delegate (object sender, EventArgs e)
+            {
+                isStop = true;
+            };
             using (StringReader reader = new StringReader(client.GetStringAsync(string.Format(manifestListURL2, versionString)).Result))
             {
                 using (JsonTextReader jtr = new JsonTextReader(reader))
@@ -162,82 +182,107 @@ namespace WitherTorch.Core.Servers
                 }
             }
 #endif
-            JArray buildArray = manifestJSON.GetValue("builds") as JArray;
-            if (buildArray != null && buildArray.Last is JValue rawBuildValue && rawBuildValue.Value is long build)
+            if (isStop)
             {
-                this.build = build;
-                string downloadURL = string.Format(Paper.downloadURL, versionString, build);
-                DownloadStatus status = new DownloadStatus(downloadURL, 0);
-                installingTask.ChangeStatus(status);
-#if NET472
-                client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
-                {
-                    status.Percentage = e.ProgressPercentage;
-                    installingTask.OnStatusChanged();
-                    installingTask.ChangePercentage(e.ProgressPercentage);
-                };
-                client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
-                {
-                    client.Dispose();
-                    if (e.Error != null || e.Cancelled)
-                    {
-                        installingTask.OnInstallFailed();
-                    }
-                    else
-                    {
-                        try
-                        {
-                            if (propertyFiles[3] != null)
-                            {
-                                propertyFiles[3].Dispose();
-                                propertyFiles[3] = null;
-                            }
-                            if (mc1_19.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
-                            if (GetMojangVersionInfo() >= mc1_19)
-                            {
-                                string path = Path.Combine(ServerDirectory, "./config/paper-global.yml");
-                                propertyFiles[3] = new YamlPropertyFile(path);
-                            }
-                            else
-                            {
-                                string path = Path.Combine(ServerDirectory, "./paper.yml");
-                                propertyFiles[3] = new YamlPropertyFile(path);
-                            }
-                        }
-                        catch (Exception)
-                        {
-
-                        }
-                        installingTask.OnInstallFinished();
-                    }
-                };
-                client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"));
-#elif NET5_0
-                System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
-                progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
-                {
-                    status.Percentage = e.ProgressPercentage;
-                    installingTask.OnStatusChanged();
-                    installingTask.ChangePercentage(e.ProgressPercentage);
-                };
-                Task.Run(async () =>
-                {
-                    try
-                    {
-                        await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"));
-                        installingTask.OnInstallFinished();
-                    }
-                    catch (Exception)
-                    {
-                        installingTask.OnInstallFailed();
-                    }
-                    client.Dispose();
-                });
-#endif
+                installingTask.OnInstallFailed();
             }
             else
             {
-                installingTask.OnInstallFailed();
+                JArray buildArray = manifestJSON.GetValue("builds") as JArray;
+                if (buildArray != null && buildArray.Last is JValue rawBuildValue && rawBuildValue.Value is long build)
+                {
+                    this.build = build;
+                    string downloadURL = string.Format(Paper.downloadURL, versionString, build);
+                    DownloadStatus status = new DownloadStatus(downloadURL, 0);
+                    installingTask.ChangeStatus(status);
+#if NET472
+                    client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
+                    {
+                        status.Percentage = e.ProgressPercentage;
+                        installingTask.OnStatusChanged();
+                        installingTask.ChangePercentage(e.ProgressPercentage);
+                    };
+                    client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
+                    {
+                        client.Dispose();
+                        client = null;
+                        if (e.Error != null || e.Cancelled)
+                        {
+                            installingTask.OnInstallFailed();
+                        }
+                        else
+                        {
+                            try
+                            {
+                                if (propertyFiles[3] != null)
+                                {
+                                    propertyFiles[3].Dispose();
+                                    propertyFiles[3] = null;
+                                }
+                                if (mc1_19.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
+                                if (GetMojangVersionInfo() >= mc1_19)
+                                {
+                                    string path = Path.Combine(ServerDirectory, "./config/paper-global.yml");
+                                    propertyFiles[3] = new YamlPropertyFile(path);
+                                }
+                                else
+                                {
+                                    string path = Path.Combine(ServerDirectory, "./paper.yml");
+                                    propertyFiles[3] = new YamlPropertyFile(path);
+                                }
+                            }
+                            catch (Exception)
+                            {
+
+                            }
+                            installingTask.OnInstallFinished();
+                        }
+                        installingTask.StopRequested -= StopRequestedHandler;
+                    };
+                    client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"));
+#elif NET5_0
+                    using CancellationTokenSource source = new CancellationTokenSource();
+                    void StopRequestedHandler(object sender, EventArgs e)
+                    {
+                        try
+                        {
+                            source.Cancel(true);
+                            client?.Dispose();
+                        }
+                        catch (Exception)
+                        {
+                        }
+                        installingTask.StopRequested -= StopRequestedHandler;
+                    }
+                    installingTask.StopRequested += StopRequestedHandler;
+                    System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
+                    progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
+                    {
+                        status.Percentage = e.ProgressPercentage;
+                        installingTask.OnStatusChanged();
+                        installingTask.ChangePercentage(e.ProgressPercentage);
+                    };
+                    Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"));
+                            installingTask.OnInstallFinished();
+                        }
+                        catch (Exception)
+                        {
+                            installingTask.OnInstallFailed();
+                        }
+                        installingTask.StopRequested -= StopRequestedHandler;
+                        client.Dispose();
+                        client = null;
+                    }, source.Token);
+#endif
+                }
+                else
+                {
+                    installingTask.OnInstallFailed();
+                }
             }
         }
 

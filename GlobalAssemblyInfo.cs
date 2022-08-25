@@ -5,4 +5,4 @@
 [assembly: AssemblyCopyright("Copyright © WitherTorch 製作組 2022")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
-[assembly: AssemblyVersion("1.8.0.4")]
+[assembly: AssemblyVersion("1.8.0.7")]

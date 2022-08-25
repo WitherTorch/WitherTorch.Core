@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Threading;
 #if NET472
 using System.ComponentModel;
 using System.Net;
@@ -84,11 +85,24 @@ namespace WitherTorch.Core.Utils
             updatedVersion = nowVersion;
             return version <= 0;
         }
-        private void Update(int version)
+        private void Update(InstallTask installTask, int version)
         {
             UpdateStarted?.Invoke(this, EventArgs.Empty);
 #if NET472
             WebClient client = new WebClient();
+            void StopRequestedHandler(object sender, EventArgs e)
+            {
+                try
+                {
+                    client?.CancelAsync();
+                    client?.Dispose();
+                }
+                catch (Exception)
+                {
+                }
+                installTask.StopRequested -= StopRequestedHandler;
+            };
+            installTask.StopRequested += StopRequestedHandler;
             client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
             {
                 UpdateProgressChanged?.Invoke(e.ProgressPercentage);
@@ -96,12 +110,14 @@ namespace WitherTorch.Core.Utils
             client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
             {
                 client.Dispose();
+                client = null;
                 using (StreamWriter writer = buildToolVersionInfo.CreateText())
                 {
                     writer.WriteLine(version.ToString());
                     writer.Flush();
                     writer.Close();
                 }
+                installTask.StopRequested -= StopRequestedHandler;
                 UpdateFinished?.Invoke(this, EventArgs.Empty);
             };
             client.Headers.Set(HttpRequestHeader.UserAgent, @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36");
@@ -109,6 +125,20 @@ namespace WitherTorch.Core.Utils
 #elif NET5_0
             System.Net.Http.HttpClientHandler messageHandler = new System.Net.Http.HttpClientHandler();
             System.Net.Http.HttpClient client = new System.Net.Http.HttpClient(messageHandler);
+            using CancellationTokenSource source = new CancellationTokenSource();
+            void StopRequestedHandler(object sender, EventArgs e)
+            {
+                try
+                {
+                    source.Cancel(true);
+                    client?.Dispose();
+                }
+                catch (Exception)
+                {
+                }
+                installTask.StopRequested -= StopRequestedHandler;
+            };
+            installTask.StopRequested += StopRequestedHandler;
             System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
             progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
             {
@@ -142,18 +172,28 @@ namespace WitherTorch.Core.Utils
                     writer.Flush();
                     writer.Close();
                 }
+                installTask.StopRequested -= StopRequestedHandler;
                 UpdateFinished?.Invoke(this, EventArgs.Empty);
-            });
+            }, source.Token);
 #endif
         }
         public delegate void UpdateProgressEventHandler(int progress);
 
-        public void Install(in InstallTask task, BuildTarget target, string version)
+        public void Install(InstallTask task, BuildTarget target, string version)
         {
             InstallTask installTask = task;
             SpigotBuildToolsStatus status = new SpigotBuildToolsStatus(SpigotBuildToolsStatus.ToolState.Initialize, 0);
             installTask.ChangeStatus(status);
+            bool isStop = false;
+            void StopRequestedHandler(object sender, EventArgs e)
+            {
+                isStop = true;
+                installTask.StopRequested -= StopRequestedHandler;
+            };
+            installTask.StopRequested += StopRequestedHandler;
             bool hasUpdate = CheckUpdate(out int newVersion);
+            installTask.StopRequested -= StopRequestedHandler;
+            if (isStop) return;
             if (hasUpdate)
             {
                 UpdateStarted += (sender, e) =>
@@ -173,7 +213,7 @@ namespace WitherTorch.Core.Utils
                     installTask.OnStatusChanged();
                     DoInstall(installTask, status, target, version);
                 };
-                Update(newVersion);
+                Update(installTask, newVersion);
             }
             else
             {
@@ -183,7 +223,7 @@ namespace WitherTorch.Core.Utils
             }
         }
 
-        private void DoInstall(in InstallTask task, in SpigotBuildToolsStatus status, BuildTarget target, string version)
+        private void DoInstall(InstallTask task, SpigotBuildToolsStatus status, BuildTarget target, string version)
         {
             InstallTask installTask = task;
             SpigotBuildToolsStatus installStatus = status;
@@ -207,6 +247,18 @@ namespace WitherTorch.Core.Utils
             innerProcess.EnableRaisingEvents = true;
             innerProcess.BeginOutputReadLine();
             innerProcess.BeginErrorReadLine();
+            void StopRequestedHandler(object sender, EventArgs e)
+            {
+                try
+                {
+                    innerProcess.Kill();
+                }
+                catch (Exception)
+                {
+                }
+                installTask.StopRequested -= StopRequestedHandler;
+            };
+            installTask.StopRequested += StopRequestedHandler;
             innerProcess.OutputDataReceived += (sender, e) =>
             {
                 installStatus.OnProcessMessageReceived(sender, e);
@@ -217,6 +269,7 @@ namespace WitherTorch.Core.Utils
             };
             innerProcess.Exited += (sender, e) =>
             {
+                installTask.StopRequested -= StopRequestedHandler;
                 installTask.OnInstallFinished();
                 installTask.ChangePercentage(100);
                 innerProcess.Dispose();

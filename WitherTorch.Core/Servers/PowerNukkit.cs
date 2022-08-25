@@ -93,6 +93,19 @@ namespace WitherTorch.Core.Servers
                 installingTask.ChangeStatus(status);
 #if NET472
                 WebClient client = new WebClient();
+                void StopRequestedHandler(object sender, EventArgs e)
+                {
+                    try
+                    {
+                        client?.CancelAsync();
+                        client?.Dispose();
+                    }
+                    catch (Exception)
+                    {
+                    }
+                    installingTask.StopRequested -= StopRequestedHandler;
+                }
+                installingTask.StopRequested += StopRequestedHandler;
                 client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
                 {
                     status.Percentage = e.ProgressPercentage;
@@ -102,6 +115,7 @@ namespace WitherTorch.Core.Servers
                 client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
                 {
                     client.Dispose();
+                    client = null;
                     if (e.Error != null || e.Cancelled)
                     {
                         installingTask.OnInstallFailed();
@@ -110,11 +124,26 @@ namespace WitherTorch.Core.Servers
                     {
                         installingTask.OnInstallFinished();
                     }
+                    installingTask.StopRequested -= StopRequestedHandler;
                 };
                 client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"powernukkit-" + versionString + ".jar"));
 #elif NET5_0
                 HttpClientHandler messageHandler = new HttpClientHandler();
                 HttpClient client = new HttpClient(messageHandler);
+                using CancellationTokenSource source = new CancellationTokenSource();
+                void StopRequestedHandler(object sender, EventArgs e)
+                {
+                    try
+                    {
+                        source.Cancel(true);
+                        client?.Dispose();
+                    }
+                    catch (Exception)
+                    {
+                    }
+                    installingTask.StopRequested -= StopRequestedHandler;
+                }
+                installingTask.StopRequested += StopRequestedHandler;
                 System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
                 progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
                 {
@@ -133,8 +162,10 @@ namespace WitherTorch.Core.Servers
                     {
                         installingTask.OnInstallFailed();
                     }
+                    installingTask.StopRequested -= StopRequestedHandler;
                     client.Dispose();
-                });
+                    client = null;
+                }, source.Token);
 #endif
             }
             else

@@ -213,6 +213,21 @@ namespace WitherTorch.Core.Servers
             {
                 DownloadStatus status = new DownloadStatus(downloadURL, 0);
 #if NET472
+                void StopRequestedHandler2(object sender, EventArgs e)
+                {
+                    if (client != null)
+                    {
+                        try
+                        {
+                            client.CancelAsync();
+                            client.Dispose();
+                        }
+                        catch (Exception)
+                        {
+                        }
+                    }
+                    installingTask.StopRequested -= StopRequestedHandler2;
+                }
                 string installerLocation = null;
                 client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
                 {
@@ -229,8 +244,10 @@ namespace WitherTorch.Core.Servers
                 };
                 client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
                 {
+                    installingTask.StopRequested += StopRequestedHandler2;
                     client.Dispose();
-                    if (e.Error != null || e.Cancelled == true)
+                    client = null;
+                    if(e.Error != null || e.Cancelled == true)
                     {
                         installingTask.OnInstallFailed();
                     }
@@ -264,6 +281,20 @@ namespace WitherTorch.Core.Servers
                     client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + ".jar"));
                 }
 #elif NET5_0
+                using CancellationTokenSource source = new CancellationTokenSource();
+                void StopRequestedHandler2(object sender, EventArgs e)
+                {
+                    try
+                    {
+                        source.Cancel(true);
+                        client?.Dispose();
+                    }
+                    catch (Exception)
+                    {
+                    }
+                    installingTask.StopRequested -= StopRequestedHandler2;
+                }
+                installingTask.StopRequested += StopRequestedHandler2;
                 System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
                 progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
                 {
@@ -301,8 +332,10 @@ namespace WitherTorch.Core.Servers
                     {
                         installingTask.OnInstallFailed();
                     }
+                    installingTask.StopRequested -= StopRequestedHandler2;
                     client.Dispose();
-                });
+                    client = null;
+                }, source.Token);
 #endif
             }
         }
@@ -327,6 +360,19 @@ namespace WitherTorch.Core.Servers
                 StandardErrorEncoding = Encoding.UTF8
             };
             System.Diagnostics.Process innerProcess = System.Diagnostics.Process.Start(startInfo);
+            void StopRequestedHandler(object sender, EventArgs e)
+            {
+                try
+                {
+                    innerProcess.Kill();
+                    innerProcess.Dispose();
+                }
+                catch (Exception)
+                {
+                }
+                task.StopRequested -= StopRequestedHandler;
+            }
+            task.StopRequested += StopRequestedHandler;
             innerProcess.EnableRaisingEvents = true;
             innerProcess.BeginOutputReadLine();
             innerProcess.BeginErrorReadLine();
@@ -340,6 +386,7 @@ namespace WitherTorch.Core.Servers
             };
             innerProcess.Exited += (sender, e) =>
             {
+                task.StopRequested -= StopRequestedHandler;
                 task.OnInstallFinished();
                 task.ChangePercentage(100);
                 innerProcess.Dispose();

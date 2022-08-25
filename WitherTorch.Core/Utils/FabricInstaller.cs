@@ -85,24 +85,39 @@ namespace WitherTorch.Core.Utils
             updatedVersion = nowVersion;
             return version == null;
         }
-        private void Update(string version)
+        private void Update(InstallTask installTask, string version)
         {
             UpdateStarted?.Invoke(this, EventArgs.Empty);
 #if NET472
             WebClient client = new WebClient();
-            client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
+            void StopRequestedHandler(object sender, EventArgs e)
             {
-                UpdateProgressChanged?.Invoke(e.ProgressPercentage);
+                try
+                {
+                    client?.CancelAsync();
+                    client?.Dispose();
+                }
+                catch (Exception)
+                {
+                }
+                installTask.StopRequested -= StopRequestedHandler;
             };
+            installTask.StopRequested += StopRequestedHandler;
+            client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
+                        {
+                            UpdateProgressChanged?.Invoke(e.ProgressPercentage);
+                        };
             client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
             {
                 client.Dispose();
+                client = null;
                 using (StreamWriter writer = buildToolVersionInfo.CreateText())
                 {
                     writer.WriteLine(version);
                     writer.Flush();
                     writer.Close();
                 }
+                installTask.StopRequested -= StopRequestedHandler;
                 UpdateFinished?.Invoke(this, EventArgs.Empty);
             };
             client.Headers.Set(HttpRequestHeader.UserAgent, @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36");
@@ -149,12 +164,21 @@ namespace WitherTorch.Core.Utils
         }
         public delegate void UpdateProgressEventHandler(int progress);
 
-        public void Install(in InstallTask task, string version)
+        public void Install(InstallTask task, string version)
         {
             InstallTask installTask = task;
             FabricInstallerStatus status = new FabricInstallerStatus(SpigotBuildToolsStatus.ToolState.Initialize, 0);
             installTask.ChangeStatus(status);
+            bool isStop = false;
+            void StopRequestedHandler(object sender, EventArgs e)
+            {
+                isStop = true;
+                installTask.StopRequested -= StopRequestedHandler;
+            };
+            installTask.StopRequested += StopRequestedHandler;
             bool hasUpdate = CheckUpdate(out string newVersion);
+            installTask.StopRequested -= StopRequestedHandler;
+            if (isStop) return;
             if (hasUpdate)
             {
                 UpdateStarted += (sender, e) =>
@@ -174,7 +198,7 @@ namespace WitherTorch.Core.Utils
                     installTask.OnStatusChanged();
                     DoInstall(installTask, status, version);
                 };
-                Update(newVersion);
+                Update(installTask, newVersion);
             }
             else
             {
@@ -184,12 +208,21 @@ namespace WitherTorch.Core.Utils
             }
         }
 
-        public void Install(in InstallTask task, string minecraftVersion, string fabricVersion)
+        public void Install(InstallTask task, string minecraftVersion, string fabricVersion)
         {
             InstallTask installTask = task;
             FabricInstallerStatus status = new FabricInstallerStatus(SpigotBuildToolsStatus.ToolState.Initialize, 0);
             installTask.ChangeStatus(status);
+            bool isStop = false;
+            void StopRequestedHandler(object sender, EventArgs e)
+            {
+                isStop = true;
+                installTask.StopRequested -= StopRequestedHandler;
+            };
+            installTask.StopRequested += StopRequestedHandler;
             bool hasUpdate = CheckUpdate(out string newVersion);
+            installTask.StopRequested -= StopRequestedHandler;
+            if (isStop) return;
             if (hasUpdate)
             {
                 UpdateStarted += (sender, e) =>
@@ -209,7 +242,7 @@ namespace WitherTorch.Core.Utils
                     installTask.OnStatusChanged();
                     DoInstall(installTask, status, minecraftVersion, fabricVersion);
                 };
-                Update(newVersion);
+                Update(installTask, newVersion);
             }
             else
             {
@@ -243,6 +276,18 @@ namespace WitherTorch.Core.Utils
             innerProcess.EnableRaisingEvents = true;
             innerProcess.BeginOutputReadLine();
             innerProcess.BeginErrorReadLine();
+            void StopRequestedHandler(object sender, EventArgs e)
+            {
+                try
+                {
+                    innerProcess.Kill();
+                }
+                catch (Exception)
+                {
+                }
+                installTask.StopRequested -= StopRequestedHandler;
+            };
+            installTask.StopRequested += StopRequestedHandler;
             innerProcess.OutputDataReceived += (sender, e) =>
             {
                 installStatus.OnProcessMessageReceived(sender, e);
@@ -253,6 +298,7 @@ namespace WitherTorch.Core.Utils
             };
             innerProcess.Exited += (sender, e) =>
             {
+                installTask.StopRequested -= StopRequestedHandler;
                 installTask.OnInstallFinished();
                 installTask.ChangePercentage(100);
                 innerProcess.Dispose();

@@ -9,6 +9,7 @@ namespace WitherTorch.Core
         public event EventHandler InstallFailed;
         public event EventHandler PercentageChanged;
         public event EventHandler StatusChanged;
+        public event EventHandler StopRequested;
         public Server Owner { get; private set; }
         public double InstallPercentage { get; private set; }
         public IInstallStatus Status { get; private set; }
@@ -49,6 +50,11 @@ namespace WitherTorch.Core
         public void OnInstallFailed()
         {
             InstallFailed?.Invoke(this, EventArgs.Empty);
+        }
+        
+        public void Stop()
+        {
+            StopRequested?.Invoke(this, EventArgs.Empty);
         }
 
         public void OnStatusChanged()

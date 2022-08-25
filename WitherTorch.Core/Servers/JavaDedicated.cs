@@ -12,6 +12,7 @@ using System.Net.Http;
 using System.Text;
 using WitherTorch.Core.Utils;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace WitherTorch.Core.Servers
 {
@@ -41,6 +42,13 @@ namespace WitherTorch.Core.Servers
             string manifestURL = mojangVersionInfo.ManifestURL;
             if (!string.IsNullOrEmpty(manifestURL))
             {
+                bool isStop = false;
+                void StopRequestedHandler(object sender, EventArgs e)
+                {
+                    isStop = true;
+                    installingTask.StopRequested -= StopRequestedHandler;
+                }
+                installingTask.StopRequested += StopRequestedHandler;
 #if NET472
                 WebClient client = new WebClient();
                 JObject jsonObject = JsonConvert.DeserializeObject<JObject>(client.DownloadString(manifestURL));
@@ -49,10 +57,28 @@ namespace WitherTorch.Core.Servers
                 HttpClient client = new HttpClient(messageHandler);
                 JObject jsonObject = JsonConvert.DeserializeObject<JObject>(client.GetStringAsync(manifestURL).Result);
 #endif
+                installingTask.StopRequested -= StopRequestedHandler;
+                if (isStop) return;
                 string downloadURL = jsonObject.GetValue("downloads")["server"]["url"].ToString();
                 DownloadStatus status = new DownloadStatus(downloadURL, 0);
                 installingTask.ChangeStatus(status);
 #if NET472
+                void StopRequestedHandler2(object sender, EventArgs e)
+                {
+                    if (client != null)
+                    {
+                        try
+                        {
+                            client.CancelAsync();
+                            client.Dispose();
+                        }
+                        catch (Exception)
+                        {
+                        }
+                    }
+                    installingTask.StopRequested -= StopRequestedHandler2;
+                }
+                installingTask.StopRequested += StopRequestedHandler2;
                 client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
                 {
                     status.Percentage = e.ProgressPercentage;
@@ -61,6 +87,7 @@ namespace WitherTorch.Core.Servers
                 };
                 client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
                 {
+                    client = null;
                     client.Dispose();
                     if (e.Error != null || e.Cancelled)
                     {
@@ -70,9 +97,24 @@ namespace WitherTorch.Core.Servers
                     {
                         installingTask.OnInstallFinished();
                     }
+                    installingTask.StopRequested -= StopRequestedHandler2;
                 };
                 client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"));
 #elif NET5_0
+                using CancellationTokenSource source = new CancellationTokenSource();
+                void StopRequestedHandler2(object sender, EventArgs e)
+                {
+                    try
+                    {
+                        source.Cancel(true);
+                        client?.Dispose();
+                    }
+                    catch (Exception)
+                    {
+                    }
+                    installingTask.StopRequested -= StopRequestedHandler2;
+                }
+                installingTask.StopRequested += StopRequestedHandler2;
                 System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
                 progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
                 {
@@ -91,8 +133,10 @@ namespace WitherTorch.Core.Servers
                     {
                         installingTask.OnInstallFailed();
                     }
+                    installingTask.StopRequested -= StopRequestedHandler2;
                     client.Dispose();
-                });
+                    client = null;
+                }, source.Token);
 #endif
             }
             else
