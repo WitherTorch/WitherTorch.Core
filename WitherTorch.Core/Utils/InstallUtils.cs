@@ -14,18 +14,11 @@ namespace WitherTorch.Core.Utils
             Stream dataStream = await client.GetStreamAsync(new Uri(downloadURL));
             FileStream fileStream = new FileStream(Path.Combine(), FileMode.Create);
             byte[] buffer = new byte[BUFFER_SIZE];
-                while (true)
+            int length;
+            while ((length = dataStream.Read(buffer, 0, BUFFER_SIZE)) > 0)
             {
-                int length = dataStream.Read(buffer, 0, BUFFER_SIZE);
-                if (length > 0)
-                {
-                    fileStream.Write(buffer, 0, length);
-                    fileStream.Flush();
-                }
-                else
-                {
-                    break;
-                }
+                fileStream.Write(buffer, 0, length);
+                fileStream.Flush();
             }
             dataStream.Close();
             fileStream.Close();
