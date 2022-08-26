@@ -182,6 +182,22 @@ namespace WitherTorch.Core.Servers
             }
         }
 
+        /// <inheritdoc/>
+        public override void StopServer(bool force)
+        {
+            if (_isStarted)
+            {
+                if (force)
+                {
+                    process.Kill();
+                }
+                else
+                {
+                    process.InputCommand("stop");
+                }
+            }
+        }
+
         protected override bool OnServerSaving()
         {
             JsonPropertyFile serverInfoJson = ServerInfoJson;

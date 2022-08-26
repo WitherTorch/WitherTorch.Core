@@ -357,6 +357,22 @@ namespace WitherTorch.Core.Servers
             }
         }
 
+        /// <inheritdoc/>
+        public override void StopServer(bool force)
+        {
+            if (_isStarted)
+            {
+                if (force)
+                {
+                    process.Kill();
+                }
+                else
+                {
+                    process.InputCommand("stop");
+                }
+            }
+        }
+
         public override void SetRuntimeEnvironment(RuntimeEnvironment environment)
         {
         }

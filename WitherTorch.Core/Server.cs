@@ -275,6 +275,10 @@ namespace WitherTorch.Core
         /// </summary>
         public abstract void RunServer(RuntimeEnvironment environment);
         /// <summary>
+        /// 停止伺服器
+        /// </summary>
+        public abstract void StopServer(bool force);
+        /// <summary>
         /// 子類別應覆寫此方法為更新伺服器軟體的程式碼
         /// </summary>
         /// <returns>是否成功開始更新伺服器軟體</returns>

@@ -153,6 +153,7 @@ namespace WitherTorch.Core.Servers
         {
             return environment;
         }
+
         /// <inheritdoc/>
         public override void RunServer(RuntimeEnvironment environment)
         {
@@ -180,6 +181,22 @@ namespace WitherTorch.Core.Servers
                         UseShellExecute = false,
                     };
                     process.StartProcess(startInfo);
+                }
+            }
+        }
+
+        /// <inheritdoc/>
+        public override void StopServer(bool force)
+        {
+            if (_isStarted)
+            {
+                if (force)
+                {
+                    process.Kill();
+                }
+                else
+                {
+                    process.InputCommand("stop");
                 }
             }
         }

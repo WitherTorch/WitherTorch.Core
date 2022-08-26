@@ -24,6 +24,22 @@ namespace WitherTorch.Core
             }
         }
 
+        public void Kill()
+        {
+            DProcess innerProcess = InnerProcess;
+            if (innerProcess != null)
+            {
+                try
+                {
+                    innerProcess.Kill();
+                }
+                catch (Exception)
+                {
+
+                }
+            }
+        }
+
         public override void InputCommand(string command = "")
         {
             if (!string.IsNullOrWhiteSpace(command))
