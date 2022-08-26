@@ -130,17 +130,10 @@ namespace WitherTorch.Core.Servers
 #elif NET5_0
                 HttpClientHandler messageHandler = new HttpClientHandler();
                 HttpClient client = new HttpClient(messageHandler);
-                using CancellationTokenSource source = new CancellationTokenSource();
+                StrongBox<bool> stopFlag = new StrongBox<bool>();
                 void StopRequestedHandler(object sender, EventArgs e)
                 {
-                    try
-                    {
-                        source.Cancel(true);
-                        client?.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                    }
+                    stopFlag.Value = true;
                     installingTask.StopRequested -= StopRequestedHandler;
                 }
                 installingTask.StopRequested += StopRequestedHandler;
@@ -155,7 +148,7 @@ namespace WitherTorch.Core.Servers
                 {
                     try
                     {
-                        await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"powernukkit-" + versionString + ".jar"));
+                        await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"powernukkit-" + versionString + ".jar"), stopFlag);
                         installingTask.OnInstallFinished();
                     }
                     catch (Exception)
@@ -165,7 +158,7 @@ namespace WitherTorch.Core.Servers
                     installingTask.StopRequested -= StopRequestedHandler;
                     client.Dispose();
                     client = null;
-                }, source.Token);
+                });
 #endif
             }
             else

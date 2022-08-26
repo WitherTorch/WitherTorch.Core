@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Runtime.CompilerServices;
 #if NET472
 using System.Net;
 #elif NET5_0
@@ -144,111 +145,36 @@ namespace WitherTorch.Core.Servers
 #endif
             DownloadStatus status = new DownloadStatus(downloadURL, 0);
             installingTask.ChangeStatus(status);
-            using (CancellationTokenSource source = new CancellationTokenSource())
+            StrongBox<bool> stopFlag = new StrongBox<bool>();
+            void StopRequestedHandler(object sender, EventArgs e)
             {
-                void StopRequestedHandler(object sender, EventArgs e)
-                {
-                    try
-                    {
 #if NET472
-                        client?.CancelAsync();
-#endif
-                        source.Cancel(true);
-                        client?.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                    }
-                    installingTask.StopRequested -= StopRequestedHandler;
+               try
+                {
+                    client?.CancelAsync();
                 }
-                installingTask.StopRequested += StopRequestedHandler;
+                catch (Exception)
+                {
+                }
+#endif
+                stopFlag.Value = true;
+                installingTask.StopRequested -= StopRequestedHandler;
+            }
+            installingTask.StopRequested += StopRequestedHandler;
 #if NET472
-                client.OpenReadCompleted += async delegate (object sender, OpenReadCompletedEventArgs e)
-                {
-                    await Task.Run(() =>
-                    {
-                        try
-                        {
-                            using (ZipArchive archive = new ZipArchive(e.Result, ZipArchiveMode.Read, false))
-                            {
-                                System.Collections.ObjectModel.ReadOnlyCollection<ZipArchiveEntry> entries = archive.Entries;
-                                System.Collections.Generic.IEnumerator<ZipArchiveEntry> enumerator = entries.GetEnumerator();
-                                int currentCount = 0;
-                                int count = entries.Count;
-                                while (enumerator.MoveNext())
-                                {
-                                    ZipArchiveEntry entry = enumerator.Current;
-                                    string filePath = Path.GetFullPath(Path.Combine(ServerDirectory, entry.FullName));
-                                    if (filePath.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal)) // Is Directory
-                                    {
-                                        if (!Directory.Exists(filePath))
-                                            Directory.CreateDirectory(filePath);
-                                    }
-                                    else // Is File
-                                    {
-                                        switch (entry.FullName)
-                                        {
-                                            case "allowlist.json":
-                                            case "whitelist.json":
-                                            case "permissions.json":
-                                            case "server.properties":
-                                                if (!File.Exists(filePath))
-                                                {
-                                                    goto default;
-                                                }
-                                                break;
-                                            default:
-                                                {
-                                                    entry.ExtractToFile(filePath, true);
-                                                }
-                                                break;
-                                        }
-                                    }
-                                    currentCount++;
-                                    status.Percentage = currentCount * 100.0 / count;
-                                    System.Threading.Tasks.Task.Run(() =>
-                                    {
-                                        installingTask.OnStatusChanged();
-                                        installingTask.ChangePercentage(status.Percentage);
-                                    });
-                                }
-                            }
-                            client.Dispose();
-                            installingTask.ChangePercentage(100);
-                            installingTask.StopRequested -= StopRequestedHandler;
-                            installingTask.OnInstallFinished();
-                        }
-                        catch (Exception)
-                        {
-                            installingTask.StopRequested -= StopRequestedHandler;
-                            installingTask.OnInstallFailed();
-                        }
-                    }, source.Token);
-                };
-                client.OpenReadAsync(new Uri(downloadURL));
-#elif NET5_0
-                System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
-                progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
-                {
-                    status.Percentage = e.ProgressPercentage;
-                    installingTask.OnStatusChanged();
-                    installingTask.ChangePercentage(e.ProgressPercentage * 0.65);
-                };
-                Task.Run(async () =>
+            client.OpenReadCompleted += async delegate (object sender, OpenReadCompletedEventArgs e)
+            {
+                await Task.Run(() =>
                 {
                     try
                     {
-                        using (Stream dataStream = await client.GetStreamAsync(new Uri(downloadURL)))
-                        using (ZipArchive archive = new ZipArchive(dataStream, ZipArchiveMode.Read, false))
+                        using (ZipArchive archive = new ZipArchive(e.Result, ZipArchiveMode.Read, false))
                         {
-                            installingTask.ChangePercentage(65);
-                            DecompessionStatus decompessionStatus = new DecompessionStatus();
-                            installingTask.ChangeStatus(decompessionStatus);
                             System.Collections.ObjectModel.ReadOnlyCollection<ZipArchiveEntry> entries = archive.Entries;
                             System.Collections.Generic.IEnumerator<ZipArchiveEntry> enumerator = entries.GetEnumerator();
                             int currentCount = 0;
                             int count = entries.Count;
-                            while (enumerator.MoveNext())
+                            while (enumerator.MoveNext() && !stopFlag.Value)
                             {
                                 ZipArchiveEntry entry = enumerator.Current;
                                 string filePath = Path.GetFullPath(Path.Combine(ServerDirectory, entry.FullName));
@@ -279,23 +205,110 @@ namespace WitherTorch.Core.Servers
                                 }
                                 currentCount++;
                                 status.Percentage = currentCount * 100.0 / count;
-                                installingTask.OnStatusChanged();
-                                installingTask.ChangePercentage(65 + decompessionStatus.Percentage * 0.35);
+                                System.Threading.Tasks.Task.Run(() =>
+                                {
+                                    installingTask.OnStatusChanged();
+                                    installingTask.ChangePercentage(status.Percentage);
+                                });
                             }
-                            dataStream.Close();
                         }
                         client.Dispose();
-                        installingTask.ChangePercentage(100);
-                        installingTask.OnInstallFinished();
+                        installingTask.StopRequested -= StopRequestedHandler;
+                        if (stopFlag.Value)
+                        {
+                            installingTask.OnInstallFailed();
+                        }
+                        else
+                        {
+                            installingTask.ChangePercentage(100);
+                            installingTask.OnInstallFinished();
+                        }
                     }
                     catch (Exception)
                     {
+                        installingTask.StopRequested -= StopRequestedHandler;
                         installingTask.OnInstallFailed();
                     }
+                });
+            };
+            client.OpenReadAsync(new Uri(downloadURL));
+#elif NET5_0
+            System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
+            progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
+            {
+                status.Percentage = e.ProgressPercentage;
+                installingTask.OnStatusChanged();
+                installingTask.ChangePercentage(e.ProgressPercentage * 0.65);
+            };
+            Task.Run(async () =>
+            {
+                try
+                {
+                    using (Stream dataStream = await client.GetStreamAsync(new Uri(downloadURL)))
+                    using (ZipArchive archive = new ZipArchive(dataStream, ZipArchiveMode.Read, false))
+                    {
+                        installingTask.ChangePercentage(65);
+                        DecompessionStatus decompessionStatus = new DecompessionStatus();
+                        installingTask.ChangeStatus(decompessionStatus);
+                        System.Collections.ObjectModel.ReadOnlyCollection<ZipArchiveEntry> entries = archive.Entries;
+                        System.Collections.Generic.IEnumerator<ZipArchiveEntry> enumerator = entries.GetEnumerator();
+                        int currentCount = 0;
+                        int count = entries.Count;
+                        while (enumerator.MoveNext() && !stopFlag.Value)
+                        {
+                            ZipArchiveEntry entry = enumerator.Current;
+                            string filePath = Path.GetFullPath(Path.Combine(ServerDirectory, entry.FullName));
+                            if (filePath.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal)) // Is Directory
+                            {
+                                if (!Directory.Exists(filePath))
+                                    Directory.CreateDirectory(filePath);
+                            }
+                            else // Is File
+                            {
+                                switch (entry.FullName)
+                                {
+                                    case "allowlist.json":
+                                    case "whitelist.json":
+                                    case "permissions.json":
+                                    case "server.properties":
+                                        if (!File.Exists(filePath))
+                                        {
+                                            goto default;
+                                        }
+                                        break;
+                                    default:
+                                        {
+                                            entry.ExtractToFile(filePath, true);
+                                        }
+                                        break;
+                                }
+                            }
+                            currentCount++;
+                            status.Percentage = currentCount * 100.0 / count;
+                            installingTask.OnStatusChanged();
+                            installingTask.ChangePercentage(65 + decompessionStatus.Percentage * 0.35);
+                        }
+                        dataStream.Close();
+                    }
+                    client.Dispose();
                     installingTask.StopRequested -= StopRequestedHandler;
-                }, source.Token);
+                    if (stopFlag.Value)
+                    {
+                        installingTask.OnInstallFailed();
+                    }
+                    else
+                    {
+                        installingTask.ChangePercentage(100);
+                        installingTask.OnInstallFinished();
+                    }
+                }
+                catch (Exception)
+                {
+                    installingTask.OnInstallFailed();
+                }
+                installingTask.StopRequested -= StopRequestedHandler;
+            });
 #endif
-            }
         }
 
         public override AbstractProcess GetProcess()

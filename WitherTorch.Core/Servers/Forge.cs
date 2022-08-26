@@ -10,6 +10,7 @@ using System.Net;
 using System.Runtime.CompilerServices;
 #elif NET5_0
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 #endif
 using System.Text;
 using System.Threading;
@@ -126,7 +127,7 @@ namespace WitherTorch.Core.Servers
             versions = versionKeys.ToArray();
             Array.Sort(versions, comparer);
             Array.Reverse(versions);
-            for (int i = 0;i< versions.Length; i++)
+            for (int i = 0; i < versions.Length; i++)
             {
                 string key = versions[i];
                 versionDict.Add(key, preparingVersionDict[key]);
@@ -281,17 +282,10 @@ namespace WitherTorch.Core.Servers
                     client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + ".jar"));
                 }
 #elif NET5_0
-                using CancellationTokenSource source = new CancellationTokenSource();
+                StrongBox<bool> stopFlag = new StrongBox<bool>();
                 void StopRequestedHandler2(object sender, EventArgs e)
                 {
-                    try
-                    {
-                        source.Cancel(true);
-                        client?.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                    }
+                    stopFlag.Value = true;
                     installingTask.StopRequested -= StopRequestedHandler2;
                 }
                 installingTask.StopRequested += StopRequestedHandler2;
@@ -322,7 +316,8 @@ namespace WitherTorch.Core.Servers
                         {
                             installerLocation = Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + ".jar");
                         }
-                        await InstallUtils.HttpDownload(client, downloadURL, installerLocation);
+                        await InstallUtils.HttpDownload(client, downloadURL, installerLocation, stopFlag);
+                        installingTask.StopRequested -= StopRequestedHandler2;
                         if (needInstall)
                             RunInstaller(installingTask, installerLocation);
                         else
@@ -332,10 +327,9 @@ namespace WitherTorch.Core.Servers
                     {
                         installingTask.OnInstallFailed();
                     }
-                    installingTask.StopRequested -= StopRequestedHandler2;
                     client.Dispose();
                     client = null;
-                }, source.Token);
+                });
 #endif
             }
         }

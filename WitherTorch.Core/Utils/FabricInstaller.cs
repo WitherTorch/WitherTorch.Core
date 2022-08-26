@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 #endif
 using System.Text;
 using System.Xml;
+using System.Runtime.CompilerServices;
 
 namespace WitherTorch.Core.Utils
 {
@@ -130,35 +131,38 @@ namespace WitherTorch.Core.Utils
             {
                 UpdateProgressChanged?.Invoke(e.ProgressPercentage);
             };
+            StrongBox<bool> stopFlag = new StrongBox<bool>();
+            void StopRequestedHandler(object sender, EventArgs e)
+            {
+                stopFlag.Value = true;
+                installTask.StopRequested -= StopRequestedHandler;
+            }
+            installTask.StopRequested += StopRequestedHandler;
             Task.Run(async () =>
             {
-                Stream dataStream = await client.GetStreamAsync(new Uri(string.Format(downloadURL, version)));
-                FileStream fileStream = new FileStream(buildToolFileInfo.FullName, FileMode.Create);
-                byte[] buffer = new byte[1 << 20];
-                while (true)
+                using Stream dataStream = await client.GetStreamAsync(new Uri(string.Format(downloadURL, version)));
+                using FileStream fileStream = new FileStream(buildToolFileInfo.FullName, FileMode.Create);
+                byte[] buffer = new byte[InstallUtils.BUFFER_SIZE];
+                int length;
+                while ((length = dataStream.Read(buffer, 0, InstallUtils.BUFFER_SIZE)) > 0 && !stopFlag.Value)
                 {
-                    int length = dataStream.Read(buffer, 0, buffer.Length);
-                    if (length > 0)
-                    {
-                        fileStream.Write(buffer, 0, length);
-                    }
-                    else
-                    {
-                        break;
-                    }
+                    fileStream.Write(buffer, 0, length);
+                    fileStream.Flush();
                 }
                 dataStream.Close();
                 fileStream.Close();
-                await dataStream.DisposeAsync();
-                await fileStream.DisposeAsync();
                 client.Dispose();
-                using (StreamWriter writer = buildToolVersionInfo.CreateText())
+                installTask.StopRequested -= StopRequestedHandler;
+                if (!stopFlag.Value)
                 {
-                    writer.WriteLine(version);
-                    writer.Flush();
-                    writer.Close();
+                    using (StreamWriter writer = buildToolVersionInfo.CreateText())
+                    {
+                        writer.WriteLine(version);
+                        writer.Flush();
+                        writer.Close();
+                    }
+                    UpdateFinished?.Invoke(this, EventArgs.Empty);
                 }
-                UpdateFinished?.Invoke(this, EventArgs.Empty);
             });
 #endif
         }

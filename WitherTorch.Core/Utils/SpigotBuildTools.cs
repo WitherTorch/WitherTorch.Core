@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 #if NET472
@@ -125,19 +126,12 @@ namespace WitherTorch.Core.Utils
 #elif NET5_0
             System.Net.Http.HttpClientHandler messageHandler = new System.Net.Http.HttpClientHandler();
             System.Net.Http.HttpClient client = new System.Net.Http.HttpClient(messageHandler);
-            using CancellationTokenSource source = new CancellationTokenSource();
+            StrongBox<bool> stopFlag = new StrongBox<bool>();
             void StopRequestedHandler(object sender, EventArgs e)
             {
-                try
-                {
-                    source.Cancel(true);
-                    client?.Dispose();
-                }
-                catch (Exception)
-                {
-                }
+                stopFlag.Value = true;
                 installTask.StopRequested -= StopRequestedHandler;
-            };
+            }
             installTask.StopRequested += StopRequestedHandler;
             System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
             progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
@@ -146,35 +140,30 @@ namespace WitherTorch.Core.Utils
             };
             Task.Run(async () =>
             {
-                Stream dataStream = await client.GetStreamAsync(new Uri(downloadURL));
-                FileStream fileStream = new FileStream(buildToolFileInfo.FullName, FileMode.Create);
-                byte[] buffer = new byte[1 << 20];
-                while (true)
+                using Stream dataStream = await client.GetStreamAsync(new Uri(downloadURL));
+                using FileStream fileStream = new FileStream(buildToolFileInfo.FullName, FileMode.Create);
+                byte[] buffer = new byte[InstallUtils.BUFFER_SIZE];
+                int length;
+                while ((length = dataStream.Read(buffer, 0, InstallUtils.BUFFER_SIZE)) > 0 && !stopFlag.Value)
                 {
-                    int length = dataStream.Read(buffer, 0, buffer.Length);
-                    if (length > 0)
-                    {
-                        fileStream.Write(buffer, 0, length);
-                    }
-                    else
-                    {
-                        break;
-                    }
+                    fileStream.Write(buffer, 0, length);
+                    fileStream.Flush();
                 }
                 dataStream.Close();
                 fileStream.Close();
-                await dataStream.DisposeAsync();
-                await fileStream.DisposeAsync();
                 client.Dispose();
-                using (StreamWriter writer = buildToolVersionInfo.CreateText())
-                {
-                    writer.WriteLine(version.ToString());
-                    writer.Flush();
-                    writer.Close();
-                }
                 installTask.StopRequested -= StopRequestedHandler;
-                UpdateFinished?.Invoke(this, EventArgs.Empty);
-            }, source.Token);
+                if (!stopFlag.Value)
+                {
+                    using (StreamWriter writer = buildToolVersionInfo.CreateText())
+                    {
+                        writer.WriteLine(version.ToString());
+                        writer.Flush();
+                        writer.Close();
+                    }
+                    UpdateFinished?.Invoke(this, EventArgs.Empty);
+                }
+            });
 #endif
         }
         public delegate void UpdateProgressEventHandler(int progress);

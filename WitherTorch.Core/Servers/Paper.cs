@@ -241,17 +241,10 @@ namespace WitherTorch.Core.Servers
                     };
                     client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"));
 #elif NET5_0
-                    using CancellationTokenSource source = new CancellationTokenSource();
+                    StrongBox<bool> stopFlag = new StrongBox<bool>();
                     void StopRequestedHandler(object sender, EventArgs e)
                     {
-                        try
-                        {
-                            source.Cancel(true);
-                            client?.Dispose();
-                        }
-                        catch (Exception)
-                        {
-                        }
+                        stopFlag.Value = true;
                         installingTask.StopRequested -= StopRequestedHandler;
                     }
                     installingTask.StopRequested += StopRequestedHandler;
@@ -266,17 +259,18 @@ namespace WitherTorch.Core.Servers
                     {
                         try
                         {
-                            await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"));
+                            await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"), stopFlag);
+                            installingTask.StopRequested -= StopRequestedHandler;
                             installingTask.OnInstallFinished();
                         }
                         catch (Exception)
                         {
+                            installingTask.StopRequested -= StopRequestedHandler;
                             installingTask.OnInstallFailed();
                         }
-                        installingTask.StopRequested -= StopRequestedHandler;
                         client.Dispose();
                         client = null;
-                    }, source.Token);
+                    });
 #endif
                 }
                 else

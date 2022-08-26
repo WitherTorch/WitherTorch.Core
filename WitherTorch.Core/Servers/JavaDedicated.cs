@@ -101,17 +101,10 @@ namespace WitherTorch.Core.Servers
                 };
                 client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"));
 #elif NET5_0
-                using CancellationTokenSource source = new CancellationTokenSource();
+                StrongBox<bool> stopFlag = new StrongBox<bool>();
                 void StopRequestedHandler2(object sender, EventArgs e)
                 {
-                    try
-                    {
-                        source.Cancel(true);
-                        client?.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                    }
+                    stopFlag.Value = true;
                     installingTask.StopRequested -= StopRequestedHandler2;
                 }
                 installingTask.StopRequested += StopRequestedHandler2;
@@ -126,17 +119,18 @@ namespace WitherTorch.Core.Servers
                 {
                     try
                     {
-                        await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"));
+                        await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"), stopFlag);
+                        installingTask.StopRequested -= StopRequestedHandler2;
                         installingTask.OnInstallFinished();
                     }
                     catch (Exception)
                     {
+                        installingTask.StopRequested -= StopRequestedHandler2;
                         installingTask.OnInstallFailed();
                     }
-                    installingTask.StopRequested -= StopRequestedHandler2;
                     client.Dispose();
                     client = null;
-                }, source.Token);
+                });
 #endif
             }
             else
