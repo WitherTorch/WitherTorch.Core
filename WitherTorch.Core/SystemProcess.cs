@@ -13,14 +13,22 @@ namespace WitherTorch.Core
 
         public override bool IsAlive()
         {
-            try
-            {
-                InnerProcess?.Refresh();
-                return InnerProcess != null && !InnerProcess.HasExited;
-            }
-            catch (InvalidOperationException)
+            DProcess innerProcess = InnerProcess;
+            if (innerProcess == null)
             {
                 return false;
+            }
+            else
+            {
+                try
+                {
+                    innerProcess.Refresh();
+                    return !innerProcess.HasExited;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
+                }
             }
         }
 
@@ -31,9 +39,10 @@ namespace WitherTorch.Core
             {
                 try
                 {
-                    innerProcess.Kill();
+                    if (!innerProcess.HasExited)
+                        innerProcess.Kill();
                 }
-                catch (Exception)
+                catch (InvalidOperationException)
                 {
 
                 }
