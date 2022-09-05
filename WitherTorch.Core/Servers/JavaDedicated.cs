@@ -88,8 +88,8 @@ namespace WitherTorch.Core.Servers
                 client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
                 {
                     installingTask.StopRequested -= StopRequestedHandler2;
-                    client = null;
                     client.Dispose();
+                    client = null;
                     if (e.Error != null || e.Cancelled)
                     {
                         installingTask.OnInstallFailed();
