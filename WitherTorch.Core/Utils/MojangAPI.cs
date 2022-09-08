@@ -20,7 +20,7 @@ namespace WitherTorch.Core.Utils
     /// </summary>
     public static class MojangAPI
     {
-        private const string manifestListURL = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
+        private const string manifestListURL = "http://launchermeta.mojang.com/mc/game/version_manifest.json";
         public static Dictionary<string, VersionInfo> VersionDictionary { get; private set; }
         private static string[] versions;
         public static string[] Versions
