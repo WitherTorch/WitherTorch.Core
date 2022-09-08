@@ -148,14 +148,7 @@ namespace WitherTorch.Core
             {
                 if (!isCacheNotOutdated && downloadedString != null)
                 {
-                    if (tokenObject.ContainsKey("expiredTime"))
-                    {
-                        tokenObject["expiredTime"] = DateTime.UtcNow.ToBinary();
-                    }
-                    else
-                    {
-                        tokenObject.Add("expiredTime", DateTime.UtcNow.ToBinary());
-                    }
+                    tokenObject["expiredTime"] = DateTime.UtcNow.ToBinary();
                     if (!hasCacheFile)
                     {
                         string value = null;
@@ -175,6 +168,7 @@ namespace WitherTorch.Core
                         }
                         path = Path.Combine(WTCore.CachePath, "./" + value);
                     }
+                    cacheFile[tokenKey] = tokenObject;
                     try
                     {
                         using (StreamWriter writer = new StreamWriter(path, false))
