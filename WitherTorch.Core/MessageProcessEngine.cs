@@ -7,11 +7,28 @@ namespace WitherTorch.Core
     public abstract class MessageProcessEngine
     {
         private static MessageProcessEngine engine;
+
+#if NET5_0_OR_GREATER
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+#elif NET472
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        public static void Initialize(MessageProcessEngine engine)
+        {
+            if (MessageProcessEngine.engine == null)
+                MessageProcessEngine.engine = engine;
+        }
+
+#if NET5_0_OR_GREATER
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+#elif NET472
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
         public static void Initialize()
         {
-            if (engine == null)
-                engine = new DefaultMessageProcessEngine();
+            Initialize(new DefaultMessageProcessEngine());
         }
+
 #if NET5_0_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
 #elif NET472
@@ -19,6 +36,11 @@ namespace WitherTorch.Core
 #endif
         public static bool TryProcessMessage(string message, bool noStyling, out ProcessedMessage result)
         {
+            MessageProcessEngine engine = MessageProcessEngine.engine;
+            if (engine == null)
+            {
+                engine = MessageProcessEngine.engine = new DefaultMessageProcessEngine();
+            }
             if (engine.TryProcessMessageInternal(message, noStyling, out result))
                 return true;
             else
@@ -32,6 +54,11 @@ namespace WitherTorch.Core
 #endif
         public static bool TryProcessMessage(char[] message, bool noStyling, out ProcessedMessage result)
         {
+            MessageProcessEngine engine = MessageProcessEngine.engine;
+            if (engine == null)
+            {
+                engine = MessageProcessEngine.engine = new DefaultMessageProcessEngine();
+            }
             if (engine.TryProcessMessageInternal(message, noStyling, out result))
                 return true;
             else
