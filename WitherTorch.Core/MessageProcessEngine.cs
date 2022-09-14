@@ -421,15 +421,15 @@ namespace WitherTorch.Core
 
         public class ProcessedMessage
         {
-            public MessageTime Time { get; set; }
-            public string Message { get; set; }
-            public string Extra { get; set; }
+            public MessageTime Time { get; }
+            public string Message { get; }
+            public string Extra { get; }
 
-            public ProcessedMessage(MessageTime time, string message, string extra = null)
+            public ProcessedMessage(MessageTime time, string message, string extra)
             {
                 Time = time;
                 Message = message;
-                Extra = extra ?? string.Empty;
+                Extra = extra;
             }
 
             [StructLayout(LayoutKind.Sequential)]
