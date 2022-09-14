@@ -386,9 +386,14 @@ namespace WitherTorch.Core
                                             break;
                                         moveablePointer++;
                                     }
-                                    while (*++moveablePointer == ' ' && moveablePointer < charPointerEnd)
+                                    while (*moveablePointer == ' ' && moveablePointer < charPointerEnd)
                                     {
+                                        char* currentPointer = moveablePointer;
                                         StylingCheck(ref moveablePointer);
+                                        if (moveablePointer == currentPointer)
+                                        {
+                                            moveablePointer++;
+                                        }
                                     }
                                     if (moveablePointer >= charPointerEnd)
                                     {
