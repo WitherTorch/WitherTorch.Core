@@ -147,33 +147,30 @@ namespace WitherTorch.Core
 #endif
             private static bool StylingCheck(char c, ref int stylingState)
             {
-                switch (stylingState)
+                if (stylingState == 0)
                 {
-                    case 0: //State 0: Not in styling
-                        if (c == '\u001b')
-                        {
-                            stylingState = 1;
-                            return false;
-                        }
-                        return true;
-                    case 1: //State 1: in Styling Header(Find left bracket)
-                        if (c == '[')
-                        {
-                            stylingState = 2;
-                        }
-                        else
-                        {
-                            stylingState = 0;
-                        }
+                    if (c == '\u001b')
+                    {
+                        stylingState = 1;
                         return false;
-                    case 2: //State 2: in Styling (Ignore everything but 0x40–0x7E)
-                        if (c >= '\u0040' && c <= '\u007E')
-                        {
-                            stylingState = 0;
-                        }
-                        return false;
-                    default:
-                        return true;
+                    }
+                    return true;
+                }
+                else if (stylingState == 1)
+                {
+                    if (c == '[')
+                        stylingState++;
+                    else
+                        stylingState--;
+                    return false;
+                }
+                else
+                {
+                    if (c >= '\u0040' && c <= '\u007E')
+                    {
+                        stylingState = 0;
+                    }
+                    return false;
                 }
             }
 
