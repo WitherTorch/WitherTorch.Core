@@ -176,10 +176,7 @@ namespace WitherTorch.Core
                         {
                             stylingState = 0;
                         }
-                        else
-                        {
-                            charPtr++;
-                        }
+                        charPtr++;
                     }
                 } while (stylingState > 0);
             }
