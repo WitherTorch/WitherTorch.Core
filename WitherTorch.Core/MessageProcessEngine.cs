@@ -147,8 +147,9 @@ namespace WitherTorch.Core
                         if (c == '\u001b')
                         {
                             stylingState = 1;
+                            return true;
                         }
-                        return true;
+                        break;
                     case 1: //State 1: in Styling Header(Find left bracket)
                         if (c == '[')
                         {
@@ -228,74 +229,75 @@ namespace WitherTorch.Core
                                         while (moveablePointer < charPointerEnd)
                                         {
                                             char rollChar = *moveablePointer;
-                                            if (StylingCheck(rollChar, ref stylingState))
-                                                continue;
-                                            switch (rollChar)
+                                            if (!StylingCheck(rollChar, ref stylingState))
                                             {
-                                                case '\0':
-                                                    successed = false;
-                                                    break;
-                                                case '[':
-                                                    bracketCount++;
-                                                    goto default;
-                                                case ']':
-                                                    bracketCount--;
-                                                    goto default;
-                                                case ':':
-                                                    if (!fulfilled)
-                                                    {
-                                                        if (movableTimePointer >= timeArrEnd && numberTime >= 2)
+                                                switch (rollChar)
+                                                {
+                                                    case '\0':
+                                                        successed = false;
+                                                        break;
+                                                    case '[':
+                                                        bracketCount++;
+                                                        goto default;
+                                                    case ']':
+                                                        bracketCount--;
+                                                        goto default;
+                                                    case ':':
+                                                        if (!fulfilled)
                                                         {
-                                                            fulfilled = true;
-                                                        }
-                                                        else
-                                                        {
-                                                            movableTimePointer++;
-                                                            numberTime = 0;
-                                                        }
-                                                    }
-                                                    break;
-                                                default:
-                                                    if (!fulfilled)
-                                                    {
-                                                        if (movableTimePointer >= timeArrEnd && numberTime >= 2)
-                                                        {
-                                                            fulfilled = true;
-                                                        }
-                                                        else
-                                                        {
-                                                            if (rollChar >= '0' && rollChar <= '9')
+                                                            if (movableTimePointer >= timeArrEnd && numberTime >= 2)
                                                             {
-                                                                if (numberTime < 2)
-                                                                {
-                                                                    switch (numberTime)
-                                                                    {
-                                                                        case 0:
-                                                                            *movableTimePointer = (sbyte)(rollChar - '0');
-                                                                            break;
-                                                                        case 1:
-                                                                            *movableTimePointer = (sbyte)(*movableTimePointer * 10 + rollChar - '0');
-                                                                            break;
-                                                                    }
-                                                                    numberTime++;
-                                                                }
-                                                                else
-                                                                {
-                                                                    movableTimePointer = timeArr;
-                                                                }
+                                                                fulfilled = true;
                                                             }
                                                             else
                                                             {
+                                                                movableTimePointer++;
                                                                 numberTime = 0;
-                                                                movableTimePointer = timeArr;
                                                             }
                                                         }
-                                                    }
+                                                        break;
+                                                    default:
+                                                        if (!fulfilled)
+                                                        {
+                                                            if (movableTimePointer >= timeArrEnd && numberTime >= 2)
+                                                            {
+                                                                fulfilled = true;
+                                                            }
+                                                            else
+                                                            {
+                                                                if (rollChar >= '0' && rollChar <= '9')
+                                                                {
+                                                                    if (numberTime < 2)
+                                                                    {
+                                                                        switch (numberTime)
+                                                                        {
+                                                                            case 0:
+                                                                                *movableTimePointer = (sbyte)(rollChar - '0');
+                                                                                break;
+                                                                            case 1:
+                                                                                *movableTimePointer = (sbyte)(*movableTimePointer * 10 + rollChar - '0');
+                                                                                break;
+                                                                        }
+                                                                        numberTime++;
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        movableTimePointer = timeArr;
+                                                                    }
+                                                                }
+                                                                else
+                                                                {
+                                                                    numberTime = 0;
+                                                                    movableTimePointer = timeArr;
+                                                                }
+                                                            }
+                                                        }
+                                                        break;
+                                                }
+                                                if (!successed || (fulfilled && bracketCount <= 0))
+                                                {
                                                     break;
-                                            }
-                                            if (!successed || (fulfilled && bracketCount <= 0))
-                                            {
-                                                break;
+                                                }
                                             }
                                             moveablePointer++;
                                         }
@@ -325,53 +327,54 @@ namespace WitherTorch.Core
                                     while (moveablePointer < charPointerEnd)
                                     {
                                         char c = *moveablePointer;
-                                        if (StylingCheck(c, ref stylingState))
-                                            continue;
-                                        bool jump = false;
-                                        char* nextPointer = moveablePointer + 1;
-                                        char nextChar;
-                                        if (nextPointer < charPointerEnd)
+                                        if (!StylingCheck(c, ref stylingState))
                                         {
-                                            nextChar = *nextPointer;
-                                        }
-                                        else
-                                        {
-                                            nextChar = '\0';
-                                        }
-                                        switch (c)
-                                        {
-                                            case ':':
-                                                jump = true;
-                                                break;
-                                            case ' ':
-                                                if (nextChar == '[')
-                                                {
-                                                    moveablePointer += 2;
-                                                    bracketCount++;
-                                                    continue;
-                                                }
-                                                break;
-                                            case '[':
-                                                bracketCount++;
-                                                break;
-                                            case ']':
-                                                if (nextChar == '[')
-                                                {
-                                                    moveablePointer += 2;
-                                                    continue;
-                                                }
-                                                else
-                                                {
-                                                    bracketCount--;
-                                                    if (nextChar == ':')
+                                            bool jump = false;
+                                            char* nextPointer = moveablePointer + 1;
+                                            char nextChar;
+                                            if (nextPointer < charPointerEnd)
+                                            {
+                                                nextChar = *nextPointer;
+                                            }
+                                            else
+                                            {
+                                                nextChar = '\0';
+                                            }
+                                            switch (c)
+                                            {
+                                                case ':':
+                                                    jump = true;
+                                                    break;
+                                                case ' ':
+                                                    if (nextChar == '[')
                                                     {
-                                                        moveablePointer++;
+                                                        moveablePointer += 2;
+                                                        bracketCount++;
+                                                        continue;
                                                     }
-                                                }
+                                                    break;
+                                                case '[':
+                                                    bracketCount++;
+                                                    break;
+                                                case ']':
+                                                    if (nextChar == '[')
+                                                    {
+                                                        moveablePointer += 2;
+                                                        continue;
+                                                    }
+                                                    else
+                                                    {
+                                                        bracketCount--;
+                                                        if (nextChar == ':')
+                                                        {
+                                                            moveablePointer++;
+                                                        }
+                                                    }
+                                                    break;
+                                            }
+                                            if (jump || bracketCount <= 0)
                                                 break;
                                         }
-                                        if (jump || bracketCount <= 0)
-                                            break;
                                         moveablePointer++;
                                     }
                                     while (StylingCheck(*++moveablePointer, ref stylingState) || (*moveablePointer == ' ' && moveablePointer < charPointerEnd))
