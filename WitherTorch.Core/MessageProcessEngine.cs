@@ -76,9 +76,8 @@ namespace WitherTorch.Core
 #elif NET472
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-            private unsafe void GetNoStylingMessage(char* charPointer, ref char* charPointerEndPtr)
+            private unsafe void GetNoStylingMessage(char* charPointer, ref char* charPointerEnd)
             {
-                char* charPointerEnd = charPointerEndPtr;
                 char* movablePointer = charPointer;
                 char* sizingPointer = charPointer;
                 int stylingState = 0;
@@ -91,7 +90,7 @@ namespace WitherTorch.Core
                             if (c == '\u001b')
                             {
                                 stylingState = 1;
-                                *movablePointer = '\0';
+                                *movablePointer = default;
                             }
                             else
                             {
@@ -107,37 +106,37 @@ namespace WitherTorch.Core
                             {
                                 stylingState = 0;
                             }
-                            *movablePointer = '\0';
+                            *movablePointer = default;
                             break;
                         case 2: //State 2: in Styling (Ignore everything but 0x40–0x7E)
                             if (c >= '\u0040' && c <= '\u007E')
                             {
                                 stylingState = 0;
                             }
-                            *movablePointer = '\0';
+                            *movablePointer = default;
                             break;
                     }
                     movablePointer++;
                 }
                 movablePointer = charPointer;
-                if (sizingPointer != charPointerEnd)
+                if (sizingPointer < charPointerEnd)
                 {
                     sizingPointer++;
                     char* movablePointer2 = charPointer;
                     while (movablePointer < charPointerEnd && movablePointer2 < sizingPointer)
                     {
-                        if (*movablePointer != '\0')
+                        char c = *movablePointer;
+                        if (c != default)
                         {
                             if (movablePointer2 != movablePointer)
                             {
-                                *movablePointer2 = *movablePointer;
-                                *movablePointer = '\0';
+                                (*movablePointer, *movablePointer2) = (default, *movablePointer);
                             }
                             movablePointer2++;
                         }
                         movablePointer++;
                     }
-                    charPointerEndPtr = sizingPointer;
+                    charPointerEnd = sizingPointer;
                 }
             }
 
