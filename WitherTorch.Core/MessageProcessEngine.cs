@@ -139,6 +139,36 @@ namespace WitherTorch.Core
                 }
             }
 
+            private static bool StylingCheck(char c, ref int stylingState)
+            {
+                switch (stylingState)
+                {
+                    case 0: //State 0: Not in styling
+                        if (c == '\u001b')
+                        {
+                            stylingState = 1;
+                        }
+                        return true;
+                    case 1: //State 1: in Styling Header(Find left bracket)
+                        if (c == '[')
+                        {
+                            stylingState = 2;
+                        }
+                        else
+                        {
+                            stylingState = 0;
+                        }
+                        return true;
+                    case 2: //State 2: in Styling (Ignore everything but 0x40–0x7E)
+                        if (c >= '\u0040' && c <= '\u007E')
+                        {
+                            stylingState = 0;
+                        }
+                        return true;
+                }
+                return false;
+            }
+
 #if NET5_0_OR_GREATER
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
 #elif NET472
@@ -176,8 +206,6 @@ namespace WitherTorch.Core
                 {
                     char* moveablePointer = charPointer;
                     char* charPointerEnd = charPointer + length;
-                    if (noStyling)
-                        GetNoStylingMessage(charPointer, &charPointerEnd);
                     bool successed = true;
                     bool hasContent = true;
                     ProcessedMessage.MessageTime time = ProcessedMessage.MessageTime.Empty;
@@ -196,9 +224,12 @@ namespace WitherTorch.Core
                                     {
                                         sbyte* movableTimePointer = timeArr;
                                         sbyte* timeArrEnd = timeArr + 2;
+                                        int stylingState = 0;
                                         while (moveablePointer < charPointerEnd)
                                         {
                                             char rollChar = *moveablePointer;
+                                            if (StylingCheck(rollChar, ref stylingState))
+                                                continue;
                                             switch (rollChar)
                                             {
                                                 case '\0':
@@ -290,10 +321,13 @@ namespace WitherTorch.Core
                                     if (*moveablePointer == ']') moveablePointer++;
                                     char* scanStart = moveablePointer;
                                     int bracketCount = 0;
+                                    int stylingState = 0;
                                     while (moveablePointer < charPointerEnd)
                                     {
-                                        bool jump = false;
                                         char c = *moveablePointer;
+                                        if (StylingCheck(c, ref stylingState))
+                                            continue;
+                                        bool jump = false;
                                         char* nextPointer = moveablePointer + 1;
                                         char nextChar;
                                         if (nextPointer < charPointerEnd)
@@ -340,7 +374,7 @@ namespace WitherTorch.Core
                                             break;
                                         moveablePointer++;
                                     }
-                                    while (*++moveablePointer == ' ' && moveablePointer < charPointerEnd)
+                                    while (StylingCheck(*++moveablePointer, ref stylingState) || (*moveablePointer == ' ' && moveablePointer < charPointerEnd))
                                     {
                                     }
                                     if (moveablePointer >= charPointerEnd)
@@ -356,17 +390,14 @@ namespace WitherTorch.Core
                                 break;
                             case 2:
                                 {
-                                    while (*moveablePointer == ' ')
+                                    int stylingState = 0;
+                                    while (*moveablePointer == ' ' || StylingCheck(*moveablePointer, ref stylingState))
                                     {
                                         moveablePointer++;
                                     }
+                                    GetNoStylingMessage(moveablePointer, &charPointerEnd);
                                     content = new string(moveablePointer, 0, (int)(charPointerEnd - moveablePointer));
                                     state++;
-                                }
-                                break;
-                            case 3:
-                                {
-
                                 }
                                 break;
                         }
