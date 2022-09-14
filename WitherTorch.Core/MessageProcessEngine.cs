@@ -307,9 +307,7 @@ namespace WitherTorch.Core
                                     {
                                         if (fulfilled)
                                         {
-                                            time.Hour = *timeArr;
-                                            time.Minute = *(timeArr + 1);
-                                            time.Second = *timeArrEnd;
+                                            time = new ProcessedMessage.MessageTime(*timeArr, *(timeArr + 1), *timeArrEnd);
                                             state++;
                                         }
                                         else
@@ -435,21 +433,38 @@ namespace WitherTorch.Core
             }
 
             [StructLayout(LayoutKind.Sequential)]
-            public struct MessageTime
+            public readonly struct MessageTime
             {
-                public sbyte Hour;
-                public sbyte Minute;
-                public sbyte Second;
+                public readonly sbyte Hour;
+                public readonly sbyte Minute;
+                public readonly sbyte Second;
 
-                public static MessageTime Empty = new MessageTime() { Hour = -1, Minute = -1, Second = -1 };
+                public static MessageTime Empty = new MessageTime(-1);
 
                 public bool IsEmpty => Hour == -1;
 
-                public MessageTime(in DateTime time)
+                public MessageTime(DateTime time)
                 {
-                    Hour = (sbyte)time.Hour;
-                    Minute = (sbyte)time.Minute;
-                    Second = (sbyte)time.Second;
+                    unchecked
+                    {
+                        Hour = (sbyte)time.Hour;
+                        Minute = (sbyte)time.Minute;
+                        Second = (sbyte)time.Second;
+                    }
+                }
+
+                private MessageTime(sbyte hour)
+                {
+                    Hour = hour;
+                    Minute = 0;
+                    Second = 0;
+                }
+
+                public MessageTime(sbyte hour, sbyte minute, sbyte second)
+                {
+                    Hour = hour;
+                    Minute = minute;
+                    Second = second;
                 }
             }
         }
