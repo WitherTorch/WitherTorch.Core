@@ -34,14 +34,14 @@ namespace WitherTorch.Core
 #elif NET472
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        public static bool TryProcessMessage(string message, bool noStyling, out ProcessedMessage result)
+        public static bool TryProcessMessage(string message, out ProcessedMessage result)
         {
             MessageProcessEngine engine = MessageProcessEngine.engine;
             if (engine == null)
             {
                 engine = MessageProcessEngine.engine = new DefaultMessageProcessEngine();
             }
-            if (engine.TryProcessMessageInternal(message, noStyling, out result))
+            if (engine.TryProcessMessageInternal(message, out result))
                 return true;
             else
                 return false;
@@ -52,24 +52,25 @@ namespace WitherTorch.Core
 #elif NET472
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        public static bool TryProcessMessage(char[] message, bool noStyling, out ProcessedMessage result)
+        public static bool TryProcessMessage(char[] message, out ProcessedMessage result)
         {
             MessageProcessEngine engine = MessageProcessEngine.engine;
             if (engine == null)
             {
                 engine = MessageProcessEngine.engine = new DefaultMessageProcessEngine();
             }
-            if (engine.TryProcessMessageInternal(message, noStyling, out result))
+            if (engine.TryProcessMessageInternal(message, out result))
                 return true;
             else
                 return false;
         }
-        protected abstract bool TryProcessMessageInternal(string message, bool noStyling, out ProcessedMessage result);
-        protected abstract bool TryProcessMessageInternal(char[] message, bool noStyling, out ProcessedMessage result);
+        protected abstract bool TryProcessMessageInternal(string message, out ProcessedMessage result);
+        protected abstract bool TryProcessMessageInternal(char[] message, out ProcessedMessage result);
 
         #region Default Implementation
         private class DefaultMessageProcessEngine : MessageProcessEngine
         {
+
 #if NET5_0_OR_GREATER
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
 #elif NET472
@@ -139,6 +140,11 @@ namespace WitherTorch.Core
                 }
             }
 
+#if NET5_0_OR_GREATER
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+#elif NET472
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
             private static bool StylingCheck(char c, ref int stylingState)
             {
                 switch (stylingState)
@@ -175,11 +181,11 @@ namespace WitherTorch.Core
 #elif NET472
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-            protected unsafe override bool TryProcessMessageInternal(string message, bool noStyling, out ProcessedMessage result)
+            protected unsafe override bool TryProcessMessageInternal(string message, out ProcessedMessage result)
             {
                 fixed (char* charPointer = message)
                 {
-                    return TryProcessMessageInternal(charPointer, message.Length, noStyling, out result);
+                    return TryProcessMessageInternal(charPointer, message.Length, out result);
                 }
             }
 
@@ -188,11 +194,11 @@ namespace WitherTorch.Core
 #elif NET472
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-            protected unsafe override bool TryProcessMessageInternal(char[] message, bool noStyling, out ProcessedMessage result)
+            protected unsafe override bool TryProcessMessageInternal(char[] message, out ProcessedMessage result)
             {
                 fixed (char* charPointer = message)
                 {
-                    return TryProcessMessageInternal(charPointer, message.Length, noStyling, out result);
+                    return TryProcessMessageInternal(charPointer, message.Length, out result);
                 }
             }
 
@@ -201,7 +207,7 @@ namespace WitherTorch.Core
 #elif NET472
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-            protected unsafe bool TryProcessMessageInternal(char* charPointer, int length, bool noStyling, out ProcessedMessage result)
+            protected unsafe bool TryProcessMessageInternal(char* charPointer, int length, out ProcessedMessage result)
             {
                 try
                 {
