@@ -119,18 +119,18 @@ namespace WitherTorch.Core
                     movablePointer++;
                 }
                 movablePointer = charPointer;
-                if (sizingPointer < charPointerEnd)
+                if (sizingPointer < charPointerEnd - 1)
                 {
                     sizingPointer++;
                     char* movablePointer2 = charPointer;
                     while (movablePointer < charPointerEnd && movablePointer2 < sizingPointer)
                     {
-                        char c = *movablePointer;
+                        ref char c = ref *movablePointer;
                         if (c != default)
                         {
                             if (movablePointer2 != movablePointer)
                             {
-                                (*movablePointer, *movablePointer2) = (default, *movablePointer);
+                                (c, *movablePointer2) = (default, c);
                             }
                             movablePointer2++;
                         }
@@ -285,10 +285,10 @@ namespace WitherTorch.Core
                                                                             switch (numberTime)
                                                                             {
                                                                                 case 0:
-                                                                                    *movableTimePointer = (sbyte)(rollChar - '0');
+                                                                                    *movableTimePointer = unchecked((sbyte)(rollChar - '0'));
                                                                                     break;
                                                                                 case 1:
-                                                                                    *movableTimePointer = (sbyte)(*movableTimePointer * 10 + rollChar - '0');
+                                                                                    *movableTimePointer = unchecked((sbyte)(*movableTimePointer * 10 + rollChar - '0'));
                                                                                     break;
                                                                             }
                                                                             numberTime++;
