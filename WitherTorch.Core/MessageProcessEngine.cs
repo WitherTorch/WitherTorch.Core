@@ -78,65 +78,68 @@ namespace WitherTorch.Core
 #endif
             private unsafe void GetNoStylingMessage(char* charPointer, ref char* charPointerEnd)
             {
-                char* movablePointer = charPointer;
-                char* sizingPointer = charPointer;
-                int stylingState = 0;
-                while (movablePointer < charPointerEnd)
+                if (charPointer < charPointerEnd)
                 {
-                    ref char c = ref *movablePointer;
-                    switch (stylingState)
-                    {
-                        case 0: //State 0: Not in styling
-                            if (c == '\u001b')
-                            {
-                                stylingState = 1;
-                                c = default;
-                            }
-                            else
-                            {
-                                sizingPointer++;
-                            }
-                            break;
-                        case 1: //State 1: in Styling Header(Find left bracket)
-                            if (c == '[')
-                            {
-                                stylingState = 2;
-                            }
-                            else
-                            {
-                                stylingState = 0;
-                            }
-                            c = default;
-                            break;
-                        case 2: //State 2: in Styling (Ignore everything but 0x40–0x7E)
-                            if (c >= '\u0040' && c <= '\u007E')
-                            {
-                                stylingState = 0;
-                            }
-                            c = default;
-                            break;
-                    }
-                    movablePointer++;
-                }
-                if (sizingPointer < charPointerEnd - 1)
-                {
-                    sizingPointer++;
-                    movablePointer = charPointer;
-                    char* movablePointer2 = charPointer;
-                    while (movablePointer < charPointerEnd && movablePointer2 < sizingPointer)
+                    char* movablePointer = charPointer;
+                    char* sizingPointer = charPointer;
+                    int stylingState = 0;
+                    while (movablePointer < charPointerEnd)
                     {
                         ref char c = ref *movablePointer;
-                        if (c != default)
+                        switch (stylingState)
                         {
-                            if (movablePointer2 != movablePointer)
-                            {
-                                (c, *movablePointer2) = (default, c);
-                            }
-                            movablePointer2++;
+                            case 0: //State 0: Not in styling
+                                if (c == '\u001b')
+                                {
+                                    stylingState = 1;
+                                    c = default;
+                                }
+                                else
+                                {
+                                    sizingPointer++;
+                                }
+                                break;
+                            case 1: //State 1: in Styling Header(Find left bracket)
+                                if (c == '[')
+                                {
+                                    stylingState = 2;
+                                }
+                                else
+                                {
+                                    stylingState = 0;
+                                }
+                                c = default;
+                                break;
+                            case 2: //State 2: in Styling (Ignore everything but 0x40–0x7E)
+                                if (c >= '\u0040' && c <= '\u007E')
+                                {
+                                    stylingState = 0;
+                                }
+                                c = default;
+                                break;
                         }
                         movablePointer++;
                     }
-                    charPointerEnd = sizingPointer;
+                    if (sizingPointer < charPointerEnd - 1)
+                    {
+                        sizingPointer++;
+                        movablePointer = charPointer;
+                        char* movablePointer2 = charPointer;
+                        while (movablePointer < charPointerEnd && movablePointer2 < sizingPointer)
+                        {
+                            ref char c = ref *movablePointer;
+                            if (c != default)
+                            {
+                                if (movablePointer2 != movablePointer)
+                                {
+                                    (c, *movablePointer2) = (default, c);
+                                }
+                                movablePointer2++;
+                            }
+                            movablePointer++;
+                        }
+                        charPointerEnd = sizingPointer;
+                    }
                 }
             }
 
