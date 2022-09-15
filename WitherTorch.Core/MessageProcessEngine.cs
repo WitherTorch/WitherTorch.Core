@@ -388,7 +388,9 @@ namespace WitherTorch.Core
                                 {
                                     state++;
                                 }
-                                extraString = new string(scanStart, 0, (int)(moveablePointer - scanStart));
+                                char* scanEnd = moveablePointer;
+                                GetNoStylingMessage(scanStart, ref scanEnd);
+                                extraString = new string(scanStart, 0, (int)(scanEnd - scanStart));
                             }
                             break;
                         case 2:
