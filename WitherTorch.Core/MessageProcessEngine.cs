@@ -83,7 +83,7 @@ namespace WitherTorch.Core
                     char* movablePointer = charPointer;
                     char* sizingPointer = charPointer;
                     int stylingState = 0;
-                    while (movablePointer < charPointerEnd)
+                    do
                     {
                         ref char c = ref *movablePointer;
                         switch (stylingState)
@@ -119,13 +119,12 @@ namespace WitherTorch.Core
                                 break;
                         }
                         movablePointer++;
-                    }
-                    if (sizingPointer < charPointerEnd - 1)
+                    } while (movablePointer < charPointerEnd);
+                    if (++sizingPointer < charPointerEnd && charPointer < sizingPointer)
                     {
-                        sizingPointer++;
                         movablePointer = charPointer;
                         char* movablePointer2 = charPointer;
-                        while (movablePointer < charPointerEnd && movablePointer2 < sizingPointer)
+                        do
                         {
                             ref char c = ref *movablePointer;
                             if (c != default)
@@ -137,7 +136,7 @@ namespace WitherTorch.Core
                                 movablePointer2++;
                             }
                             movablePointer++;
-                        }
+                        } while (movablePointer < charPointerEnd && movablePointer2 < sizingPointer);
                         charPointerEnd = sizingPointer;
                     }
                 }
