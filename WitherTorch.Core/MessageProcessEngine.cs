@@ -80,27 +80,28 @@ namespace WitherTorch.Core
             {
                 if (charPointer < charPointerEnd)
                 {
-                    char* movablePointer = charPointer;
-                    char* sizingPointer = charPointer;
+                    char* iteratorPointer = charPointer;
+                    char* limitPointer = charPointer;
                     int stylingState = 0;
+                    char iteratingChar;
                     do
                     {
-                        ref char c = ref *movablePointer;
+                        iteratingChar = *iteratorPointer;
                         switch (stylingState)
                         {
                             case 0: //State 0: Not in styling
-                                if (c == '\u001b')
+                                if (iteratingChar == '\u001b')
                                 {
                                     stylingState = 1;
-                                    c = default;
+                                    *iteratorPointer = default;
                                 }
                                 else
                                 {
-                                    sizingPointer++;
+                                    limitPointer++;
                                 }
                                 break;
                             case 1: //State 1: in Styling Header(Find left bracket)
-                                if (c == '[')
+                                if (iteratingChar == '[')
                                 {
                                     stylingState = 2;
                                 }
@@ -108,36 +109,35 @@ namespace WitherTorch.Core
                                 {
                                     stylingState = 0;
                                 }
-                                c = default;
+                                *iteratorPointer = default;
                                 break;
                             case 2: //State 2: in Styling (Ignore everything but 0x40–0x7E)
-                                if (c >= '\u0040' && c <= '\u007E')
+                                if (iteratingChar >= '\u0040' && iteratingChar <= '\u007E')
                                 {
                                     stylingState = 0;
                                 }
-                                c = default;
+                                *iteratorPointer = default;
                                 break;
                         }
-                        movablePointer++;
-                    } while (movablePointer < charPointerEnd);
-                    if (++sizingPointer < charPointerEnd && charPointer < sizingPointer)
+                    } while (++iteratorPointer < charPointerEnd);
+                    if (++limitPointer < charPointerEnd && charPointer < limitPointer)
                     {
-                        movablePointer = charPointer;
-                        char* movablePointer2 = charPointer;
+                        iteratorPointer = charPointer;
+                        char* iteratorPointer2 = charPointer;
                         do
                         {
-                            ref char c = ref *movablePointer;
-                            if (c != default)
+                            iteratingChar = *iteratorPointer;
+                            if (iteratingChar != default)
                             {
-                                if (movablePointer2 != movablePointer)
+                                if (iteratorPointer != iteratorPointer2)
                                 {
-                                    (c, *movablePointer2) = (default, c);
+                                    (*iteratorPointer, *iteratorPointer2) = (default, iteratingChar);
                                 }
-                                movablePointer2++;
+                                iteratorPointer2++;
                             }
-                            movablePointer++;
-                        } while (movablePointer < charPointerEnd && movablePointer2 < sizingPointer);
-                        charPointerEnd = sizingPointer;
+                            iteratorPointer++;
+                        } while (iteratorPointer < charPointerEnd && iteratorPointer2 < limitPointer);
+                        charPointerEnd = limitPointer;
                     }
                 }
             }
@@ -209,13 +209,13 @@ namespace WitherTorch.Core
 #endif
             protected unsafe bool TryProcessMessageInternal(char* charPointer, int length, out ProcessedMessage result)
             {
-                char* moveablePointer = charPointer;
                 char* charPointerEnd = charPointer + length;
+                char* iteratorPointer = charPointer;
+                char iteratingChar;
                 bool successed = true;
-                bool hasContent = true;
+                int state = 0;
                 ProcessedMessage.MessageTime time = ProcessedMessage.MessageTime.Empty;
                 string extraString = null, content = null;
-                int state = 0;
                 do
                 {
                     switch (state)
@@ -230,12 +230,12 @@ namespace WitherTorch.Core
                                     sbyte* movableTimePointer = timeArr;
                                     sbyte* timeArrEnd = timeArr + 2;
                                     int stylingState = 0;
-                                    while (moveablePointer < charPointerEnd)
+                                    while (iteratorPointer < charPointerEnd)
                                     {
-                                        char rollChar = *moveablePointer;
-                                        if (StylingCheck(rollChar, ref stylingState))
+                                        iteratingChar = *iteratorPointer;
+                                        if (StylingCheck(iteratingChar, ref stylingState))
                                         {
-                                            switch (rollChar)
+                                            switch (iteratingChar)
                                             {
                                                 case '\0':
                                                     successed = false;
@@ -269,17 +269,17 @@ namespace WitherTorch.Core
                                                         }
                                                         else
                                                         {
-                                                            if (rollChar >= '0' && rollChar <= '9')
+                                                            if (iteratingChar >= '0' && iteratingChar <= '9')
                                                             {
                                                                 if (numberTime < 2)
                                                                 {
                                                                     switch (numberTime)
                                                                     {
                                                                         case 0:
-                                                                            *movableTimePointer = unchecked((sbyte)(rollChar - '0'));
+                                                                            *movableTimePointer = unchecked((sbyte)(iteratingChar - '0'));
                                                                             break;
                                                                         case 1:
-                                                                            *movableTimePointer = unchecked((sbyte)(*movableTimePointer * 10 + rollChar - '0'));
+                                                                            *movableTimePointer = unchecked((sbyte)(*movableTimePointer * 10 + iteratingChar - '0'));
                                                                             break;
                                                                     }
                                                                     numberTime++;
@@ -303,7 +303,7 @@ namespace WitherTorch.Core
                                                 break;
                                             }
                                         }
-                                        moveablePointer++;
+                                        iteratorPointer++;
                                     }
                                     if (successed)
                                     {
@@ -322,17 +322,17 @@ namespace WitherTorch.Core
                             break;
                         case 1:
                             {
-                                if (*moveablePointer == ']') moveablePointer++;
-                                char* scanStart = moveablePointer;
+                                if (*iteratorPointer == ']') iteratorPointer++;
+                                char* scanStart = iteratorPointer;
                                 int bracketCount = 0;
                                 int stylingState = 0;
-                                while (moveablePointer < charPointerEnd)
+                                while (iteratorPointer < charPointerEnd)
                                 {
-                                    char c = *moveablePointer;
-                                    if (StylingCheck(c, ref stylingState))
+                                    iteratingChar = *iteratorPointer;
+                                    if (StylingCheck(iteratingChar, ref stylingState))
                                     {
                                         bool jump = false;
-                                        char* nextPointer = moveablePointer + 1;
+                                        char* nextPointer = iteratorPointer + 1;
                                         char nextChar;
                                         if (nextPointer < charPointerEnd)
                                         {
@@ -342,7 +342,7 @@ namespace WitherTorch.Core
                                         {
                                             nextChar = '\0';
                                         }
-                                        switch (c)
+                                        switch (iteratingChar)
                                         {
                                             case ':':
                                                 jump = true;
@@ -350,7 +350,7 @@ namespace WitherTorch.Core
                                             case ' ':
                                                 if (nextChar == '[')
                                                 {
-                                                    moveablePointer += 2;
+                                                    iteratorPointer += 2;
                                                     bracketCount++;
                                                     continue;
                                                 }
@@ -361,7 +361,7 @@ namespace WitherTorch.Core
                                             case ']':
                                                 if (nextChar == '[')
                                                 {
-                                                    moveablePointer += 2;
+                                                    iteratorPointer += 2;
                                                     continue;
                                                 }
                                                 else
@@ -369,7 +369,7 @@ namespace WitherTorch.Core
                                                     bracketCount--;
                                                     if (nextChar == ':')
                                                     {
-                                                        moveablePointer++;
+                                                        iteratorPointer++;
                                                     }
                                                 }
                                                 break;
@@ -377,20 +377,20 @@ namespace WitherTorch.Core
                                         if (jump || bracketCount <= 0)
                                             break;
                                     }
-                                    moveablePointer++;
+                                    iteratorPointer++;
                                 }
-                                while (!StylingCheck(*++moveablePointer, ref stylingState) || (*moveablePointer == ' ' && moveablePointer < charPointerEnd))
+                                while (!StylingCheck(*++iteratorPointer, ref stylingState) || (*iteratorPointer == ' ' && iteratorPointer < charPointerEnd))
                                 {
                                 }
-                                if (moveablePointer >= charPointerEnd)
+                                if (iteratorPointer >= charPointerEnd)
                                 {
-                                    hasContent = false;
+                                    successed = false;
                                 }
                                 else
                                 {
                                     state++;
                                 }
-                                char* scanEnd = moveablePointer;
+                                char* scanEnd = iteratorPointer;
                                 GetNoStylingMessage(scanStart, ref scanEnd);
                                 extraString = new string(scanStart, 0, (int)(scanEnd - scanStart));
                             }
@@ -398,17 +398,17 @@ namespace WitherTorch.Core
                         case 2:
                             {
                                 int stylingState = 0;
-                                while (*moveablePointer == ' ' || !StylingCheck(*moveablePointer, ref stylingState))
+                                while (*iteratorPointer == ' ' || !StylingCheck(*iteratorPointer, ref stylingState))
                                 {
-                                    moveablePointer++;
+                                    iteratorPointer++;
                                 }
-                                GetNoStylingMessage(moveablePointer, ref charPointerEnd);
-                                content = new string(moveablePointer, 0, unchecked((int)(charPointerEnd - moveablePointer)));
+                                GetNoStylingMessage(iteratorPointer, ref charPointerEnd);
+                                content = new string(iteratorPointer, 0, unchecked((int)(charPointerEnd - iteratorPointer)));
                                 state++;
                             }
                             break;
                     }
-                } while (successed && hasContent && state <= 2);
+                } while (successed && state <= 2);
                 if (successed)
                 {
                     result = new ProcessedMessage(time, content, extraString);
