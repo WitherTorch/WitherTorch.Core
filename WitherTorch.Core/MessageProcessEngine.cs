@@ -324,19 +324,16 @@ namespace WitherTorch.Core
                             {
                                 if (*iteratorPointer == ']') iteratorPointer++;
                                 char* scanStart = iteratorPointer;
-                                int bracketCount = 0;
-                                int stylingState = 0;
+                                int bracketCount = 0, stylingState = 0;
+                                char nextChar;
                                 while (iteratorPointer < charPointerEnd)
                                 {
                                     iteratingChar = *iteratorPointer;
                                     if (StylingCheck(iteratingChar, ref stylingState))
                                     {
-                                        bool jump = false;
-                                        char* nextPointer = iteratorPointer + 1;
-                                        char nextChar;
-                                        if (nextPointer < charPointerEnd)
+                                        if (++iteratorPointer < charPointerEnd)
                                         {
-                                            nextChar = *nextPointer;
+                                            nextChar = *iteratorPointer;
                                         }
                                         else
                                         {
@@ -345,7 +342,7 @@ namespace WitherTorch.Core
                                         switch (iteratingChar)
                                         {
                                             case ':':
-                                                jump = true;
+                                                bracketCount = -1;
                                                 break;
                                             case ' ':
                                                 if (nextChar == '[')
@@ -374,10 +371,13 @@ namespace WitherTorch.Core
                                                 }
                                                 break;
                                         }
-                                        if (jump || bracketCount <= 0)
+                                        if (bracketCount <= 0)
                                             break;
                                     }
-                                    iteratorPointer++;
+                                    else
+                                    {
+                                        iteratorPointer++;
+                                    }
                                 }
                                 while (!StylingCheck(*++iteratorPointer, ref stylingState) || (*iteratorPointer == ' ' && iteratorPointer < charPointerEnd))
                                 {
