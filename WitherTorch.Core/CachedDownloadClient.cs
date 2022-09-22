@@ -75,7 +75,7 @@ namespace WitherTorch.Core
                 {
                     DateTime now = DateTime.UtcNow;
                     DateTime exTime = DateTime.FromBinary(expiredTime.Value);
-                    isCacheNotOutdated = (now - exTime) > WTCore.CacheFileTTL;
+                    isCacheNotOutdated = (now - exTime) <= WTCore.CacheFileTTL;
                 }
                 string value = tokenObject["value"]?.Value<string>();
                 if (!string.IsNullOrWhiteSpace(value))
