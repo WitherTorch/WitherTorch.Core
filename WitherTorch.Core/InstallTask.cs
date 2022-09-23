@@ -18,7 +18,7 @@ namespace WitherTorch.Core
             if (InstallPercentage != percentage)
             {
                 InstallPercentage = percentage;
-                PercentageChanged?.Invoke(this, new EventArgs());
+                PercentageChanged?.Invoke(this, EventArgs.Empty);
             }
         }
         public void ChangeStatus(IInstallStatus status)

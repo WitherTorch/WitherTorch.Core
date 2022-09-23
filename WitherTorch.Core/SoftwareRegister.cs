@@ -38,8 +38,7 @@ namespace WitherTorch.Core
             {
                 if (regDelegate != null)
                 {
-
-                    if (WTCore.RegisterSoftwareTimeout == Timeout.Infinite)
+                    if (WTCore.RegisterSoftwareTimeout == Timeout.InfiniteTimeSpan)
                     {
                         try
                         {
@@ -55,7 +54,7 @@ namespace WitherTorch.Core
                         using (CancellationTokenSource tokenSource = new CancellationTokenSource())
                         {
                             Task result = Task.Run(regDelegate);
-                            if (!result.Wait(WTCore.RegisterSoftwareTimeout, tokenSource.Token))
+                            if (!result.Wait((int)WTCore.RegisterSoftwareTimeout.TotalMilliseconds, tokenSource.Token))
                             {
                                 tokenSource.Cancel();
                                 return;
@@ -76,39 +75,6 @@ namespace WitherTorch.Core
                 }
             }
             return null;
-        }
-    }
-
-    public class RegisterToken : IStrongBox
-    {
-        bool value;
-
-        internal protected RegisterToken()
-        {
-            value = true;
-        }
-
-        public object Value
-        {
-            get => value;
-            set => this.value = value as bool? ?? true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Cancel()
-        {
-            value = false;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Reset()
-        {
-            value = true;
-        }
-
-        public static implicit operator bool(RegisterToken a)
-        {
-            return a.value;
         }
     }
 }
