@@ -135,9 +135,9 @@ namespace WitherTorch.Core
                 InnerProcess.ErrorDataReceived -= Process_ErrorDataReceived;
                 InnerProcess.OutputDataReceived -= Process_OutputDataReceived;
                 InnerProcess.Exited -= Process_Exited;
+                OnProcessEnded();
                 InnerProcess.Dispose();
                 InnerProcess = null;
-                OnProcessEnded();
             }
         }
 
