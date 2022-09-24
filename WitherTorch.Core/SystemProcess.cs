@@ -10,24 +10,72 @@ namespace WitherTorch.Core
         private bool disposedValue;
 
         public DProcess InnerProcess { get; protected set; }
-
-        public override bool IsAlive()
+        public override int ID
         {
-            DProcess innerProcess = InnerProcess;
-            if (innerProcess == null)
+            get
             {
-                return false;
-            }
-            else
-            {
-                try
+                DProcess innerProcess = InnerProcess;
+                if (innerProcess == null)
                 {
-                    innerProcess.Refresh();
-                    return !innerProcess.HasExited;
+                    return default;
                 }
-                catch (InvalidOperationException)
+                else
+                {
+                    try
+                    {
+                        return innerProcess.Id;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return default;
+                    }
+                }
+            }
+        }
+
+        public override DateTime StartTime
+        {
+            get
+            {
+                DProcess innerProcess = InnerProcess;
+                if (innerProcess == null)
+                {
+                    return default;
+                }
+                else
+                {
+                    try
+                    {
+                        return innerProcess.StartTime;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return default;
+                    }
+                }
+            }
+        }
+
+
+        public override bool IsAlive
+        {
+            get
+            {
+                DProcess innerProcess = InnerProcess;
+                if (innerProcess == null)
                 {
                     return false;
+                }
+                else
+                {
+                    try
+                    {
+                        return !innerProcess.HasExited;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return false;
+                    }
                 }
             }
         }
@@ -49,7 +97,8 @@ namespace WitherTorch.Core
             }
         }
 
-        public override void InputCommand(string command = "")
+        /// <inheritdoc/>
+        public override void InputCommand(string command)
         {
             if (!string.IsNullOrWhiteSpace(command))
                 InnerProcess?.StandardInput.WriteLine(command);
@@ -76,7 +125,7 @@ namespace WitherTorch.Core
             }
             process.Exited += Process_Exited;
             InnerProcess = process;
-            OnProcessStarted(this);
+            OnProcessStarted();
         }
 
         private void Process_Exited(object sender, EventArgs e)
@@ -88,18 +137,18 @@ namespace WitherTorch.Core
                 InnerProcess.Exited -= Process_Exited;
                 InnerProcess.Dispose();
                 InnerProcess = null;
-                OnProcessEnded(this);
+                OnProcessEnded();
             }
         }
 
         private void Process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            OnMessageRecived(this, new ProcessMessageEventArgs(true, e.Data ?? string.Empty));
+            OnMessageRecived(new ProcessMessageEventArgs(true, e.Data ?? string.Empty));
         }
 
         private void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
-            OnMessageRecived(this, new ProcessMessageEventArgs(false, e.Data ?? string.Empty));
+            OnMessageRecived(new ProcessMessageEventArgs(false, e.Data ?? string.Empty));
         }
 
         protected virtual void Dispose(bool disposing)
