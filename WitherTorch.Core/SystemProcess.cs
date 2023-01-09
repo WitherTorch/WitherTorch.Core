@@ -15,7 +15,7 @@ namespace WitherTorch.Core
             get
             {
                 DProcess innerProcess = InnerProcess;
-                if (innerProcess == null)
+                if (innerProcess is null)
                 {
                     return default;
                 }
@@ -38,7 +38,7 @@ namespace WitherTorch.Core
             get
             {
                 DProcess innerProcess = InnerProcess;
-                if (innerProcess == null)
+                if (innerProcess is null)
                 {
                     return default;
                 }
@@ -62,7 +62,7 @@ namespace WitherTorch.Core
             get
             {
                 DProcess innerProcess = InnerProcess;
-                if (innerProcess == null)
+                if (innerProcess is null)
                 {
                     return false;
                 }

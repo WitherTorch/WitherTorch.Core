@@ -17,7 +17,7 @@ namespace WitherTorch.Core
             [MethodImpl(MethodImplOptions.Synchronized)]
             get
             {
-                if (_inst == null || _inst.disposedValue)
+                if (_inst is null || _inst.disposedValue)
                 {
                     _inst = new CachedDownloadClient();
                 }
@@ -103,7 +103,7 @@ namespace WitherTorch.Core
                         reader.Close();
                     }
                 }
-                catch (IOException) when (result == null)
+                catch (IOException) when (result is null)
                 {
                     hasCacheFile = false;
                 }
@@ -114,7 +114,7 @@ namespace WitherTorch.Core
             }
 
             string downloadedString = null;
-            if (result == null)
+            if (result is null)
             {
                 try
                 {
@@ -124,7 +124,7 @@ namespace WitherTorch.Core
                 {
                 }
 
-                if (downloadedString == null && hasCacheFile)
+                if (downloadedString is null && hasCacheFile)
                 {
                     try
                     {
@@ -158,7 +158,7 @@ namespace WitherTorch.Core
                             value = valueToken?.Value<string>();
                             hasKey = true;
                         }
-                        if (value == null)
+                        if (value is null)
                         {
                             value = Guid.NewGuid().ToString("N");
                             if (hasKey)

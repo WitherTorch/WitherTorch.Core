@@ -18,7 +18,7 @@ namespace WitherTorch.Core.Utils
             [MethodImpl(MethodImplOptions.NoInlining)]
             get
             {
-                if (jsonSerializer == null)
+                if (jsonSerializer is null)
                 {
                     jsonSerializer = JsonSerializer.CreateDefault();
                     jsonSerializer.Formatting = Formatting.Indented;

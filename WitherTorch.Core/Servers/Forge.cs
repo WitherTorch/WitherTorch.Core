@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 #if NET472
 using System.Net;
 using System.Runtime.CompilerServices;
@@ -29,7 +28,7 @@ namespace WitherTorch.Core.Servers
         private const string downloadURLPrefix = "https://maven.minecraftforge.net/net/minecraftforge/forge/";
         private static StringBuilder URLBuilder = null;
         internal static string[] versions;
-        internal static Dictionary<string, List<Tuple<string, string>>> versionDict;
+        internal static Dictionary<string, Tuple<string, string>[]> versionDict;
         protected bool _isStarted;
 
         protected SystemProcess process;
@@ -102,12 +101,12 @@ namespace WitherTorch.Core.Servers
             {
 
             }
-            versionDict = new Dictionary<string, List<Tuple<string, string>>>();
-            IEnumerable<string> keys = preparingVersionDict.Keys;
-            List<string> versionKeys = new List<string>(keys.Count());
+            versionDict = new Dictionary<string, Tuple<string, string>[]>();
+            var keys = preparingVersionDict.Keys;
+            List<string> versionKeys = new List<string>(keys.Count);
             versionKeys.AddRange(keys);
             var comparer = MojangAPI.VersionComparer.Instance;
-            if (comparer == null)
+            if (comparer is null)
             {
                 using (ManualResetEvent trigger = new ManualResetEvent(false))
                 {
@@ -116,7 +115,7 @@ namespace WitherTorch.Core.Servers
                         trigger.Set();
                     }
                     MojangAPI.Initialized += trig;
-                    if (MojangAPI.VersionDictionary == null)
+                    if (MojangAPI.VersionDictionary is null)
                     {
                         trigger.WaitOne();
                     }
@@ -130,7 +129,8 @@ namespace WitherTorch.Core.Servers
             for (int i = 0; i < versions.Length; i++)
             {
                 string key = versions[i];
-                versionDict.Add(key, preparingVersionDict[key]);
+                versionDict.Add(key, preparingVersionDict[key].ToArray());
+                preparingVersionDict[key] = null;
             }
         }
 
@@ -138,18 +138,18 @@ namespace WitherTorch.Core.Servers
         {
             try
             {
-                if (versions == null) LoadVersionList();
+                if (versions is null) LoadVersionList();
                 versionString = versions[versionIndex];
                 BuildVersionInfo();
                 Tuple<string, string> selectedVersion;
-                if (forgeVersion == null)
+                if (forgeVersion is null)
                 {
-                    selectedVersion = versionDict[versionString].First();
+                    selectedVersion = versionDict[versionString][0];
                 }
                 else
                 {
-                    selectedVersion = versionDict[versionString].Find(x => x.Item1 == forgeVersion);
-                    if (selectedVersion == null)
+                    selectedVersion = Array.Find(versionDict[versionString], x => x.Item1 == forgeVersion);
+                    if (selectedVersion is null)
                         return false;
                 }
                 this.forgeVersion = selectedVersion.Item1;
@@ -180,7 +180,7 @@ namespace WitherTorch.Core.Servers
             InstallTask installingTask = new InstallTask(this);
             OnInstallSoftware(installingTask);
             string downloadURL = null;
-            if (URLBuilder == null)
+            if (URLBuilder is null)
             {
                 URLBuilder = new StringBuilder(downloadURLPrefix, 114);
             }
@@ -248,7 +248,7 @@ namespace WitherTorch.Core.Servers
                     installingTask.StopRequested -= StopRequestedHandler2;
                     client.Dispose();
                     client = null;
-                    if(e.Error != null || e.Cancelled == true)
+                    if (e.Error != null || e.Cancelled == true)
                     {
                         installingTask.OnInstallFailed();
                     }
@@ -396,7 +396,7 @@ namespace WitherTorch.Core.Servers
         string _cache;
         public override string GetReadableVersion()
         {
-            if (_cache == null)
+            if (_cache is null)
             {
                 _cache = versionString + "-" + forgeVersion;
             }
@@ -415,16 +415,35 @@ namespace WitherTorch.Core.Servers
 
         public override string[] GetSoftwareVersions()
         {
-            if (versions == null)
+            if (versions is null)
             {
                 LoadVersionList();
             }
             return versions;
         }
 
+        public string[] GetForgeVersionsFromMCVersion(string mcVersion)
+        {
+            if (versionDict is null)
+            {
+                LoadVersionList();
+            }
+            if (versionDict?.TryGetValue(mcVersion, out Tuple<string, string>[] versionPairs) == true)
+            {
+                int length = versionPairs.Length;
+                string[] result = new string[length];
+                for (int i = 0; i < length; i++)
+                {
+                    result[i] = versionPairs[i].Item1;
+                }
+                return result;
+            }
+            return Array.Empty<string>();
+        }
+
         private string GetFullVersionString()
         {
-            return versionDict[versionString].Find(tuple => tuple.Item1 == forgeVersion).Item2;
+            return Array.Find(versionDict[versionString], tuple => tuple.Item1 == forgeVersion).Item2;
         }
 
         public override void RunServer(RuntimeEnvironment environment)
@@ -623,7 +642,7 @@ namespace WitherTorch.Core.Servers
 
         public override bool UpdateServer()
         {
-            if (versions == null) LoadVersionList();
+            if (versions is null) LoadVersionList();
             return ChangeVersion(Array.IndexOf(versions, versionString));
         }
 

@@ -114,7 +114,7 @@ namespace WitherTorch.Core
                 JsonPropertyFile serverInformation = new JsonPropertyFile(Path.Combine(serverDirectory, @"server_info.json"), true, true);
                 string softwareID = serverInformation["software"]?.Value<string>();
                 Type softwareType = SoftwareRegister.GetSoftwareFromID(softwareID);
-                if (softwareType == null)
+                if (softwareType is null)
                 {
                     throw new ServerSoftwareIsNotRegisteredException();
                 }
@@ -154,7 +154,7 @@ namespace WitherTorch.Core
             {
                 JsonPropertyFile serverInformation = new JsonPropertyFile(Path.Combine(serverDirectory, @"server_info.json"), true, true);
                 Type softwareType = SoftwareRegister.GetSoftwareFromID(softwareID);
-                if (softwareType == null)
+                if (softwareType is null)
                 {
                     throw new ServerSoftwareIsNotRegisteredException();
                 }
@@ -295,7 +295,7 @@ namespace WitherTorch.Core
         public void SaveServer()
         {
             string configuationPath = Path.Combine(ServerDirectory, @"server_info.json");
-            if (ServerInfoJson == null)
+            if (ServerInfoJson is null)
                 ServerInfoJson = new JsonPropertyFile(configuationPath, true, true);
             ServerInfoJson["name"] = new JValue(ServerName);
             ServerInfoJson["software"] = new JValue(GetSoftwareID());

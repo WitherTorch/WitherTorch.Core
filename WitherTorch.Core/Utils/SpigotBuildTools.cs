@@ -32,7 +32,7 @@ namespace WitherTorch.Core.Utils
         {
             get
             {
-                if (_instance == null)
+                if (_instance is null)
                     _instance = new SpigotBuildTools();
                 return _instance;
             }

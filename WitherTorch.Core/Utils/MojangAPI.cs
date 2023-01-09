@@ -27,7 +27,7 @@ namespace WitherTorch.Core.Utils
         {
             get
             {
-                if (versions == null)
+                if (versions is null)
                 {
                     LoadVersionList();
                 }
@@ -44,7 +44,7 @@ namespace WitherTorch.Core.Utils
 
             int IComparable<string>.CompareTo(string other)
             {
-                if (other == null) return 0;
+                if (other is null) return 0;
                 else if (VersionDictionary.ContainsKey(other))
                 {
                     if (IsEmpty()) return -1;
@@ -88,7 +88,7 @@ namespace WitherTorch.Core.Utils
         {
             if (isInInitialize) return;
             isInInitialize = true;
-            if (VersionDictionary == null) LoadVersionList();
+            if (VersionDictionary is null) LoadVersionList();
             Initialized?.Invoke(null, EventArgs.Empty);
             isInInitialize = false;
         }
@@ -162,7 +162,7 @@ namespace WitherTorch.Core.Utils
             {
                 get
                 {
-                    if (_instance == null && VersionDictionary != null) _instance = new VersionComparer();
+                    if (_instance is null && VersionDictionary != null) _instance = new VersionComparer();
                     return _instance;
                 }
             }
