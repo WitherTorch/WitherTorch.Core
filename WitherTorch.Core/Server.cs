@@ -42,6 +42,26 @@ namespace WitherTorch.Core
         {
             return SoftwareID;
         }
+
+        /// <summary>
+        /// 檢測是否為指定類別的子伺服器類別
+        /// </summary>
+        /// <param name="baseServerType">欲查詢的基底伺服器類別</param>
+        /// <returns></returns>
+        public bool IsSubclassOf(Type baseServerType)
+        {
+            Type TServer = GetType();
+            return TServer.IsSubclassOf(baseServerType.MakeGenericType(TServer));
+        }
+
+        /// <summary>
+        /// 檢測是否為指定類別的子伺服器類別
+        /// </summary>
+        /// <typeparam name="TServerBase">欲查詢的基底伺服器類別</typeparam>
+        public bool IsSubclassOf<TServerBase>()
+        {
+            return IsSubclassOf(typeof(TServerBase));
+        }
     }
     /// <summary>
     /// 表示一個伺服器，這個類別是虛擬類別
@@ -95,7 +115,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 取得伺服器的執行環境資訊
         /// </summary>
-        /// <returns>若無特殊的執行環境資訊，應回傳 <c>null</c> 來指示伺服器軟體執行者以預設環境執行</returns>
+        /// <returns>若無特殊的執行環境資訊，應回傳 <see langword="null"/> 來指示伺服器軟體執行者以預設環境執行</returns>
         public abstract RuntimeEnvironment GetRuntimeEnvironment();
         /// <summary>
         /// 設定伺服器的執行環境資訊
@@ -106,7 +126,7 @@ namespace WitherTorch.Core
         /// 取得伺服器
         /// </summary>
         /// <param name="serverDirectory">伺服器資料夾路徑</param>
-        /// <returns>指定的伺服器，若伺服器不存在則為 <c>null</c></returns>
+        /// <returns>指定的伺服器，若伺服器不存在則為 <see langword="null"/></returns>
         public static Server GetServerFromDirectory(string serverDirectory)
         {
             if (File.Exists(Path.Combine(serverDirectory, @"server_info.json")))
@@ -147,7 +167,7 @@ namespace WitherTorch.Core
         /// </summary>
         /// <param name="serverDirectory">伺服器資料夾路徑</param>
         /// <param name="software">伺服器軟體 ID</param>
-        /// <returns>指定的伺服器，若伺服器不存在則為 <c>null</c></returns>
+        /// <returns>指定的伺服器，若伺服器不存在則為 <see langword="null"/></returns>
         public static Server GetServerFromDirectory(string serverDirectory, string softwareID)
         {
             if (File.Exists(Path.Combine(serverDirectory, @"server_info.json")))
