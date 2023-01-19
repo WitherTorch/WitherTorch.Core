@@ -42,7 +42,7 @@ namespace WitherTorch.Core
         {
             get
             {
-                if (key == null) return null;
+                if (key is null) return null;
                 else
                 {
                     if (!isInitialized) Initialize();
@@ -51,8 +51,8 @@ namespace WitherTorch.Core
             }
             set
             {
-                if (key == null) return;
-                if (value == null)
+                if (key is null) return;
+                if (value is null)
                 {
                     if (!isInitialized) Initialize();
                     JToken token = currentObject.SelectToken(key, false);
@@ -98,7 +98,7 @@ namespace WitherTorch.Core
                         {
                             currentObject = _obj;
                         }
-                        else if (create && currentObject == null)
+                        else if (create && currentObject is null)
                         {
                             currentObject = new JObject();
                         }
@@ -118,7 +118,7 @@ namespace WitherTorch.Core
                     }
                 }
             }
-            else if (create && currentObject == null)
+            else if (create && currentObject is null)
             {
                 currentObject = new JObject();
             }
@@ -224,7 +224,7 @@ namespace WitherTorch.Core
                         {
                             result[path] = token;
                         }
-                        else if (tempToken == null || tempToken.Type == JTokenType.Array)
+                        else if (tempToken is null || tempToken.Type == JTokenType.Array)
                         {
                             tempToken = new JObject();
                             result[path] = tempToken;
@@ -237,7 +237,7 @@ namespace WitherTorch.Core
                     }
                     else
                     {
-                        if (tempToken == null || tempToken.Type != JTokenType.Array)
+                        if (tempToken is null || tempToken.Type != JTokenType.Array)
                         {
                             tempToken = isLastPath ? token : new JObject() as JToken;
                             result[path] = new JArray(new JToken[] { tempToken });
@@ -252,7 +252,7 @@ namespace WitherTorch.Core
                                 tempToken = token;
                                 tempArray[index] = tempToken;
                             }
-                            else if (tempToken == null)
+                            else if (tempToken is null)
                             {
                                 tempToken = new JObject();
                                 tempArray[index] = tempToken;

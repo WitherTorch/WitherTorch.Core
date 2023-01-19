@@ -13,7 +13,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <PackageProjectUrl>https://github.com/WitherTorch/WitherTorch.Core</PackageProjectUrl>
-    <Version>1.8.0-CI-7</Version>
+    <Version>1.8.0-CI-8</Version>
     <PackageIcon>withertorch_core_128.png</PackageIcon>
     <RepositoryType>git</RepositoryType>
     <PackageTags>minecraft;minecraft-server</PackageTags>
@@ -65,10 +65,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.9" Condition="'$(TargetFramework)' == 'net5'" />
     <PackageReference Include="System.IO.Compression" Version="4.3.0" Condition="'$(TargetFramework)' == 'net5'" />
-    <PackageReference Include="YamlDotNet" Version="12.0.1" />
+    <PackageReference Include="YamlDotNet" Version="12.2.0" />
   </ItemGroup>
 
   <ItemGroup>

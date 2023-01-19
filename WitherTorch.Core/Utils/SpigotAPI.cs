@@ -24,7 +24,7 @@ namespace WitherTorch.Core.Utils
         {
             get
             {
-                if (versions == null)
+                if (versions is null)
                 {
                     LoadVersionList();
                 }
@@ -39,7 +39,7 @@ namespace WitherTorch.Core.Utils
             if (!_isInInitialize)
             {
                 _isInInitialize = true;
-                if (Versions == null)
+                if (Versions is null)
                 {
                     LoadVersionList();
                 }
