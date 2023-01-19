@@ -31,7 +31,7 @@ namespace WitherTorch.Core.Utils
         {
             get
             {
-                if (_instance == null)
+                if (_instance is null)
                     _instance = new FabricInstaller();
                 return _instance;
             }
@@ -84,7 +84,7 @@ namespace WitherTorch.Core.Utils
                 version = null;
             }
             updatedVersion = nowVersion;
-            return version == null;
+            return version is null;
         }
         private void Update(InstallTask installTask, string version)
         {

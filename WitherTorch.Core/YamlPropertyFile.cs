@@ -44,7 +44,7 @@ namespace WitherTorch.Core
                     }
                 }
             }
-            else if (create && currentObject == null)
+            else if (create && currentObject is null)
             {
                 currentObject = new JObject();
             }

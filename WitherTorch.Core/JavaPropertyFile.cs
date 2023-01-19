@@ -41,7 +41,7 @@ namespace WitherTorch.Core
         {
             get
             {
-                if (key == null) return null;
+                if (key is null) return null;
                 else
                 {
                     if (!isInitialized)
@@ -53,14 +53,14 @@ namespace WitherTorch.Core
             }
             set
             {
-                if (key == null) return;
+                if (key is null) return;
                 else
                 {
                     if (!isInitialized)
                         Initialize();
                     if (currentObject.ContainsKey(key))
                     {
-                        if (value == null)
+                        if (value is null)
                             currentObject.Remove(key);
                         else
                             currentObject[key] = value;
@@ -136,7 +136,7 @@ namespace WitherTorch.Core
                                 if (!(node.IsOptional || currentObject.ContainsKey(node.Path[0]))) defaultNodes.Enqueue(node);
                             }
                         }
-                        int totalLine = currentObject.Count + descriptionDict.Count + (defaultNodes == null ? 0 : defaultNodes.Count);
+                        int totalLine = currentObject.Count + descriptionDict.Count + (defaultNodes is null ? 0 : defaultNodes.Count);
                         int lineIndex = 0, keyValueIndex = 0;
                         KeyValuePair<string, string>[] keyValueArray = currentObject.ToArray();
                         while (lineIndex < totalLine)

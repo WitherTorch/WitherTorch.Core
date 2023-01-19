@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 #if NET472
 using System.Net;
 using System.Runtime.CompilerServices;
@@ -58,7 +57,7 @@ namespace WitherTorch.Core.Servers
                         if (token is JObject tokenObject && tokenObject.TryGetValue("version", out JToken versionToken) && versionToken.Type == JTokenType.String)
                         {
                             string versionString = versionToken.ToString();
-                            if (MojangAPI.Versions.FirstOrDefault(str => str == versionString) != default)
+                            if (Array.Find(MojangAPI.Versions, str => str == versionString) != default)
                             {
                                 versionList.Add(versionString);
                             }
@@ -71,7 +70,7 @@ namespace WitherTorch.Core.Servers
 
             }
             var comparer = MojangAPI.VersionComparer.Instance;
-            if (comparer == null)
+            if (comparer is null)
             {
                 using (AutoResetEvent trigger = new AutoResetEvent(false))
                 {
@@ -80,7 +79,7 @@ namespace WitherTorch.Core.Servers
                         trigger.Set();
                     }
                     MojangAPI.Initialized += trig;
-                    if (MojangAPI.VersionDictionary == null)
+                    if (MojangAPI.VersionDictionary is null)
                     {
                         trigger.WaitOne();
                     }
@@ -97,7 +96,7 @@ namespace WitherTorch.Core.Servers
         {
             try
             {
-                if (versions == null) LoadVersionList();
+                if (versions is null) LoadVersionList();
                 versionString = versions[versionIndex];
                 BuildVersionInfo();
                 fabricVersion = GetLatestFabricLoaderVersion();
@@ -115,7 +114,7 @@ namespace WitherTorch.Core.Servers
         {
             try
             {
-                if (versions == null) LoadVersionList();
+                if (versions is null) LoadVersionList();
                 versionString = versions[versionIndex];
                 BuildVersionInfo();
                 this.fabricVersion = fabricVersion;
@@ -152,7 +151,7 @@ namespace WitherTorch.Core.Servers
         string _cache;
         public override string GetReadableVersion()
         {
-            if (_cache == null)
+            if (_cache is null)
             {
                 _cache = versionString + "-" + fabricVersion;
             }
@@ -171,7 +170,7 @@ namespace WitherTorch.Core.Servers
 
         public override string[] GetSoftwareVersions()
         {
-            if (versions == null)
+            if (versions is null)
             {
                 LoadVersionList();
             }
@@ -353,7 +352,7 @@ namespace WitherTorch.Core.Servers
 
         public override bool UpdateServer()
         {
-            if (versions == null) LoadVersionList();
+            if (versions is null) LoadVersionList();
             return ChangeVersion(Array.IndexOf(versions, versionString));
         }
     }

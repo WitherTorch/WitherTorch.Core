@@ -15,7 +15,7 @@ namespace WitherTorch.Core
             get
             {
                 DProcess innerProcess = InnerProcess;
-                if (innerProcess == null)
+                if (innerProcess is null)
                 {
                     return default;
                 }
@@ -38,7 +38,7 @@ namespace WitherTorch.Core
             get
             {
                 DProcess innerProcess = InnerProcess;
-                if (innerProcess == null)
+                if (innerProcess is null)
                 {
                     return default;
                 }
@@ -62,7 +62,7 @@ namespace WitherTorch.Core
             get
             {
                 DProcess innerProcess = InnerProcess;
-                if (innerProcess == null)
+                if (innerProcess is null)
                 {
                     return false;
                 }
@@ -85,6 +85,7 @@ namespace WitherTorch.Core
             DProcess innerProcess = InnerProcess;
             if (innerProcess != null)
             {
+                InnerProcess = null;
                 try
                 {
                     if (!innerProcess.HasExited)
@@ -94,6 +95,17 @@ namespace WitherTorch.Core
                 {
 
                 }
+                innerProcess.ErrorDataReceived -= Process_ErrorDataReceived;
+                innerProcess.OutputDataReceived -= Process_OutputDataReceived;
+                innerProcess.Exited -= Process_Exited;
+                try
+                {
+                    innerProcess.Dispose();
+                }
+                catch (InvalidOperationException)
+                {
+                }
+                OnProcessEnded();
             }
         }
 
@@ -130,14 +142,15 @@ namespace WitherTorch.Core
 
         private void Process_Exited(object sender, EventArgs e)
         {
-            if (InnerProcess == sender)
+            DProcess innerProcess = InnerProcess;
+            if (innerProcess == sender)
             {
-                InnerProcess.ErrorDataReceived -= Process_ErrorDataReceived;
-                InnerProcess.OutputDataReceived -= Process_OutputDataReceived;
-                InnerProcess.Exited -= Process_Exited;
-                OnProcessEnded();
-                InnerProcess.Dispose();
                 InnerProcess = null;
+                innerProcess.ErrorDataReceived -= Process_ErrorDataReceived;
+                innerProcess.OutputDataReceived -= Process_OutputDataReceived;
+                innerProcess.Exited -= Process_Exited;
+                OnProcessEnded();
+                innerProcess.Dispose();
             }
         }
 

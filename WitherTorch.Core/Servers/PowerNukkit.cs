@@ -73,7 +73,7 @@ namespace WitherTorch.Core.Servers
 
         public override bool ChangeVersion(int versionIndex)
         {
-            if (versions == null)
+            if (versions is null)
             {
                 LoadVersionList();
             }
@@ -189,7 +189,7 @@ namespace WitherTorch.Core.Servers
 
         public override string[] GetSoftwareVersions()
         {
-            if (versions == null)
+            if (versions is null)
             {
                 LoadVersionList();
             }
@@ -256,7 +256,7 @@ namespace WitherTorch.Core.Servers
 
         public override bool UpdateServer()
         {
-            if (versions == null) LoadVersionList();
+            if (versions is null) LoadVersionList();
             return ChangeVersion(Array.IndexOf(versions, versionString));
         }
 

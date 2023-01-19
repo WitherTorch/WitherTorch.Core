@@ -20,7 +20,7 @@ namespace WitherTorch.Core
         {
             if (type != null && type.IsSubclassOf(typeof(Server<>).MakeGenericType(type)))
             {
-                if (_genericMethodInfo == null)
+                if (_genericMethodInfo is null)
                     _genericMethodInfo = typeof(SoftwareRegister).GetMethod("RegisterServerSoftware", BindingFlags.Static | BindingFlags.Public, Type.DefaultBinder, Type.EmptyTypes, null);
                 _genericMethodInfo.MakeGenericMethod(type).Invoke(null, null);
             }

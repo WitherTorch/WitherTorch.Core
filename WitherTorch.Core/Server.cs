@@ -42,6 +42,21 @@ namespace WitherTorch.Core
         {
             return SoftwareID;
         }
+    }
+    /// <summary>
+    /// 表示一個伺服器，這個類別是虛擬類別
+    /// </summary>
+    public abstract class Server : IDisposable
+    {
+        private string _name;
+        private bool disposedValue;
+
+        public event EventHandler ServerNameChanged;
+
+        // 內部空參數建構子 (防止有第三方伺服器軟體類別繼承自它)
+        internal Server()
+        {
+        }
 
         /// <summary>
         /// 檢測是否為指定類別的子伺服器類別
@@ -61,21 +76,6 @@ namespace WitherTorch.Core
         public bool IsSubclassOf<TServerBase>()
         {
             return IsSubclassOf(typeof(TServerBase));
-        }
-    }
-    /// <summary>
-    /// 表示一個伺服器，這個類別是虛擬類別
-    /// </summary>
-    public abstract class Server : IDisposable
-    {
-        private string _name;
-        private bool disposedValue;
-
-        public event EventHandler ServerNameChanged;
-
-        // 內部空參數建構子 (防止有第三方伺服器軟體類別繼承自它)
-        internal Server()
-        {
         }
 
         /// <summary>
@@ -134,7 +134,7 @@ namespace WitherTorch.Core
                 JsonPropertyFile serverInformation = new JsonPropertyFile(Path.Combine(serverDirectory, @"server_info.json"), true, true);
                 string softwareID = serverInformation["software"]?.Value<string>();
                 Type softwareType = SoftwareRegister.GetSoftwareFromID(softwareID);
-                if (softwareType == null)
+                if (softwareType is null)
                 {
                     throw new ServerSoftwareIsNotRegisteredException();
                 }
@@ -174,7 +174,7 @@ namespace WitherTorch.Core
             {
                 JsonPropertyFile serverInformation = new JsonPropertyFile(Path.Combine(serverDirectory, @"server_info.json"), true, true);
                 Type softwareType = SoftwareRegister.GetSoftwareFromID(softwareID);
-                if (softwareType == null)
+                if (softwareType is null)
                 {
                     throw new ServerSoftwareIsNotRegisteredException();
                 }
@@ -315,7 +315,7 @@ namespace WitherTorch.Core
         public void SaveServer()
         {
             string configuationPath = Path.Combine(ServerDirectory, @"server_info.json");
-            if (ServerInfoJson == null)
+            if (ServerInfoJson is null)
                 ServerInfoJson = new JsonPropertyFile(configuationPath, true, true);
             ServerInfoJson["name"] = new JValue(ServerName);
             ServerInfoJson["software"] = new JValue(GetSoftwareID());

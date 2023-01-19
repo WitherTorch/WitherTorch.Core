@@ -284,7 +284,7 @@ namespace WitherTorch.Core.Servers
         {
             try
             {
-                if (versions == null) LoadVersionList();
+                if (versions is null) LoadVersionList();
                 versionString = versions[versionIndex];
                 BuildVersionInfo();
                 InstallSoftware();
@@ -317,7 +317,7 @@ namespace WitherTorch.Core.Servers
         /// <inheritdoc/>
         public override string[] GetSoftwareVersions()
         {
-            if (versions == null)
+            if (versions is null)
             {
                 LoadVersionList();
             }
@@ -494,7 +494,7 @@ namespace WitherTorch.Core.Servers
 
         public override bool UpdateServer()
         {
-            if (versions == null) LoadVersionList();
+            if (versions is null) LoadVersionList();
             return ChangeVersion(Array.IndexOf(versions, versionString));
         }
     }

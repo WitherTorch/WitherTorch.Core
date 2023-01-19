@@ -2,7 +2,7 @@
 
 [assembly: AssemblyCompany("WitherTorch 製作組")]
 [assembly: AssemblyProduct("WitherTorch")]
-[assembly: AssemblyCopyright("Copyright © WitherTorch 製作組 2022")]
+[assembly: AssemblyCopyright("Copyright © WitherTorch 製作組 2023")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
-[assembly: AssemblyVersion("1.8.0.7")]
+[assembly: AssemblyVersion("1.8.0.8")]
