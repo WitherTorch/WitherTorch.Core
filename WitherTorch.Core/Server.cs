@@ -245,6 +245,7 @@ namespace WitherTorch.Core
             {
                 Server server = Activator.CreateInstance(softwareType) as Server;
                 server.ServerDirectory = serverDirectory;
+                server.ServerName = GetDefaultServerName(server);
                 if (server.CreateServer())
                 {
                     return server;
@@ -265,6 +266,19 @@ namespace WitherTorch.Core
                 throw new ServerSoftwareIsNotRegisteredException();
             }
             return null;
+        }
+        /// <summary>
+        /// 取得預設的伺服器名稱 (通常是伺服器資料夾的名字)
+        /// </summary>
+        /// <returns>是否成功加載伺服器</returns>
+        public static string GetDefaultServerName(Server server)
+        {
+            string serverDirectory = server.ServerDirectory.TrimEnd(Path.DirectorySeparatorChar);
+            if (serverDirectory.Length > 3)
+            {
+                return Path.GetFileName(serverDirectory);
+            }
+            return serverDirectory;
         }
         /// <summary>
         /// 子類別應覆寫此方法為加載伺服器的程式碼
