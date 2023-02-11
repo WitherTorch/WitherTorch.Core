@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,7 +14,6 @@ namespace WitherTorch.Core
 
         private static MethodInfo _genericMethodInfo;
 
-        [Obsolete("此方法效率較慢，建議使用 RegisterServerSoftware<T>() 代替")]
         public static void RegisterServerSoftware(Type type)
         {
             if (type != null && type.IsSubclassOf(typeof(Server<>).MakeGenericType(type)))
