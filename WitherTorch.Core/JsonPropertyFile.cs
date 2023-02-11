@@ -132,33 +132,17 @@ namespace WitherTorch.Core
             }
             if ((isDirty && isInitialized) || force)
             {
-                using (StreamWriter writer = new StreamWriter(new FileStream(_path, FileMode.Create, FileAccess.Write, FileShare.Read)))
+                using (JsonTextWriter writer = new JsonTextWriter(new StreamWriter(new FileStream(_path, FileMode.Create, FileAccess.Write, FileShare.Read))) { CloseOutput = true })
                 {
-                    using (JsonTextWriter jsonWriter = new JsonTextWriter(writer))
-                    {
-                        try
-                        {
-                            GlobalSerializers.JsonSerializer.Serialize(jsonWriter, currentObject);
-                        }
-                        catch (Exception)
-                        {
-
-                        }
-                    }
                     try
                     {
+                        GlobalSerializers.JsonSerializer.Serialize(writer, currentObject);
                         writer.Flush();
-                        writer.Close();
                     }
-                    catch (IOException)
+                    catch (Exception)
                     {
                     }
-                    catch (NullReferenceException)
-                    {
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                    }
+                    writer.Close();
                 }
             }
         }
