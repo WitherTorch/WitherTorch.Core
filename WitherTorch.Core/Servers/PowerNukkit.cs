@@ -2,19 +2,10 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 using System.Xml;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
-using WitherTorch.Core.Utils;
-using System.Runtime.CompilerServices;
-#if NET472
 using System.Net;
 using System.ComponentModel;
-#elif NET5_0
-using System.Net.Http;
-#endif
 
 namespace WitherTorch.Core.Servers
 {
@@ -91,7 +82,6 @@ namespace WitherTorch.Core.Servers
                 string downloadURL = string.Format(PowerNukkit.downloadURL, fullVersionString);
                 DownloadStatus status = new DownloadStatus(downloadURL, 0);
                 installingTask.ChangeStatus(status);
-#if NET472
                 WebClient client = new WebClient();
                 void StopRequestedHandler(object sender, EventArgs e)
                 {
@@ -127,39 +117,6 @@ namespace WitherTorch.Core.Servers
                     }
                 };
                 client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"powernukkit-" + versionString + ".jar"));
-#elif NET5_0
-                HttpClientHandler messageHandler = new HttpClientHandler();
-                HttpClient client = new HttpClient(messageHandler);
-                StrongBox<bool> stopFlag = new StrongBox<bool>();
-                void StopRequestedHandler(object sender, EventArgs e)
-                {
-                    stopFlag.Value = true;
-                    installingTask.StopRequested -= StopRequestedHandler;
-                }
-                installingTask.StopRequested += StopRequestedHandler;
-                System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
-                progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
-                {
-                    status.Percentage = e.ProgressPercentage;
-                    installingTask.OnStatusChanged();
-                    installingTask.ChangePercentage(e.ProgressPercentage);
-                };
-                Task.Run(async () =>
-                {
-                    try
-                    {
-                        await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"powernukkit-" + versionString + ".jar"), stopFlag);
-                        installingTask.OnInstallFinished();
-                    }
-                    catch (Exception)
-                    {
-                        installingTask.OnInstallFailed();
-                    }
-                    installingTask.StopRequested -= StopRequestedHandler;
-                    client.Dispose();
-                    client = null;
-                });
-#endif
             }
             else
             {

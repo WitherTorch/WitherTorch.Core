@@ -4,16 +4,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-#if NET472
 using System.Net;
-using System.Runtime.CompilerServices;
-#elif NET5_0
-using System.Net.Http;
-using System.Runtime.CompilerServices;
-#endif
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 using WitherTorch.Core.Utils;
 
@@ -170,12 +163,7 @@ namespace WitherTorch.Core.Servers
 
         public void InstallSoftware(Tuple<string, string> selectedVersion)
         {
-#if NET472
             WebClient client = new WebClient();
-#elif NET5_0
-            HttpClientHandler messageHandler = new HttpClientHandler();
-            HttpClient client = new HttpClient(messageHandler);
-#endif
             bool needInstall = false;
             InstallTask installingTask = new InstallTask(this);
             OnInstallSoftware(installingTask);
@@ -213,7 +201,6 @@ namespace WitherTorch.Core.Servers
             if (downloadURL != null)
             {
                 DownloadStatus status = new DownloadStatus(downloadURL, 0);
-#if NET472
                 void StopRequestedHandler2(object sender, EventArgs e)
                 {
                     if (client != null)
@@ -281,56 +268,6 @@ namespace WitherTorch.Core.Servers
                 {
                     client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + ".jar"));
                 }
-#elif NET5_0
-                StrongBox<bool> stopFlag = new StrongBox<bool>();
-                void StopRequestedHandler2(object sender, EventArgs e)
-                {
-                    stopFlag.Value = true;
-                    installingTask.StopRequested -= StopRequestedHandler2;
-                }
-                installingTask.StopRequested += StopRequestedHandler2;
-                System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
-                progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
-                {
-                    status.Percentage = e.ProgressPercentage;
-                    installingTask.OnStatusChanged();
-                    if (needInstall)
-                    {
-                        installingTask.ChangePercentage(e.ProgressPercentage / 2);
-                    }
-                    else
-                    {
-                        installingTask.ChangePercentage(e.ProgressPercentage);
-                    }
-                };
-                Task.Run(async () =>
-                {
-                    try
-                    {
-                        string installerLocation;
-                        if (needInstall)
-                        {
-                            installerLocation = Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + "-installer.jar");
-                        }
-                        else
-                        {
-                            installerLocation = Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + ".jar");
-                        }
-                        await InstallUtils.HttpDownload(client, downloadURL, installerLocation, stopFlag);
-                        installingTask.StopRequested -= StopRequestedHandler2;
-                        if (needInstall)
-                            RunInstaller(installingTask, installerLocation);
-                        else
-                            installingTask.OnInstallFinished();
-                    }
-                    catch (Exception)
-                    {
-                        installingTask.OnInstallFailed();
-                    }
-                    client.Dispose();
-                    client = null;
-                });
-#endif
             }
         }
 

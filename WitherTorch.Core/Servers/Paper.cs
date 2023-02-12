@@ -4,17 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-#if NET472
 using System.ComponentModel;
 using System.Net;
-#elif NET5_0
-using System.Net.Http;
-#endif
-using System.Text;
 using WitherTorch.Core.Utils;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Runtime.CompilerServices;
 
 namespace WitherTorch.Core.Servers
 {
@@ -114,7 +106,6 @@ namespace WitherTorch.Core.Servers
             JObject manifestJSON;
             InstallTask installingTask = new InstallTask(this);
             OnInstallSoftware(installingTask);
-#if NET472
             WebClient client = new WebClient();
             bool isStop = false;
             void StopRequestedHandler(object sender, EventArgs e)
@@ -152,36 +143,6 @@ namespace WitherTorch.Core.Servers
                 {
                 }
             }
-#elif NET5_0
-            HttpClientHandler messageHandler = new HttpClientHandler();
-            HttpClient client = new HttpClient(messageHandler);
-            bool isStop = false;
-            installingTask.StopRequested += delegate (object sender, EventArgs e)
-            {
-                isStop = true;
-            };
-            using (StringReader reader = new StringReader(client.GetStringAsync(string.Format(manifestListURL2, versionString)).Result))
-            {
-                using (JsonTextReader jtr = new JsonTextReader(reader))
-                {
-                    try
-                    {
-                        manifestJSON = GlobalSerializers.JsonSerializer.Deserialize(jtr) as JObject;
-                    }
-                    catch (Exception)
-                    {
-                        manifestJSON = null;
-                    }
-                }
-                try
-                {
-                    reader?.Close();
-                }
-                catch (Exception)
-                {
-                }
-            }
-#endif
             if (isStop)
             {
                 installingTask.OnInstallFailed();
@@ -195,7 +156,6 @@ namespace WitherTorch.Core.Servers
                     string downloadURL = string.Format(Paper.downloadURL, versionString, build);
                     DownloadStatus status = new DownloadStatus(downloadURL, 0);
                     installingTask.ChangeStatus(status);
-#if NET472
                     client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
                     {
                         status.Percentage = e.ProgressPercentage;
@@ -240,38 +200,6 @@ namespace WitherTorch.Core.Servers
                         }
                     };
                     client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"));
-#elif NET5_0
-                    StrongBox<bool> stopFlag = new StrongBox<bool>();
-                    void StopRequestedHandler(object sender, EventArgs e)
-                    {
-                        stopFlag.Value = true;
-                        installingTask.StopRequested -= StopRequestedHandler;
-                    }
-                    installingTask.StopRequested += StopRequestedHandler;
-                    System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
-                    progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
-                    {
-                        status.Percentage = e.ProgressPercentage;
-                        installingTask.OnStatusChanged();
-                        installingTask.ChangePercentage(e.ProgressPercentage);
-                    };
-                    Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"), stopFlag);
-                            installingTask.StopRequested -= StopRequestedHandler;
-                            installingTask.OnInstallFinished();
-                        }
-                        catch (Exception)
-                        {
-                            installingTask.StopRequested -= StopRequestedHandler;
-                            installingTask.OnInstallFailed();
-                        }
-                        client.Dispose();
-                        client = null;
-                    });
-#endif
                 }
                 else
                 {

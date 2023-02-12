@@ -1,15 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-#if NET472
 using System.ComponentModel;
 using System.Net;
-#elif NET5_0
-using System.Threading.Tasks;
-#endif
 using System.Text;
 using System.Xml;
-using System.Runtime.CompilerServices;
 
 namespace WitherTorch.Core.Utils
 {
@@ -66,18 +61,11 @@ namespace WitherTorch.Core.Utils
             }
 
             XmlDocument manifestXML = new XmlDocument();
-#if NET472
             using (WebClient client = new WebClient() { Encoding = Encoding.UTF8 })
             {
                 client.Headers.Set(HttpRequestHeader.UserAgent, @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36");
                 manifestXML.LoadXml(client.DownloadString(manifestListURL));
             }
-#elif NET5_0
-                using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
-                {
-                    manifestXML.LoadXml(client.GetStringAsync(manifestListURL).Result);
-                }
-#endif
             nowVersion = manifestXML.SelectSingleNode("//metadata/versioning/latest").InnerText;
             if (version != nowVersion)
             {
@@ -89,7 +77,6 @@ namespace WitherTorch.Core.Utils
         private void Update(InstallTask installTask, string version)
         {
             UpdateStarted?.Invoke(this, EventArgs.Empty);
-#if NET472
             WebClient client = new WebClient();
             void StopRequestedHandler(object sender, EventArgs e)
             {
@@ -123,48 +110,6 @@ namespace WitherTorch.Core.Utils
             };
             client.Headers.Set(HttpRequestHeader.UserAgent, @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36");
             client.DownloadFileAsync(new Uri(string.Format(downloadURL, version)), buildToolFileInfo.FullName);
-#elif NET5_0
-            System.Net.Http.HttpClientHandler messageHandler = new System.Net.Http.HttpClientHandler();
-            System.Net.Http.HttpClient client = new System.Net.Http.HttpClient(messageHandler);
-            System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
-            progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
-            {
-                UpdateProgressChanged?.Invoke(e.ProgressPercentage);
-            };
-            StrongBox<bool> stopFlag = new StrongBox<bool>();
-            void StopRequestedHandler(object sender, EventArgs e)
-            {
-                stopFlag.Value = true;
-                installTask.StopRequested -= StopRequestedHandler;
-            }
-            installTask.StopRequested += StopRequestedHandler;
-            Task.Run(async () =>
-            {
-                using Stream dataStream = await client.GetStreamAsync(new Uri(string.Format(downloadURL, version)));
-                using FileStream fileStream = new FileStream(buildToolFileInfo.FullName, FileMode.Create);
-                byte[] buffer = new byte[InstallUtils.BUFFER_SIZE];
-                int length;
-                while ((length = dataStream.Read(buffer, 0, InstallUtils.BUFFER_SIZE)) > 0 && !stopFlag.Value)
-                {
-                    fileStream.Write(buffer, 0, length);
-                    fileStream.Flush();
-                }
-                dataStream.Close();
-                fileStream.Close();
-                client.Dispose();
-                installTask.StopRequested -= StopRequestedHandler;
-                if (!stopFlag.Value)
-                {
-                    using (StreamWriter writer = buildToolVersionInfo.CreateText())
-                    {
-                        writer.WriteLine(version);
-                        writer.Flush();
-                        writer.Close();
-                    }
-                    UpdateFinished?.Invoke(this, EventArgs.Empty);
-                }
-            });
-#endif
         }
         public delegate void UpdateProgressEventHandler(int progress);
 

@@ -2,15 +2,9 @@
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
-using System.Text;
 using System.Threading.Tasks;
-using System.Threading;
 using System.Runtime.CompilerServices;
-#if NET472
 using System.Net;
-#elif NET5_0
-using System.Net.Http;
-#endif
 
 namespace WitherTorch.Core.Servers
 {
@@ -107,12 +101,7 @@ namespace WitherTorch.Core.Servers
         {
             InstallTask installingTask = new InstallTask(this);
             OnInstallSoftware(installingTask);
-#if NET472
             WebClient client = new WebClient();
-#elif NET5_0
-            HttpClientHandler messageHandler = new HttpClientHandler();
-            HttpClient client = new HttpClient(messageHandler);
-#endif
             string downloadURL;
 #if NET472
             PlatformID platformID = Environment.OSVersion.Platform;
@@ -148,7 +137,6 @@ namespace WitherTorch.Core.Servers
             StrongBox<bool> stopFlag = new StrongBox<bool>();
             void StopRequestedHandler(object sender, EventArgs e)
             {
-#if NET472
                try
                 {
                     client?.CancelAsync();
@@ -156,12 +144,10 @@ namespace WitherTorch.Core.Servers
                 catch (Exception)
                 {
                 }
-#endif
                 stopFlag.Value = true;
                 installingTask.StopRequested -= StopRequestedHandler;
             }
             installingTask.StopRequested += StopRequestedHandler;
-#if NET472
             client.OpenReadCompleted += async delegate (object sender, OpenReadCompletedEventArgs e)
             {
                 await Task.Run(() =>
@@ -232,83 +218,6 @@ namespace WitherTorch.Core.Servers
                 });
             };
             client.OpenReadAsync(new Uri(downloadURL));
-#elif NET5_0
-            System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
-            progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
-            {
-                status.Percentage = e.ProgressPercentage;
-                installingTask.OnStatusChanged();
-                installingTask.ChangePercentage(e.ProgressPercentage * 0.65);
-            };
-            Task.Run(async () =>
-            {
-                try
-                {
-                    using (Stream dataStream = await client.GetStreamAsync(new Uri(downloadURL)))
-                    using (ZipArchive archive = new ZipArchive(dataStream, ZipArchiveMode.Read, false))
-                    {
-                        installingTask.ChangePercentage(65);
-                        DecompessionStatus decompessionStatus = new DecompessionStatus();
-                        installingTask.ChangeStatus(decompessionStatus);
-                        System.Collections.ObjectModel.ReadOnlyCollection<ZipArchiveEntry> entries = archive.Entries;
-                        System.Collections.Generic.IEnumerator<ZipArchiveEntry> enumerator = entries.GetEnumerator();
-                        int currentCount = 0;
-                        int count = entries.Count;
-                        while (enumerator.MoveNext() && !stopFlag.Value)
-                        {
-                            ZipArchiveEntry entry = enumerator.Current;
-                            string filePath = Path.GetFullPath(Path.Combine(ServerDirectory, entry.FullName));
-                            if (filePath.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal)) // Is Directory
-                            {
-                                if (!Directory.Exists(filePath))
-                                    Directory.CreateDirectory(filePath);
-                            }
-                            else // Is File
-                            {
-                                switch (entry.FullName)
-                                {
-                                    case "allowlist.json":
-                                    case "whitelist.json":
-                                    case "permissions.json":
-                                    case "server.properties":
-                                        if (!File.Exists(filePath))
-                                        {
-                                            goto default;
-                                        }
-                                        break;
-                                    default:
-                                        {
-                                            entry.ExtractToFile(filePath, true);
-                                        }
-                                        break;
-                                }
-                            }
-                            currentCount++;
-                            status.Percentage = currentCount * 100.0 / count;
-                            installingTask.OnStatusChanged();
-                            installingTask.ChangePercentage(65 + decompessionStatus.Percentage * 0.35);
-                        }
-                        dataStream.Close();
-                    }
-                    client.Dispose();
-                    installingTask.StopRequested -= StopRequestedHandler;
-                    if (stopFlag.Value)
-                    {
-                        installingTask.OnInstallFailed();
-                    }
-                    else
-                    {
-                        installingTask.ChangePercentage(100);
-                        installingTask.OnInstallFinished();
-                    }
-                }
-                catch (Exception)
-                {
-                    installingTask.OnInstallFailed();
-                }
-                installingTask.StopRequested -= StopRequestedHandler;
-            });
-#endif
         }
 
         public override AbstractProcess GetProcess()

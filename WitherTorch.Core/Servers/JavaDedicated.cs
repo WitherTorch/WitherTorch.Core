@@ -3,16 +3,9 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
 using System.IO;
-#if NET472
 using System.Net;
 using System.ComponentModel;
-#elif NET5_0
-using System.Net.Http;
-#endif
-using System.Text;
 using WitherTorch.Core.Utils;
-using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace WitherTorch.Core.Servers
 {
@@ -49,20 +42,13 @@ namespace WitherTorch.Core.Servers
                     installingTask.StopRequested -= StopRequestedHandler;
                 }
                 installingTask.StopRequested += StopRequestedHandler;
-#if NET472
                 WebClient client = new WebClient();
                 JObject jsonObject = JsonConvert.DeserializeObject<JObject>(client.DownloadString(manifestURL));
-#elif NET5_0
-                HttpClientHandler messageHandler = new HttpClientHandler();
-                HttpClient client = new HttpClient(messageHandler);
-                JObject jsonObject = JsonConvert.DeserializeObject<JObject>(client.GetStringAsync(manifestURL).Result);
-#endif
                 installingTask.StopRequested -= StopRequestedHandler;
                 if (isStop) return;
                 string downloadURL = jsonObject.GetValue("downloads")["server"]["url"].ToString();
                 DownloadStatus status = new DownloadStatus(downloadURL, 0);
                 installingTask.ChangeStatus(status);
-#if NET472
                 void StopRequestedHandler2(object sender, EventArgs e)
                 {
                     if (client != null)
@@ -100,38 +86,6 @@ namespace WitherTorch.Core.Servers
                     }
                 };
                 client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"));
-#elif NET5_0
-                StrongBox<bool> stopFlag = new StrongBox<bool>();
-                void StopRequestedHandler2(object sender, EventArgs e)
-                {
-                    stopFlag.Value = true;
-                    installingTask.StopRequested -= StopRequestedHandler2;
-                }
-                installingTask.StopRequested += StopRequestedHandler2;
-                System.Net.Http.Handlers.ProgressMessageHandler progressHandler = new System.Net.Http.Handlers.ProgressMessageHandler(messageHandler);
-                progressHandler.HttpReceiveProgress += delegate (object sender, System.Net.Http.Handlers.HttpProgressEventArgs e)
-                {
-                    status.Percentage = e.ProgressPercentage;
-                    installingTask.OnStatusChanged();
-                    installingTask.ChangePercentage(e.ProgressPercentage);
-                };
-                System.Threading.Tasks.Task.Run(async () =>
-                {
-                    try
-                    {
-                        await InstallUtils.HttpDownload(client, downloadURL, Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"), stopFlag);
-                        installingTask.StopRequested -= StopRequestedHandler2;
-                        installingTask.OnInstallFinished();
-                    }
-                    catch (Exception)
-                    {
-                        installingTask.StopRequested -= StopRequestedHandler2;
-                        installingTask.OnInstallFailed();
-                    }
-                    client.Dispose();
-                    client = null;
-                });
-#endif
             }
             else
             {
