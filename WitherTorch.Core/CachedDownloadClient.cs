@@ -12,6 +12,10 @@ namespace WitherTorch.Core
         internal const string UserAgent = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36";
         private static volatile JsonPropertyFile cacheFile;
         private static CachedDownloadClient _inst;
+        private System.Net.Http.HttpClient _client;
+        private CancellationTokenSource cacheSavingTaskToken;
+        private bool disposedValue;
+
         public static CachedDownloadClient Instance
         {
             [MethodImpl(MethodImplOptions.Synchronized)]
@@ -24,23 +28,20 @@ namespace WitherTorch.Core
                 return _inst;
             }
         }
-        volatile System.Net.Http.HttpClient _client;
-        volatile static Task cacheSavingTask;
-        volatile static CancellationTokenSource cacheSavingTaskToken;
-        private bool disposedValue;
-
-        [MethodImpl(MethodImplOptions.Synchronized)]
-        private static void SaveCacheFile()
+        
+        private static void SaveCacheFile(Task lastTask)
         {
-            Thread.Sleep(1000);
-            lock (cacheFile)
+            if (lastTask?.IsCompleted != false)
             {
-                try
+                lock (cacheFile)
                 {
-                    cacheFile.Save(false);
-                }
-                catch (Exception)
-                {
+                    try
+                    {
+                        cacheFile.Save(false);
+                    }
+                    catch (Exception)
+                    {
+                    }
                 }
             }
         }
@@ -179,15 +180,18 @@ namespace WitherTorch.Core
                         }
                     }
                     catch (Exception)
-                    {
+                    { 
                     }
-                    if (cacheSavingTask != null && !cacheSavingTask.IsCompleted)
+                    lock (this)
                     {
-                        cacheSavingTaskToken.Cancel();
-                        cacheSavingTaskToken.Dispose();
+                        if (cacheSavingTaskToken is object)
+                        {
+                            cacheSavingTaskToken.Cancel();
+                            cacheSavingTaskToken.Dispose();
+                        }
                     }
                     cacheSavingTaskToken = new CancellationTokenSource();
-                    cacheSavingTask = Task.Run(SaveCacheFile, cacheSavingTaskToken.Token);
+                    Task.Delay(1000, cacheSavingTaskToken.Token).ContinueWith(SaveCacheFile);
                 }
             }
 
@@ -210,12 +214,12 @@ namespace WitherTorch.Core
                 }
                 // TODO: 釋出非受控資源 (非受控物件) 並覆寫完成項
                 _client.Dispose();
-                if (cacheSavingTask != null && !cacheSavingTask.IsCompleted)
+                lock (this)
                 {
                     cacheSavingTaskToken.Cancel();
                     cacheSavingTaskToken.Dispose();
                 }
-                SaveCacheFile();
+                SaveCacheFile(null);
                 // TODO: 將大型欄位設為 Null
                 disposedValue = true;
             }
