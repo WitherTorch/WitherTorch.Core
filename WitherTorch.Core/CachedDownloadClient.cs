@@ -216,8 +216,11 @@ namespace WitherTorch.Core
                 _client.Dispose();
                 lock (this)
                 {
-                    cacheSavingTaskToken.Cancel();
-                    cacheSavingTaskToken.Dispose();
+                    if (cacheSavingTaskToken is object)
+                    {
+                        cacheSavingTaskToken.Cancel();
+                        cacheSavingTaskToken.Dispose();
+                    }
                 }
                 SaveCacheFile(null);
                 // TODO: 將大型欄位設為 Null
