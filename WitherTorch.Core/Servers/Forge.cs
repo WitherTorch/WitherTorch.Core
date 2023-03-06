@@ -383,6 +383,12 @@ namespace WitherTorch.Core.Servers
             return Array.Find(versionDict[versionString], tuple => tuple.Item1 == forgeVersion).Item2;
         }
 
+        private IEnumerable<string> GetPossibleForgePaths(string fullVersionString)
+        {
+            yield return Path.Combine(ServerDirectory, "forge-" + fullVersionString + "-universal.jar");
+            yield return Path.Combine(ServerDirectory, "forge-" + fullVersionString + ".jar");
+        }
+
         public override void RunServer(RuntimeEnvironment environment)
         {
             if (!_isStarted)
@@ -393,8 +399,16 @@ namespace WitherTorch.Core.Servers
                 {
                     ProcessStartInfo startInfo = null;
                     string fullVersionString = GetFullVersionString();
-                    string path = Path.Combine(ServerDirectory, "forge-" + fullVersionString + ".jar");
-                    if (File.Exists(path))
+                    string path = null;
+                    foreach (string _path in GetPossibleForgePaths(fullVersionString))
+                    {
+                        if (File.Exists(_path))
+                        {
+                            path = _path;
+                            break;
+                        }
+                    }
+                    if (path is object)
                     {
                         string javaPath = javaRuntimeEnvironment.JavaPath;
                         if (javaPath is null || !File.Exists(javaPath))
