@@ -43,7 +43,7 @@ namespace WitherTorch.Core.Servers
 
         private static void Initialize()
         {
-            if (mc1_19.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
+            if (mc1_19 is null) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
         }
 
         internal static void LoadVersionList()
@@ -180,7 +180,7 @@ namespace WitherTorch.Core.Servers
                                     propertyFiles[3].Dispose();
                                     propertyFiles[3] = null;
                                 }
-                                if (mc1_19.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
+                                if (mc1_19 is null) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
                                 if (GetMojangVersionInfo() >= mc1_19)
                                 {
                                     string path = Path.Combine(ServerDirectory, "./config/paper-global.yml");
@@ -298,7 +298,7 @@ namespace WitherTorch.Core.Servers
                 propertyFiles[0] = new JavaPropertyFile(Path.Combine(ServerDirectory, "./server.properties"));
                 propertyFiles[1] = new YamlPropertyFile(Path.Combine(ServerDirectory, "./bukkit.yml"));
                 propertyFiles[2] = new YamlPropertyFile(Path.Combine(ServerDirectory, "./spigot.yml"));
-                if (mc1_19.IsEmpty()) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
+                if (mc1_19 is null) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
                 if (GetMojangVersionInfo() >= mc1_19)
                 {
                     string path = Path.Combine(ServerDirectory, "./config/paper-global.yml");

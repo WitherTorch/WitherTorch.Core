@@ -26,7 +26,7 @@ namespace WitherTorch.Core.Servers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Utils.MojangAPI.VersionInfo GetMojangVersionInfo()
         {
-            if (mojangVersionInfo.IsEmpty()) BuildVersionInfo();
+            if (mojangVersionInfo is null) BuildVersionInfo();
             return mojangVersionInfo;
         }
     }

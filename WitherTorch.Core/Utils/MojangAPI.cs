@@ -3,14 +3,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
-using System.Threading;
-#if NET472
-using System.Net;
-using System.Text;
-#elif NET5_0
-using System.Net.Http;
-#endif
+using System.Runtime.CompilerServices;
 using System.IO;
 
 namespace WitherTorch.Core.Utils
@@ -20,8 +13,9 @@ namespace WitherTorch.Core.Utils
     /// </summary>
     public static class MojangAPI
     {
-        private const string manifestListURL = "http://launchermeta.mojang.com/mc/game/version_manifest.json";
+        private const string manifestListURL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
         public static Dictionary<string, VersionInfo> VersionDictionary { get; private set; }
+
         private static string[] versions;
         public static string[] Versions
         {
@@ -34,29 +28,33 @@ namespace WitherTorch.Core.Utils
                 return versions;
             }
         }
-        public struct VersionInfo : IComparable<string>, IComparable<VersionInfo>
-        {
-            public string ManifestURL;
-            public DateTime ReleaseDate;
-            public string VersionType;
 
-            public bool IsEmpty() => ReleaseDate == default;
+        public class VersionInfo : IComparable<string>, IComparable<VersionInfo>
+        {
+            public string ManifestURL { get; }
+            public DateTime ReleaseDate { get; }
+            public string VersionType { get; }
+
+            public VersionInfo(string versionType, in DateTime releaseDate, string manifestURL)
+            {
+                VersionType = versionType;
+                ReleaseDate = releaseDate;
+                ManifestURL = manifestURL;
+            }
 
             int IComparable<string>.CompareTo(string other)
             {
                 if (other is null) return 0;
                 else if (VersionDictionary.ContainsKey(other))
                 {
-                    if (IsEmpty()) return -1;
-                    else ReleaseDate.CompareTo(VersionDictionary[other].ReleaseDate);
+                    return ReleaseDate.CompareTo(VersionDictionary[other].ReleaseDate);
                 }
                 return 0;
             }
 
             int IComparable<VersionInfo>.CompareTo(VersionInfo other)
             {
-                if (IsEmpty()) return -1;
-                else if (other.IsEmpty()) return 1;
+                if (other is null) return 1;
                 else return ReleaseDate.CompareTo(other.ReleaseDate);
             }
 
@@ -64,7 +62,7 @@ namespace WitherTorch.Core.Utils
             {
                 return (a as IComparable<VersionInfo>).CompareTo(b) < 0;
             }
-            
+
             public static bool operator <=(VersionInfo a, VersionInfo b)
             {
                 return (a as IComparable<VersionInfo>).CompareTo(b) <= 0;
@@ -74,7 +72,7 @@ namespace WitherTorch.Core.Utils
             {
                 return (a as IComparable<VersionInfo>).CompareTo(b) > 0;
             }
-            
+
             public static bool operator >=(VersionInfo a, VersionInfo b)
             {
                 return (a as IComparable<VersionInfo>).CompareTo(b) >= 0;
@@ -101,44 +99,50 @@ namespace WitherTorch.Core.Utils
                 if (manifestString != null)
                 {
                     JObject manifestJSON;
-                    using (StringReader reader = new StringReader(manifestString))
+                    using (JsonTextReader reader = new JsonTextReader(new StringReader(manifestString)))
                     {
-                        using (JsonTextReader jtr = new JsonTextReader(reader))
-                        {
-                            try
-                            {
-                                manifestJSON = GlobalSerializers.JsonSerializer.Deserialize(jtr) as JObject;
-                            }
-                            catch (Exception)
-                            {
-                                manifestJSON = null;
-                            }
-                        }
                         try
                         {
-                            reader?.Close();
+                            manifestJSON = GlobalSerializers.JsonSerializer.Deserialize(reader) as JObject;
                         }
                         catch (Exception)
                         {
+                            manifestJSON = null;
                         }
+                        reader.Close();
                     }
                     if (manifestJSON != null)
                     {
-                        foreach (var token in manifestJSON.GetValue("versions").ToObject<JArray>())
+                        foreach (JToken token in manifestJSON.GetValue("versions"))
                         {
-                            try
+                            if (token is JObject tokenObj)
                             {
-                                VersionInfo info = new VersionInfo()
+                                string id = null, url = null, type = null, releaseTime = null;
+                                foreach (var prop in tokenObj)
                                 {
-                                    ManifestURL = token["url"].ToString(),
-                                    VersionType = token["type"].ToString(),
-                                    ReleaseDate = DateTime.Parse(token["releaseTime"].ToString())
-                                };
-                                if (info.ReleaseDate.Month == 4 && info.ReleaseDate.Day == 1) continue; // 過濾愚人節版本
-                                versionPairs.Add(token["id"].ToString(), info);
-                            }
-                            catch (Exception)
-                            {
+                                    switch (prop.Key)
+                                    {
+                                        case "id":
+                                            id = prop.Value.ToString();
+                                            break;
+                                        case "url":
+                                            url = prop.Value.ToString();
+                                            break;
+                                        case "type":
+                                            type = prop.Value.ToString();
+                                            break;
+                                        case "releaseTime":
+                                            releaseTime = prop.Value.ToString();
+                                            break;
+                                        default:
+                                            continue;
+                                    }
+                                }
+                                if (id is object && url is object && type is object && releaseTime is object &&
+                                    DateTime.TryParse(releaseTime, out DateTime trueReleaseTime) && IsValidTime(trueReleaseTime))
+                                {
+                                    versionPairs.Add(id, new VersionInfo(type, trueReleaseTime, url));
+                                }
                             }
                         }
                     }
@@ -149,7 +153,20 @@ namespace WitherTorch.Core.Utils
 
             }
             VersionDictionary = versionPairs;
-            versions = versionPairs.Any() ? versionPairs.Keys.ToArray() : Array.Empty<string>();
+            versions = versionPairs.Count > 0 ? versionPairs.Keys.ToArray() : Array.Empty<string>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsValidTime(in DateTime time)
+        {
+            int year = time.Year;
+            int month = time.Month;
+            int day = time.Day;
+            if (year > 2012 || (year == 2012 && (month > 3 || (month == 3 && day >= 29)))) //1.2.5 開始有 server 版本 (1.2.5 發布日期: 2012/3/29)
+            {
+                return month != 4 || day != 1; // 過濾愚人節版本
+            }
+            return false;
         }
 
         public sealed class VersionComparer : IComparer<string>

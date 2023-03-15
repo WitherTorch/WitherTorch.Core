@@ -6,6 +6,7 @@ using System.IO;
 using System.Net;
 using System.ComponentModel;
 using WitherTorch.Core.Utils;
+using System.Security.Cryptography;
 
 namespace WitherTorch.Core.Servers
 {
@@ -32,7 +33,8 @@ namespace WitherTorch.Core.Servers
         {
             InstallTask installingTask = new InstallTask(this);
             OnInstallSoftware(installingTask);
-            string manifestURL = mojangVersionInfo.ManifestURL;
+            MojangAPI.VersionInfo versionInfo = mojangVersionInfo;
+            string manifestURL = versionInfo.ManifestURL;
             if (!string.IsNullOrEmpty(manifestURL))
             {
                 bool isStop = false;
@@ -46,46 +48,75 @@ namespace WitherTorch.Core.Servers
                 JObject jsonObject = JsonConvert.DeserializeObject<JObject>(client.DownloadString(manifestURL));
                 installingTask.StopRequested -= StopRequestedHandler;
                 if (isStop) return;
-                string downloadURL = jsonObject.GetValue("downloads")["server"]["url"].ToString();
-                DownloadStatus status = new DownloadStatus(downloadURL, 0);
-                installingTask.ChangeStatus(status);
-                void StopRequestedHandler2(object sender, EventArgs e)
+                JToken token = jsonObject.GetValue("downloads")["server"];
+                if (token is JObject tokenObject)
                 {
-                    if (client != null)
+                    string downloadURL = tokenObject["url"].ToString();
+                    byte[] sha1 = HashHelper.HexStringToByte(tokenObject["sha1"].ToString());
+                    DownloadStatus status = new DownloadStatus(downloadURL, 0);
+                    installingTask.ChangeStatus(status);
+                    void StopRequestedHandler2(object sender, EventArgs e)
                     {
-                        try
+                        if (client != null)
                         {
-                            client.CancelAsync();
-                            client.Dispose();
+                            try
+                            {
+                                client.CancelAsync();
+                                client.Dispose();
+                            }
+                            catch (Exception)
+                            {
+                            }
                         }
-                        catch (Exception)
-                        {
-                        }
+                        installingTask.StopRequested -= StopRequestedHandler2;
                     }
-                    installingTask.StopRequested -= StopRequestedHandler2;
+                    installingTask.StopRequested += StopRequestedHandler2;
+                    string filePath = Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar");
+                    client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
+                    {
+                        status.Percentage = e.ProgressPercentage;
+                        installingTask.OnStatusChanged();
+                        installingTask.ChangePercentage(e.ProgressPercentage);
+                    };
+                    client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
+                    {
+                        installingTask.StopRequested -= StopRequestedHandler2;
+                        client.Dispose();
+                        client = null;
+                        if (e.Error != null || e.Cancelled)
+                        {
+                            installingTask.OnInstallFailed();
+                        }
+                        else
+                        {
+                            try
+                            {
+                                //Sha1 校驗
+                                using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                                {
+                                    byte[] hash = HashHelper.ComputeSha1Hash(stream);
+                                    if (HashHelper.ByteArrayEquals(hash, sha1))
+                                    {
+                                        installingTask.OnInstallFinished();
+                                    }
+                                    else
+                                    {
+                                        installingTask.OnInstallFailed();
+                                    }
+                                }
+                            }
+                            catch (Exception)
+                            {
+                                installingTask.OnInstallFailed();
+                            }
+                        }
+                    };
+                    client.DownloadFileAsync(new Uri(downloadURL), filePath);
                 }
-                installingTask.StopRequested += StopRequestedHandler2;
-                client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
+                else
                 {
-                    status.Percentage = e.ProgressPercentage;
-                    installingTask.OnStatusChanged();
-                    installingTask.ChangePercentage(e.ProgressPercentage);
-                };
-                client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
-                {
-                    installingTask.StopRequested -= StopRequestedHandler2;
-                    client.Dispose();
-                    client = null;
-                    if (e.Error != null || e.Cancelled)
-                    {
-                        installingTask.OnInstallFailed();
-                    }
-                    else
-                    {
-                        installingTask.OnInstallFinished();
-                    }
-                };
-                client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"));
+                    installingTask.OnInstallFailed();
+                }
             }
             else
             {
