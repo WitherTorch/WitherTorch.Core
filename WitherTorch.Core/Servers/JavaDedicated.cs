@@ -49,10 +49,19 @@ namespace WitherTorch.Core.Servers
                 installingTask.StopRequested -= StopRequestedHandler;
                 if (isStop) return;
                 JToken token = jsonObject.GetValue("downloads")["server"];
-                if (token is JObject tokenObject)
+                if (token is JObject tokenObject &&
+                    tokenObject.TryGetValue("url", StringComparison.OrdinalIgnoreCase, out JToken downloadURLToken))
                 {
-                    string downloadURL = tokenObject["url"].ToString();
-                    byte[] sha1 = HashHelper.HexStringToByte(tokenObject["sha1"].ToString());
+                    string downloadURL = downloadURLToken.ToString();
+                    byte[] sha1;
+                    if (tokenObject.TryGetValue("sha1", StringComparison.OrdinalIgnoreCase, out JToken sha1Token))
+                    {
+                        sha1 = HashHelper.HexStringToByte(sha1Token.ToString());
+                    }
+                    else
+                    {
+                        sha1 = null;
+                    }
                     DownloadStatus status = new DownloadStatus(downloadURL, 0);
                     installingTask.ChangeStatus(status);
                     void StopRequestedHandler2(object sender, EventArgs e)
@@ -89,25 +98,24 @@ namespace WitherTorch.Core.Servers
                         }
                         else
                         {
-                            try
+                            if (sha1 is object) //SHA-1 校驗
                             {
-                                //Sha1 校驗
-                                using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                                byte[] hash;
+                                try
                                 {
-                                    byte[] hash = HashHelper.ComputeSha1Hash(stream);
-                                    if (HashHelper.ByteArrayEquals(hash, sha1))
-                                    {
-                                        installingTask.OnInstallFinished();
-                                    }
-                                    else
-                                    {
-                                        installingTask.OnInstallFailed();
-                                    }
+                                    using (FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                                        hash = HashHelper.ComputeSha1Hash(stream);
                                 }
+                                catch (Exception)
+                                {
+                                    hash = null;
+                                }
+                                if (HashHelper.ByteArrayEquals(hash, sha1)) installingTask.OnInstallFinished();
+                                else installingTask.OnInstallFailed();
                             }
-                            catch (Exception)
+                            else
                             {
-                                installingTask.OnInstallFailed();
+                                installingTask.OnInstallFinished();
                             }
                         }
                     };

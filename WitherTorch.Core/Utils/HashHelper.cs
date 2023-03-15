@@ -6,8 +6,6 @@ namespace WitherTorch.Core.Utils
 {
     internal static class HashHelper
     {
-        private static SHA1Managed sha1;
-
         public unsafe static byte[] HexStringToByte(string hexString)
         {
             int len = hexString.Length >> 1;
@@ -60,13 +58,14 @@ namespace WitherTorch.Core.Utils
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte[] ComputeSha1Hash(System.IO.Stream stream)
         {
-            if (sha1 is null) sha1 = new SHA1Managed();
-            return sha1.ComputeHash(stream);
+            using (SHA1 sha1 = SHA1.Create())
+                return sha1.ComputeHash(stream);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe bool ByteArrayEquals(byte[] a, byte[] b)
         {
+            if (a is null || b is null) return false;
             int len = a.Length;
             if (len == b.Length)
             {
