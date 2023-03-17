@@ -98,13 +98,14 @@ namespace WitherTorch.Core.Utils
             {
                 if (e.Error is null)
                 {
-                    byte[] exceptedHash = this.hash;
+                    byte[] exceptedHash = hash;
                     if (exceptedHash is object) //SHA-1 校驗
                     {
                         byte[] actualHash;
                         switch (hashMethod)
                         {
                             case HashMethod.Sha1:
+                                task.ChangeStatus(new ValidatingStatus(filename));
                                 try
                                 {
                                     using (FileStream stream = File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -116,6 +117,7 @@ namespace WitherTorch.Core.Utils
                                 }
                                 break;
                             case HashMethod.Sha256:
+                                task.ChangeStatus(new ValidatingStatus(filename));
                                 try
                                 {
                                     using (FileStream stream = File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -166,6 +168,8 @@ namespace WitherTorch.Core.Utils
         {
             if (finishTaskAfterDownload)
                 task.OnInstallFinished();
+            else
+                task.ChangeStatus(null);
             DownloadCompleted?.Invoke(this, EventArgs.Empty);
             Dispose();
         }
@@ -174,6 +178,8 @@ namespace WitherTorch.Core.Utils
         {
             if (finishTaskAfterDownload)
                 task.OnInstallFailed();
+            else
+                task.ChangeStatus(null);
             DownloadFailed?.Invoke(this, EventArgs.Empty);
             Dispose();
         }

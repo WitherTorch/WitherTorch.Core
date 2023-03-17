@@ -18,7 +18,8 @@ namespace WitherTorch.Core.Servers
     {
         private const string manifestListURL = "https://api.papermc.io/v2/projects/paper";
         private const string manifestListURL2 = "https://api.papermc.io/v2/projects/paper/versions/{0}";
-        private const string downloadURL = "https://api.papermc.io/v2/projects/paper/versions/{0}/builds/{1}/downloads/paper-{0}-{1}.jar";
+        private const string manifestListURL3 = "https://api.papermc.io/v2/projects/paper/versions/{0}/builds/{1}";
+        private const string downloadURL = "https://api.papermc.io/v2/projects/paper/versions/{0}/builds/{1}/downloads/{2}";
 
         protected bool _isStarted;
         IPropertyFile[] propertyFiles = new IPropertyFile[4];
@@ -107,6 +108,7 @@ namespace WitherTorch.Core.Servers
             JObject manifestJSON;
             InstallTask installingTask = new InstallTask(this);
             OnInstallSoftware(installingTask);
+            installingTask.ChangeStatus(PreparingInstallStatus.Instance);
             WebClient client = new WebClient();
             bool isStop = false;
             void StopRequestedHandler(object sender, EventArgs e)
@@ -134,7 +136,7 @@ namespace WitherTorch.Core.Servers
                     manifestJSON = null;
                 }
             }
-            if (isStop)
+            if (isStop || manifestJSON is null)
             {
                 installingTask.OnInstallFailed();
             }
@@ -142,12 +144,43 @@ namespace WitherTorch.Core.Servers
             {
                 if (manifestJSON.GetValue("builds") is JArray buildArray && buildArray.Last is JValue rawBuildValue && rawBuildValue.Value is long build)
                 {
+                    using (JsonTextReader reader = new JsonTextReader(new StringReader(client.DownloadString(string.Format(manifestListURL3, versionString, build)))))
+                    {
+                        try
+                        {
+                            manifestJSON = GlobalSerializers.JsonSerializer.Deserialize(reader) as JObject;
+                        }
+                        catch (Exception)
+                        {
+                            manifestJSON = null;
+                        }
+                    }
                     this.build = build;
-                    DownloadHelper helper = new DownloadHelper(
-                        task: installingTask, webClient: client, downloadUrl: string.Format(downloadURL, versionString, build),
-                        filename: Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"));
-                    helper.DownloadCompleted += DownloadHelper_DownloadCompleted;
-                    helper.StartDownload();
+                    installingTask.StopRequested -= StopRequestedHandler;
+                    if (isStop) return;
+                    else if (manifestJSON is null)
+                    {
+                        installingTask.OnInstallFailed();
+                    }
+                    else
+                    {
+                        JToken token = manifestJSON.GetValue("downloads")["application"];
+                        if (token is JObject tokenObject &&
+                            tokenObject.TryGetValue("name", StringComparison.OrdinalIgnoreCase, out JToken nameToken))
+                        {
+                            byte[] sha256;
+                            if (WTCore.CheckFileHashIfExist && tokenObject.TryGetValue("sha256", StringComparison.OrdinalIgnoreCase, out JToken sha256Token))
+                                sha256 = HashHelper.HexStringToByte(sha256Token.ToString());
+                            else
+                                sha256 = null;
+                            DownloadHelper helper = new DownloadHelper(
+                            task: installingTask, webClient: client, downloadUrl: string.Format(downloadURL, versionString, build, nameToken.ToString()),
+                            filename: Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"), 
+                            hash: sha256, hashMethod: DownloadHelper.HashMethod.Sha256);
+                            helper.DownloadCompleted += DownloadHelper_DownloadCompleted;
+                            helper.StartDownload();
+                        }
+                    }
                 }
                 else
                 {

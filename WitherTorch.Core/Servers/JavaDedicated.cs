@@ -33,6 +33,7 @@ namespace WitherTorch.Core.Servers
         {
             InstallTask installingTask = new InstallTask(this);
             OnInstallSoftware(installingTask);
+            installingTask.ChangeStatus(PreparingInstallStatus.Instance);
             MojangAPI.VersionInfo versionInfo = mojangVersionInfo;
             string manifestURL = versionInfo.ManifestURL;
             if (!string.IsNullOrEmpty(manifestURL))

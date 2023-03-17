@@ -344,7 +344,7 @@ namespace WitherTorch.Core
                 {
                     foreach (IPropertyFile propertyFile in properties)
                     {
-                        propertyFile.Save(false);
+                        propertyFile?.Save(false);
                     }
                 }
             }

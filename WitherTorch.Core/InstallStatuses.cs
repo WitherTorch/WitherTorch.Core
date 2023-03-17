@@ -131,4 +131,19 @@ namespace WitherTorch.Core
             Percentage = percentage;
         }
     }
+
+    public sealed class PreparingInstallStatus : AbstractInstallStatus
+    {
+        public static readonly PreparingInstallStatus Instance = new PreparingInstallStatus();
+    }
+
+    public sealed class ValidatingStatus : AbstractInstallStatus
+    {
+        public string Filename { get; }
+
+        public ValidatingStatus(string filename)
+        {
+            Filename = filename;
+        }
+    }
 }
