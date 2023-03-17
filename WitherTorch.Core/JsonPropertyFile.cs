@@ -7,6 +7,9 @@ using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core
 {
+    /// <summary>
+    /// 表示以 JSON 格式 (.json) 儲存的設定檔
+    /// </summary>
     public class JsonPropertyFile : IPropertyFile
     {
         protected IPropertyFileDescriptor descriptor;

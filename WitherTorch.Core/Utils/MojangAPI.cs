@@ -29,7 +29,7 @@ namespace WitherTorch.Core.Utils
             }
         }
 
-        public class VersionInfo : IComparable<string>, IComparable<VersionInfo>
+        public sealed class VersionInfo : IComparable<string>, IComparable<VersionInfo>
         {
             public string ManifestURL { get; }
             public DateTime ReleaseDate { get; }

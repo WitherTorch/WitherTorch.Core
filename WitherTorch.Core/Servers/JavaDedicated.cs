@@ -54,7 +54,7 @@ namespace WitherTorch.Core.Servers
                 {
                     string downloadURL = downloadURLToken.ToString();
                     byte[] sha1;
-                    if (tokenObject.TryGetValue("sha1", StringComparison.OrdinalIgnoreCase, out JToken sha1Token))
+                    if (WTCore.CheckFileHashIfExist && tokenObject.TryGetValue("sha1", StringComparison.OrdinalIgnoreCase, out JToken sha1Token))
                     {
                         sha1 = HashHelper.HexStringToByte(sha1Token.ToString());
                     }
@@ -110,7 +110,7 @@ namespace WitherTorch.Core.Servers
                                 {
                                     hash = null;
                                 }
-                                if (HashHelper.ByteArrayEquals(hash, sha1)) installingTask.OnInstallFinished();
+                                if (HashHelper.ByteArrayEquals(hash, sha1) || !installingTask.OnValidateFailed(filePath, hash, sha1)) installingTask.OnInstallFinished();
                                 else installingTask.OnInstallFailed();
                             }
                             else

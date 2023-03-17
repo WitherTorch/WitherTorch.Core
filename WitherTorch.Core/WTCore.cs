@@ -117,5 +117,10 @@ namespace WitherTorch.Core
         /// 是否重新導向 <b>SystemProcess</b> 內處理序的訊息流 (預設為是)
         /// </summary>
         public static bool RedirectSystemProcessStream { get; set; } = true;
+
+        /// <summary>
+        /// 是否檢查在下載後檢查伺服器檔案的雜湊碼 (如果該伺服器軟體類別有支援該功能的話)
+        /// </summary>
+        public static bool CheckFileHashIfExist { get; set; } = true;
     }
 }

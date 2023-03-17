@@ -1,5 +1,8 @@
 ﻿namespace WitherTorch.Core
 {
+    /// <summary>
+    /// 表示一個安裝狀態。此介面只作為分類之用，無實際功能
+    /// </summary>
     public interface IInstallStatus
     {
         //This interface is empty, just use for catagory

@@ -6,6 +6,9 @@ using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core
 {
+    /// <summary>
+    /// 表示以 YAML 格式 (.yaml) 儲存的設定檔
+    /// </summary>
     public class YamlPropertyFile : JsonPropertyFile
     {
         public YamlPropertyFile(string path, bool create = true, bool ignoreLazyRequest = false) : base(path, create, ignoreLazyRequest)

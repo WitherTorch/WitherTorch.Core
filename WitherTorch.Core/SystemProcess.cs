@@ -5,11 +5,18 @@ using DProcess = System.Diagnostics.Process;
 
 namespace WitherTorch.Core
 {
+    /// <summary>
+    /// 表示一個本機系統處理序
+    /// </summary>
     public class SystemProcess : AbstractProcess, IDisposable
     {
         private bool disposedValue;
 
+        /// <summary>
+        /// 取得此處理序的系統處理序物件
+        /// </summary>
         public DProcess InnerProcess { get; protected set; }
+
         public override int ID
         {
             get

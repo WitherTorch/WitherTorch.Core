@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 
 namespace WitherTorch.Core
 {
+    /// <summary>
+    /// 伺服器軟體的註冊器
+    /// </summary>
     public sealed class SoftwareRegister
     {
         internal static Dictionary<Type, string> registeredServerSoftwares = new Dictionary<Type, string>();
@@ -14,6 +17,10 @@ namespace WitherTorch.Core
 
         private static MethodInfo _genericMethodInfo;
 
+        /// <summary>
+        /// 註冊伺服器軟體
+        /// </summary>
+        /// <param name="type">伺服器軟體的類別</param>
         public static void RegisterServerSoftware(Type type)
         {
             if (type != null && type.IsSubclassOf(typeof(Server<>).MakeGenericType(type)))
@@ -24,6 +31,10 @@ namespace WitherTorch.Core
             }
         }
 
+        /// <summary>
+        /// 註冊伺服器軟體
+        /// </summary>
+        /// <typeparam name="T">伺服器軟體的類別</typeparam>
         public static void RegisterServerSoftware<T>() where T : Server<T>, new()
         {
             if (Server<T>.isNeedInitialize)
@@ -63,6 +74,7 @@ namespace WitherTorch.Core
                 registeredServerSoftwares.Add(typeof(T), softwareID);
             }
         }
+
         internal static Type GetSoftwareFromID(string id)
         {
             foreach (KeyValuePair<Type, string> software in registeredServerSoftwares)

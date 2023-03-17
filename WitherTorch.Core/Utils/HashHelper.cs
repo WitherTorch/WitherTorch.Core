@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace WitherTorch.Core.Utils
 {
-    internal static class HashHelper
+    public static class HashHelper
     {
         public unsafe static byte[] HexStringToByte(string hexString)
         {
@@ -52,6 +53,21 @@ namespace WitherTorch.Core.Utils
             else
             {
                 return Array.Empty<byte>();
+            }
+        }
+
+        public static string ByteToHexString(byte[] hash)
+        {
+            if (hash is null) return null;
+            else
+            {
+                int hashLength = hash.Length;
+                StringBuilder builder = new StringBuilder(hashLength * 2);
+                for (int i = 0; i < hashLength; i++)
+                {
+                    builder.AppendFormat("{0:X2}", hash[i]);
+                }
+                return builder.ToString();
             }
         }
 

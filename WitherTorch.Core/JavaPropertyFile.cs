@@ -4,6 +4,9 @@ using System.Linq;
 
 namespace WitherTorch.Core
 {
+    /// <summary>
+    /// 表示以 Java 設定檔格式 (.properties) 儲存的設定檔
+    /// </summary>
     public class JavaPropertyFile : IPropertyFile
     {
         private IPropertyFileDescriptor descriptor;
