@@ -13,7 +13,7 @@ namespace WitherTorch.Core
         private static string _fabricInstallerPath = "./FabricInstaller";
 
         /// <summary>
-        /// 取得或設定 <b>CacheDownloadClient</b> 產生的快取檔案所存放的位置
+        /// 取得或設定 <see cref="CachedDownloadClient"/> 產生的快取檔案所存放的位置
         /// </summary>
         public static string CachePath
         {
@@ -104,7 +104,7 @@ namespace WitherTorch.Core
         public static TimeSpan RegisterSoftwareTimeout { get; set; } = System.Threading.Timeout.InfiniteTimeSpan;
 
         /// <summary>
-        /// 取得或設定 <b>CacheDownloadClient</b> 所產生的快取檔案有效時間 (預設為一小時)
+        /// 取得或設定 <see cref="CachedDownloadClient"/> 所產生的快取檔案有效時間 (預設為一小時)
         /// </summary>
         public static TimeSpan CacheFileTTL { get; set; } = new TimeSpan(1, 0, 0);
 
@@ -114,7 +114,7 @@ namespace WitherTorch.Core
         public static bool UseLazyLoadingOnPropertyFiles { get; set; } = false;
 
         /// <summary>
-        /// 是否重新導向 <b>SystemProcess</b> 內處理序的訊息流 (預設為是)
+        /// 是否重新導向 <see cref="SystemProcess"/> 內處理序的訊息流 (預設為是)
         /// </summary>
         public static bool RedirectSystemProcessStream { get; set; } = true;
 
