@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Xml;
@@ -19,6 +20,7 @@ namespace WitherTorch.Core.Servers
     {
         private const string manifestListURL = "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml";
         private const string downloadURLPrefix = "https://maven.minecraftforge.net/net/minecraftforge/forge/";
+        private readonly static int downloadURLPrefixLength = downloadURLPrefix.Length;
         private static StringBuilder URLBuilder = null;
         internal static string[] versions;
         internal static Dictionary<string, Tuple<string, string>[]> versionDict;
@@ -170,7 +172,7 @@ namespace WitherTorch.Core.Servers
             string downloadURL = null;
             if (URLBuilder is null)
             {
-                URLBuilder = new StringBuilder(downloadURLPrefix, 114);
+                URLBuilder = new StringBuilder(downloadURLPrefix, downloadURLPrefixLength);
             }
             else
             {
@@ -200,74 +202,37 @@ namespace WitherTorch.Core.Servers
             URLBuilder.Clear();
             if (downloadURL != null)
             {
-                DownloadStatus status = new DownloadStatus(downloadURL, 0);
-                void StopRequestedHandler2(object sender, EventArgs e)
-                {
-                    if (client != null)
-                    {
-                        try
-                        {
-                            client.CancelAsync();
-                            client.Dispose();
-                        }
-                        catch (Exception)
-                        {
-                        }
-                    }
-                    installingTask.StopRequested -= StopRequestedHandler2;
-                }
-                string installerLocation = null;
-                client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
-                {
-                    status.Percentage = e.ProgressPercentage;
-                    installingTask.OnStatusChanged();
-                    if (needInstall)
-                    {
-                        installingTask.ChangePercentage(e.ProgressPercentage / 2);
-                    }
-                    else
-                    {
-                        installingTask.ChangePercentage(e.ProgressPercentage);
-                    }
-                };
-                client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
-                {
-                    installingTask.StopRequested -= StopRequestedHandler2;
-                    client.Dispose();
-                    client = null;
-                    if (e.Error != null || e.Cancelled == true)
-                    {
-                        installingTask.OnInstallFailed();
-                    }
-                    else
-                    {
-                        if (needInstall)
-                        {
-                            try
-                            {
-                                RunInstaller(installingTask, installerLocation);
-                            }
-                            catch (Exception)
-                            {
-                                installingTask.OnInstallFailed();
-                            }
-                        }
-                        else
-                        {
-                            installingTask.OnInstallFinished();
-                        }
-                    }
-                };
-                installingTask.ChangeStatus(status);
+                string installerLocation;
                 if (needInstall)
                 {
                     installerLocation = Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + "-installer.jar");
-                    client.DownloadFileAsync(new Uri(downloadURL), installerLocation);
                 }
                 else
                 {
-                    client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + ".jar"));
+                    installerLocation = Path.Combine(ServerDirectory, @"forge-" + selectedVersion.Item2 + ".jar");
                 }
+                DownloadHelper helper = new DownloadHelper(
+                    task: installingTask, webClient: client, downloadUrl: downloadURL,
+                    filename: installerLocation, finishTaskAfterDownload: false, percentageMultiplier: 0.5);
+                helper.DownloadCompleted += delegate
+                {
+                    if (needInstall)
+                    {
+                        try
+                        {
+                            RunInstaller(installingTask, installerLocation);
+                        }
+                        catch (Exception)
+                        {
+                            installingTask.OnInstallFailed();
+                        }
+                    }
+                    else
+                    {
+                        installingTask.OnInstallFinished();
+                    }
+                };
+                helper.StartDownload();
             }
         }
 

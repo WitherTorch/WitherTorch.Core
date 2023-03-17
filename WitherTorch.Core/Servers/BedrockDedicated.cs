@@ -191,11 +191,7 @@ namespace WitherTorch.Core.Servers
                                 }
                                 currentCount++;
                                 status.Percentage = currentCount * 100.0 / count;
-                                System.Threading.Tasks.Task.Run(() =>
-                                {
-                                    installingTask.OnStatusChanged();
-                                    installingTask.ChangePercentage(status.Percentage);
-                                });
+                                installingTask.ChangePercentage(status.Percentage);
                             }
                         }
                         client.Dispose();

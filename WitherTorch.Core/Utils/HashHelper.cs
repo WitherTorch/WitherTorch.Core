@@ -77,11 +77,19 @@ namespace WitherTorch.Core.Utils
             using (SHA1 sha1 = SHA1.Create())
                 return sha1.ComputeHash(stream);
         }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static byte[] ComputeSha256Hash(System.IO.Stream stream)
+        {
+            using (SHA256 sha256 = SHA256.Create())
+                return sha256.ComputeHash(stream);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe bool ByteArrayEquals(byte[] a, byte[] b)
         {
             if (a is null || b is null) return false;
+            else if (ReferenceEquals(a, b)) return true;
             int len = a.Length;
             if (len == b.Length)
             {

@@ -52,74 +52,16 @@ namespace WitherTorch.Core.Servers
                 if (token is JObject tokenObject &&
                     tokenObject.TryGetValue("url", StringComparison.OrdinalIgnoreCase, out JToken downloadURLToken))
                 {
-                    string downloadURL = downloadURLToken.ToString();
                     byte[] sha1;
                     if (WTCore.CheckFileHashIfExist && tokenObject.TryGetValue("sha1", StringComparison.OrdinalIgnoreCase, out JToken sha1Token))
-                    {
                         sha1 = HashHelper.HexStringToByte(sha1Token.ToString());
-                    }
                     else
-                    {
                         sha1 = null;
-                    }
-                    DownloadStatus status = new DownloadStatus(downloadURL, 0);
-                    installingTask.ChangeStatus(status);
-                    void StopRequestedHandler2(object sender, EventArgs e)
-                    {
-                        if (client != null)
-                        {
-                            try
-                            {
-                                client.CancelAsync();
-                                client.Dispose();
-                            }
-                            catch (Exception)
-                            {
-                            }
-                        }
-                        installingTask.StopRequested -= StopRequestedHandler2;
-                    }
-                    installingTask.StopRequested += StopRequestedHandler2;
-                    string filePath = Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar");
-                    client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
-                    {
-                        status.Percentage = e.ProgressPercentage;
-                        installingTask.OnStatusChanged();
-                        installingTask.ChangePercentage(e.ProgressPercentage);
-                    };
-                    client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
-                    {
-                        installingTask.StopRequested -= StopRequestedHandler2;
-                        client.Dispose();
-                        client = null;
-                        if (e.Error != null || e.Cancelled)
-                        {
-                            installingTask.OnInstallFailed();
-                        }
-                        else
-                        {
-                            if (sha1 is object) //SHA-1 校驗
-                            {
-                                byte[] hash;
-                                try
-                                {
-                                    using (FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
-                                        hash = HashHelper.ComputeSha1Hash(stream);
-                                }
-                                catch (Exception)
-                                {
-                                    hash = null;
-                                }
-                                if (HashHelper.ByteArrayEquals(hash, sha1) || !installingTask.OnValidateFailed(filePath, hash, sha1)) installingTask.OnInstallFinished();
-                                else installingTask.OnInstallFailed();
-                            }
-                            else
-                            {
-                                installingTask.OnInstallFinished();
-                            }
-                        }
-                    };
-                    client.DownloadFileAsync(new Uri(downloadURL), filePath);
+                    DownloadHelper helper = new DownloadHelper(
+                        task: installingTask, webClient: client, downloadUrl: downloadURLToken.ToString(),
+                        filename: Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"), 
+                        hash: sha1, hashMethod: DownloadHelper.HashMethod.Sha1);
+                    helper.StartDownload();
                 }
                 else
                 {

@@ -133,13 +133,11 @@ namespace WitherTorch.Core.Utils
                 UpdateStarted += (sender, e) =>
                 {
                     status.State = SpigotBuildToolsStatus.ToolState.Update;
-                    installTask.OnStatusChanged();
                 };
                 UpdateProgressChanged += (progress) =>
                 {
                     status.Percentage = progress;
                     installTask.ChangePercentage(progress / 2);
-                    installTask.OnStatusChanged();
                 };
                 UpdateFinished += (sender, e) =>
                 {
@@ -177,13 +175,11 @@ namespace WitherTorch.Core.Utils
                 UpdateStarted += (sender, e) =>
                 {
                     status.State = SpigotBuildToolsStatus.ToolState.Update;
-                    installTask.OnStatusChanged();
                 };
                 UpdateProgressChanged += (progress) =>
                 {
                     status.Percentage = progress;
                     installTask.ChangePercentage(progress / 2);
-                    installTask.OnStatusChanged();
                 };
                 UpdateFinished += (sender, e) =>
                 {
@@ -201,12 +197,11 @@ namespace WitherTorch.Core.Utils
             }
         }
 
-        private void DoInstall(in InstallTask task, in FabricInstallerStatus status, string version)
+        private void DoInstall(InstallTask task, FabricInstallerStatus status, string version)
         {
             InstallTask installTask = task;
             FabricInstallerStatus installStatus = status;
             installStatus.State = SpigotBuildToolsStatus.ToolState.Build;
-            installTask.OnStatusChanged();
             JavaRuntimeEnvironment environment = RuntimeEnvironment.JavaDefault;
             ProcessStartInfo startInfo = new ProcessStartInfo
             {
@@ -254,12 +249,11 @@ namespace WitherTorch.Core.Utils
             };
         }
 
-        private void DoInstall(in InstallTask task, in FabricInstallerStatus status, string minecraftVersion, string fabricVersion)
+        private void DoInstall(InstallTask task, FabricInstallerStatus status, string minecraftVersion, string fabricVersion)
         {
             InstallTask installTask = task;
             FabricInstallerStatus installStatus = status;
             installStatus.State = SpigotBuildToolsStatus.ToolState.Build;
-            installTask.OnStatusChanged();
             JavaRuntimeEnvironment environment = RuntimeEnvironment.JavaDefault;
             ProcessStartInfo startInfo = new ProcessStartInfo
             {

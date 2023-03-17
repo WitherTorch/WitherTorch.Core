@@ -7,6 +7,7 @@ using System.IO;
 using System.ComponentModel;
 using System.Net;
 using WitherTorch.Core.Utils;
+using System.Security.Cryptography;
 
 namespace WitherTorch.Core.Servers
 {
@@ -122,25 +123,15 @@ namespace WitherTorch.Core.Servers
                 installingTask.StopRequested -= StopRequestedHandler;
             }
             installingTask.StopRequested += StopRequestedHandler;
-            using (StringReader reader = new StringReader(client.DownloadString(string.Format(manifestListURL2, versionString))))
+            using (JsonTextReader reader = new JsonTextReader(new StringReader(client.DownloadString(string.Format(manifestListURL2, versionString)))))
             {
-                using (JsonTextReader jtr = new JsonTextReader(reader))
-                {
-                    try
-                    {
-                        manifestJSON = GlobalSerializers.JsonSerializer.Deserialize(jtr) as JObject;
-                    }
-                    catch (Exception)
-                    {
-                        manifestJSON = null;
-                    }
-                }
                 try
                 {
-                    reader?.Close();
+                    manifestJSON = GlobalSerializers.JsonSerializer.Deserialize(reader) as JObject;
                 }
                 catch (Exception)
                 {
+                    manifestJSON = null;
                 }
             }
             if (isStop)
@@ -149,62 +140,46 @@ namespace WitherTorch.Core.Servers
             }
             else
             {
-                JArray buildArray = manifestJSON.GetValue("builds") as JArray;
-                if (buildArray != null && buildArray.Last is JValue rawBuildValue && rawBuildValue.Value is long build)
+                if (manifestJSON.GetValue("builds") is JArray buildArray && buildArray.Last is JValue rawBuildValue && rawBuildValue.Value is long build)
                 {
                     this.build = build;
-                    string downloadURL = string.Format(Paper.downloadURL, versionString, build);
-                    DownloadStatus status = new DownloadStatus(downloadURL, 0);
-                    installingTask.ChangeStatus(status);
-                    client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
-                    {
-                        status.Percentage = e.ProgressPercentage;
-                        installingTask.OnStatusChanged();
-                        installingTask.ChangePercentage(e.ProgressPercentage);
-                    };
-                    client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
-                    {
-                        client.Dispose();
-                        client = null;
-                        installingTask.StopRequested -= StopRequestedHandler;
-                        if (e.Error != null || e.Cancelled)
-                        {
-                            installingTask.OnInstallFailed();
-                        }
-                        else
-                        {
-                            try
-                            {
-                                if (propertyFiles[3] != null)
-                                {
-                                    propertyFiles[3].Dispose();
-                                    propertyFiles[3] = null;
-                                }
-                                if (mc1_19 is null) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
-                                if (GetMojangVersionInfo() >= mc1_19)
-                                {
-                                    string path = Path.Combine(ServerDirectory, "./config/paper-global.yml");
-                                    propertyFiles[3] = new YamlPropertyFile(path);
-                                }
-                                else
-                                {
-                                    string path = Path.Combine(ServerDirectory, "./paper.yml");
-                                    propertyFiles[3] = new YamlPropertyFile(path);
-                                }
-                            }
-                            catch (Exception)
-                            {
-
-                            }
-                            installingTask.OnInstallFinished();
-                        }
-                    };
-                    client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"));
+                    DownloadHelper helper = new DownloadHelper(
+                        task: installingTask, webClient: client, downloadUrl: string.Format(downloadURL, versionString, build),
+                        filename: Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"));
+                    helper.DownloadCompleted += DownloadHelper_DownloadCompleted;
+                    helper.StartDownload();
                 }
                 else
                 {
                     installingTask.OnInstallFailed();
                 }
+            }
+        }
+
+        private void DownloadHelper_DownloadCompleted(object sender, EventArgs e)
+        {
+            try
+            {
+                if (mc1_19 is null) MojangAPI.VersionDictionary?.TryGetValue("1.19", out mc1_19);
+                string path;
+                if (GetMojangVersionInfo() >= mc1_19)
+                {
+                    path = Path.GetFullPath(Path.Combine(ServerDirectory, "./config/paper-global.yml"));
+                }
+                else
+                {
+                    path = Path.GetFullPath(Path.Combine(ServerDirectory, "./paper.yml"));
+                }
+                IPropertyFile propertyFile = propertyFiles[3];
+                if (propertyFile is null || !string.Equals(path, Path.GetFullPath(propertyFile.GetFilePath()), StringComparison.OrdinalIgnoreCase))
+                {
+                    propertyFile?.Dispose();
+                    propertyFiles[3] = new YamlPropertyFile(path);
+                }
+            }
+            catch (Exception)
+            {
+
             }
         }
 

@@ -10,6 +10,25 @@ namespace WitherTorch.Core
         public delegate void ValidateFailedEventHandler(object sender, ValidateFailedCallbackEventArgs e);
 
         /// <summary>
+        /// 驗證失敗後的操作狀態
+        /// </summary>
+        public enum ValidateFailedState
+        {
+            /// <summary>
+            /// 取消下載
+            /// </summary>
+            Cancel = 0,
+            /// <summary>
+            /// 忽略並繼續
+            /// </summary>
+            Ignore = 1,
+            /// <summary>
+            /// 重新下載
+            /// </summary>
+            Retry= 2
+        }
+
+        /// <summary>
         /// 當安裝完成時觸發
         /// </summary>
         public event EventHandler InstallFinished;
@@ -47,7 +66,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 取得目前的安裝狀態物件，此屬性有可能是 <see langword="null"/>
         /// </summary>
-        public IInstallStatus Status { get; private set; }
+        public AbstractInstallStatus Status { get; private set; }
 
         private bool _isStopped;
 
@@ -74,7 +93,7 @@ namespace WitherTorch.Core
         /// 更換安裝狀態物件，更換成功後將會觸發 <see cref="StatusChanged"/> 事件
         /// </summary>
         /// <param name="status">要替換的安裝狀態物件</param>
-        public void ChangeStatus(IInstallStatus status)
+        public void ChangeStatus(AbstractInstallStatus status)
         {
             if (Status != status)
             {
@@ -122,11 +141,11 @@ namespace WitherTorch.Core
         /// <summary>
         /// 引發 <see cref="ValidateFailed"/> 事件，並傳回是否取消安裝的值
         /// </summary>
-        public bool OnValidateFailed(string filename, byte[] actualFileHash, byte[] exceptedFileHash)
+        public ValidateFailedState OnValidateFailed(string filename, byte[] actualFileHash, byte[] exceptedFileHash)
         {
             ValidateFailedCallbackEventArgs callback = new ValidateFailedCallbackEventArgs(filename, actualFileHash, exceptedFileHash);
             StatusChanged?.Invoke(this, callback);
-            return callback.IsCanceled();
+            return callback.GetState();
         }
 
         /// <summary>
@@ -134,7 +153,7 @@ namespace WitherTorch.Core
         /// </summary>
         public class ValidateFailedCallbackEventArgs : EventArgs
         {
-            private bool isCanceled = true;
+            private ValidateFailedState state = ValidateFailedState.Cancel;
 
             /// <summary>
             /// 取得驗證失敗的檔案路徑
@@ -159,11 +178,11 @@ namespace WitherTorch.Core
             }
 
             /// <summary>
-            /// 取消安裝
+            /// 取消下載
             /// </summary>
             public void Cancel()
             {
-                isCanceled = true;
+                state = ValidateFailedState.Cancel;
             }
 
             /// <summary>
@@ -171,10 +190,22 @@ namespace WitherTorch.Core
             /// </summary>
             public void Ignore()
             {
-                isCanceled = false;
+                state = ValidateFailedState.Ignore;
             }
 
-            public bool IsCanceled() => isCanceled;
+            /// <summary>
+            /// 重新下載
+            /// </summary>
+            public void Retry()
+            {
+                state = ValidateFailedState.Retry;
+            }
+
+            /// <summary>
+            /// 取得驗證失敗後的操作狀態
+            /// </summary>
+            /// <returns></returns>
+            public ValidateFailedState GetState() => state;
         }
     }
 }

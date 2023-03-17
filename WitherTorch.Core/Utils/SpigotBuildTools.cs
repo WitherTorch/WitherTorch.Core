@@ -132,13 +132,11 @@ namespace WitherTorch.Core.Utils
                 UpdateStarted += (sender, e) =>
                 {
                     status.State = SpigotBuildToolsStatus.ToolState.Update;
-                    installTask.OnStatusChanged();
                 };
                 UpdateProgressChanged += (progress) =>
                 {
                     status.Percentage = progress;
                     installTask.ChangePercentage(progress / 2);
-                    installTask.OnStatusChanged();
                 };
                 UpdateFinished += (sender, e) =>
                 {
@@ -161,7 +159,6 @@ namespace WitherTorch.Core.Utils
             InstallTask installTask = task;
             SpigotBuildToolsStatus installStatus = status;
             installStatus.State = SpigotBuildToolsStatus.ToolState.Build;
-            installTask.OnStatusChanged();
             JavaRuntimeEnvironment environment = RuntimeEnvironment.JavaDefault;
             ProcessStartInfo startInfo = new ProcessStartInfo
             {

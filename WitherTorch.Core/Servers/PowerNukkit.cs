@@ -6,6 +6,7 @@ using System.Xml;
 using System.Collections.Generic;
 using System.Net;
 using System.ComponentModel;
+using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core.Servers
 {
@@ -79,44 +80,10 @@ namespace WitherTorch.Core.Servers
             OnInstallSoftware(installingTask);
             if (versionDict.TryGetValue(versionString, out string fullVersionString))
             {
-                string downloadURL = string.Format(PowerNukkit.downloadURL, fullVersionString);
-                DownloadStatus status = new DownloadStatus(downloadURL, 0);
-                installingTask.ChangeStatus(status);
-                WebClient client = new WebClient();
-                void StopRequestedHandler(object sender, EventArgs e)
-                {
-                    try
-                    {
-                        client?.CancelAsync();
-                        client?.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                    }
-                    installingTask.StopRequested -= StopRequestedHandler;
-                }
-                installingTask.StopRequested += StopRequestedHandler;
-                client.DownloadProgressChanged += delegate (object sender, DownloadProgressChangedEventArgs e)
-                {
-                    status.Percentage = e.ProgressPercentage;
-                    installingTask.OnStatusChanged();
-                    installingTask.ChangePercentage(e.ProgressPercentage);
-                };
-                client.DownloadFileCompleted += delegate (object sender, AsyncCompletedEventArgs e)
-                {
-                    client.Dispose();
-                    client = null;
-                    installingTask.StopRequested -= StopRequestedHandler;
-                    if (e.Error != null || e.Cancelled)
-                    {
-                        installingTask.OnInstallFailed();
-                    }
-                    else
-                    {
-                        installingTask.OnInstallFinished();
-                    }
-                };
-                client.DownloadFileAsync(new Uri(downloadURL), Path.Combine(ServerDirectory, @"powernukkit-" + versionString + ".jar"));
+                DownloadHelper helper = new DownloadHelper(
+                    task: installingTask, webClient: new WebClient(), downloadUrl: string.Format(downloadURL, fullVersionString),
+                    filename: Path.Combine(ServerDirectory, @"powernukkit-" + versionString + ".jar"));
+                helper.StartDownload();
             }
             else
             {
