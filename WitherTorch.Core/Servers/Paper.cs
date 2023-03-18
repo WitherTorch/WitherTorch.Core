@@ -178,7 +178,7 @@ namespace WitherTorch.Core.Servers
                             filename: Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"), 
                             hash: sha256, hashMethod: DownloadHelper.HashMethod.Sha256);
                             helper.DownloadCompleted += DownloadHelper_DownloadCompleted;
-                            helper.StartDownload();
+                            helper.Start();
                         }
                     }
                 }

@@ -2,10 +2,14 @@
 using System.ComponentModel;
 using System.IO;
 using System.Net;
+using System.Text;
 
 namespace WitherTorch.Core.Utils
 {
-    internal sealed class DownloadHelper
+    /// <summary>
+    /// 簡易的下載工具類別，可自動校驗雜湊和處理 InstallTask 上的校驗失敗處理
+    /// </summary>
+    public sealed class DownloadHelper
     {
         public enum HashMethod
         {
@@ -23,12 +27,12 @@ namespace WitherTorch.Core.Utils
         private readonly DownloadStatus status;
         private readonly HashMethod hashMethod;
         private readonly string filename;
+        private readonly string filenameTemp;
         private readonly byte[] hash;
         private readonly double initPercentage, percentageMultiplier;
-        private readonly bool finishTaskAfterDownload, disposeWebClientAfterUsed;
-        private bool disposedValue;
+        private readonly bool finishInstallTaskAfterDownload, disposeWebClientAfterUsed;
 
-        public DownloadHelper(InstallTask task, WebClient webClient, string downloadUrl, string filename, bool finishTaskAfterDownload = true,
+        public DownloadHelper(InstallTask task, WebClient webClient, string downloadUrl, string filename, bool finishInstallTaskAfterDownload = true,
             double initPercentage = 0.0, double percentageMultiplier = 1.0, byte[] hash = null, HashMethod hashMethod = HashMethod.None,
             bool disposeWebClientAfterUsed = true)
         {
@@ -36,10 +40,14 @@ namespace WitherTorch.Core.Utils
             this.webClient = webClient;
             this.downloadUrl = new Uri(downloadUrl);
             this.filename = filename;
-            this.finishTaskAfterDownload = finishTaskAfterDownload;
+            this.finishInstallTaskAfterDownload = finishInstallTaskAfterDownload;
             this.hash = hash;
             this.disposeWebClientAfterUsed = disposeWebClientAfterUsed;
             this.hashMethod = hashMethod;
+            if (File.Exists(filename))
+                filenameTemp = GetTempFileName(filename);
+            else
+                filenameTemp = filename;
             double maxMultiplier;
             if (initPercentage <= 0)
             {
@@ -56,14 +64,25 @@ namespace WitherTorch.Core.Utils
             status = new DownloadStatus(downloadUrl);
         }
 
-        public void StopRequestedHandler(object sender, EventArgs e)
+        private static string GetTempFileName(string filename)
         {
-            if (webClient != null) webClient.CancelAsync();
-            Dispose();
-            task.StopRequested -= StopRequestedHandler;
+            StringBuilder builder = new StringBuilder(filename, filename.Length + 5);
+            builder.Append(".tmp");
+            string result = builder.ToString();
+            int i = -1, length = result.Length;
+            while (File.Exists(result))
+            {
+                if (i >= 0)
+                {
+                    builder.Remove(length, builder.Length - length);
+                }
+                builder.Append((++i).ToString());
+                result = builder.ToString();
+            }
+            return result;
         }
 
-        public void StartDownload()
+        public void Start()
         {
             WebClient webClient = this.webClient;
             InstallTask task = this.task;
@@ -73,7 +92,14 @@ namespace WitherTorch.Core.Utils
             task.StopRequested += StopRequestedHandler;
             webClient.DownloadProgressChanged += WebClient_DownloadProgressChanged;
             webClient.DownloadFileCompleted += WebClient_DownloadFileCompleted;
-            webClient.DownloadFileAsync(downloadUrl, filename);
+            webClient.DownloadFileAsync(downloadUrl, filenameTemp);
+        }
+
+        private void StopRequestedHandler(object sender, EventArgs e)
+        {
+            if (webClient != null) webClient.CancelAsync();
+            Dispose();
+            task.StopRequested -= StopRequestedHandler;
         }
 
         private void WebClient_DownloadProgressChanged(object sender, DownloadProgressChangedEventArgs e)
@@ -108,7 +134,7 @@ namespace WitherTorch.Core.Utils
                                 task.ChangeStatus(new ValidatingStatus(filename));
                                 try
                                 {
-                                    using (FileStream stream = File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+                                    using (FileStream stream = File.Open(filenameTemp, FileMode.Open, FileAccess.Read, FileShare.Read))
                                         actualHash = HashHelper.ComputeSha1Hash(stream);
                                 }
                                 catch (Exception)
@@ -120,7 +146,7 @@ namespace WitherTorch.Core.Utils
                                 task.ChangeStatus(new ValidatingStatus(filename));
                                 try
                                 {
-                                    using (FileStream stream = File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+                                    using (FileStream stream = File.Open(filenameTemp, FileMode.Open, FileAccess.Read, FileShare.Read))
                                         actualHash = HashHelper.ComputeSha256Hash(stream);
                                 }
                                 catch (Exception)
@@ -147,7 +173,7 @@ namespace WitherTorch.Core.Utils
                                     Failed();
                                     break;
                                 case InstallTask.ValidateFailedState.Retry:
-                                    StartDownload();
+                                    Start();
                                     break;
                             }
                         }
@@ -166,7 +192,27 @@ namespace WitherTorch.Core.Utils
 
         private void Finished()
         {
-            if (finishTaskAfterDownload)
+            if (!ReferenceEquals(filename, filenameTemp) && File.Exists(filenameTemp))
+            {
+                if (File.Exists(filename))
+                {
+                    try
+                    {
+                        File.Delete(filename);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+                try
+                {
+                    File.Move(filenameTemp, filename);
+                }
+                catch (Exception)
+                {
+                }
+            }
+            if (finishInstallTaskAfterDownload)
                 task.OnInstallFinished();
             else
                 task.ChangeStatus(null);
@@ -176,7 +222,9 @@ namespace WitherTorch.Core.Utils
 
         private void Failed()
         {
-            if (finishTaskAfterDownload)
+            if (File.Exists(filenameTemp))
+                File.Delete(filenameTemp);
+            if (finishInstallTaskAfterDownload)
                 task.OnInstallFailed();
             else
                 task.ChangeStatus(null);
@@ -184,37 +232,12 @@ namespace WitherTorch.Core.Utils
             Dispose();
         }
 
-        private void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    // TODO: 處置受控狀態 (受控物件)
-                    if (disposeWebClientAfterUsed)
-                    {
-                        webClient.Dispose();
-                    }
-                }
-
-                // TODO: 釋出非受控資源 (非受控物件) 並覆寫完成項
-                // TODO: 將大型欄位設為 Null
-                disposedValue = true;
-            }
-        }
-
-        // // TODO: 僅有當 'Dispose(bool disposing)' 具有會釋出非受控資源的程式碼時，才覆寫完成項
-        // ~DownloadHelper()
-        // {
-        //     // 請勿變更此程式碼。請將清除程式碼放入 'Dispose(bool disposing)' 方法
-        //     Dispose(disposing: false);
-        // }
-
         public void Dispose()
         {
-            // 請勿變更此程式碼。請將清除程式碼放入 'Dispose(bool disposing)' 方法
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            if (disposeWebClientAfterUsed)
+            {
+                webClient?.Dispose();
+            }
         }
     }
 }

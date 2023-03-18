@@ -213,7 +213,7 @@ namespace WitherTorch.Core.Servers
                 }
                 DownloadHelper helper = new DownloadHelper(
                     task: installingTask, webClient: client, downloadUrl: downloadURL,
-                    filename: installerLocation, finishTaskAfterDownload: false, percentageMultiplier: 0.5);
+                    filename: installerLocation, finishInstallTaskAfterDownload: false, percentageMultiplier: 0.5);
                 helper.DownloadCompleted += delegate
                 {
                     if (needInstall)
@@ -232,7 +232,7 @@ namespace WitherTorch.Core.Servers
                         installingTask.OnInstallFinished();
                     }
                 };
-                helper.StartDownload();
+                helper.Start();
             }
         }
 

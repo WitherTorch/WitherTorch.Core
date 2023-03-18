@@ -62,7 +62,7 @@ namespace WitherTorch.Core.Servers
                         task: installingTask, webClient: client, downloadUrl: downloadURLToken.ToString(),
                         filename: Path.Combine(ServerDirectory, @"minecraft_server." + versionString + ".jar"), 
                         hash: sha1, hashMethod: DownloadHelper.HashMethod.Sha1);
-                    helper.StartDownload();
+                    helper.Start();
                 }
                 else
                 {

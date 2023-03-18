@@ -9,7 +9,7 @@ using System.Xml;
 namespace WitherTorch.Core.Utils
 {
     /// <summary>
-    /// 操作 Spigot 官方的建置工具 (BuildTools) 的類別，此類別無法被繼承
+    /// 操作 Fabric 官方的安裝工具 (Fabric Installer) 的類別，此類別無法被繼承
     /// </summary>
     public sealed class FabricInstaller
     {
