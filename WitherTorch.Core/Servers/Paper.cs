@@ -107,7 +107,7 @@ namespace WitherTorch.Core.Servers
         {
             JObject manifestJSON;
             InstallTask installingTask = new InstallTask(this);
-            OnInstallSoftware(installingTask);
+            OnServerInstalling(installingTask);
             installingTask.ChangeStatus(PreparingInstallStatus.Instance);
             WebClient client = new WebClient();
             bool isStop = false;
@@ -408,7 +408,7 @@ namespace WitherTorch.Core.Servers
             }
         }
 
-        protected override bool OnServerSaving()
+        protected override bool BeforeServerSaved()
         {
             JsonPropertyFile serverInfoJson = ServerInfoJson;
             serverInfoJson["version"] = versionString;

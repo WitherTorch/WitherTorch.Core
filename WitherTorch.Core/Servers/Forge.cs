@@ -168,7 +168,7 @@ namespace WitherTorch.Core.Servers
             WebClient client = new WebClient();
             bool needInstall = false;
             InstallTask installingTask = new InstallTask(this);
-            OnInstallSoftware(installingTask);
+            OnServerInstalling(installingTask);
             string downloadURL = null;
             if (URLBuilder is null)
             {
@@ -536,7 +536,7 @@ namespace WitherTorch.Core.Servers
                 this.environment = null;
         }
 
-        protected override bool OnServerSaving()
+        protected override bool BeforeServerSaved()
         {
             JsonPropertyFile serverInfoJson = ServerInfoJson;
             serverInfoJson["version"] = versionString;

@@ -100,7 +100,7 @@ namespace WitherTorch.Core.Servers
         public void InstallSoftware()
         {
             InstallTask installingTask = new InstallTask(this);
-            OnInstallSoftware(installingTask);
+            OnServerInstalling(installingTask);
             WebClient client = new WebClient();
             string downloadURL;
 #if NET472
@@ -321,7 +321,7 @@ namespace WitherTorch.Core.Servers
             return true;
         }
 
-        protected override bool OnServerSaving()
+        protected override bool BeforeServerSaved()
         {
             JsonPropertyFile serverInfoJson = ServerInfoJson;
             serverInfoJson["version"] = versionString;

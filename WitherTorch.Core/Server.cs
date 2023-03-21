@@ -51,7 +51,17 @@ namespace WitherTorch.Core
         private string _name;
         private bool disposedValue;
 
+        public delegate void ServerInstallingEventHandler(object sender, InstallTask task);
+
+        /// <summary>
+        /// 當伺服器的名稱改變時觸發
+        /// </summary>
         public event EventHandler ServerNameChanged;
+
+        /// <summary>
+        /// 當伺服器正在安裝軟體時觸發
+        /// </summary>
+        public event ServerInstallingEventHandler ServerInstalling;
 
         // 內部空參數建構子 (防止有第三方伺服器軟體類別繼承自它)
         internal Server()
@@ -62,7 +72,6 @@ namespace WitherTorch.Core
         /// 檢測是否為指定類別的子伺服器類別
         /// </summary>
         /// <param name="baseServerType">欲查詢的基底伺服器類別</param>
-        /// <returns></returns>
         public bool IsSubclassOf(Type baseServerType)
         {
             Type TServer = GetType();
@@ -90,42 +99,51 @@ namespace WitherTorch.Core
                 ServerNameChanged?.Invoke(this, EventArgs.Empty);
             }
         }
+
         /// <summary>
         /// 伺服器資料夾路徑
         /// </summary>
         public string ServerDirectory { get; set; }
+
         /// <summary>
         /// 取得人類可讀(human-readable)的軟體版本
         /// </summary>
         public abstract string GetReadableVersion();
+
         /// <summary>
         /// 取得伺服器軟體所有的可用版本
         /// </summary>
         public abstract string[] GetSoftwareVersions();
+
         /// <summary>
         /// 取得伺服器的設定檔案
         /// </summary>
         /// <returns></returns>
         public abstract IPropertyFile[] GetServerPropertyFiles();
+
         /// <summary>
         /// 取得伺服器的 server_info.json (伺服器基礎資訊清單)
         /// </summary>
         /// <returns></returns>
         public JsonPropertyFile ServerInfoJson { get; private set; }
+
         /// <summary>
         /// 取得伺服器的執行環境資訊
         /// </summary>
         /// <returns>若無特殊的執行環境資訊，應回傳 <see langword="null"/> 來指示伺服器軟體執行者以預設環境執行</returns>
         public abstract RuntimeEnvironment GetRuntimeEnvironment();
+
         /// <summary>
         /// 設定伺服器的執行環境資訊
         /// </summary>
         /// <returns></returns>
         public abstract void SetRuntimeEnvironment(RuntimeEnvironment environment);
+
         /// <summary>
         /// 取得伺服器
         /// </summary>
         /// <param name="serverDirectory">伺服器資料夾路徑</param>
+        /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
         /// <returns>指定的伺服器，若伺服器不存在則為 <see langword="null"/></returns>
         public static Server GetServerFromDirectory(string serverDirectory)
         {
@@ -136,7 +154,7 @@ namespace WitherTorch.Core
                 Type softwareType = SoftwareRegister.GetSoftwareFromID(softwareID);
                 if (softwareType is null)
                 {
-                    throw new ServerSoftwareIsNotRegisteredException();
+                    throw new ServerSoftwareIsNotRegisteredException(softwareID);
                 }
                 else
                 {
@@ -162,6 +180,7 @@ namespace WitherTorch.Core
             }
             return null;
         }
+
         /// <summary>
         /// 取得伺服器
         /// </summary>
@@ -176,7 +195,7 @@ namespace WitherTorch.Core
                 Type softwareType = SoftwareRegister.GetSoftwareFromID(softwareID);
                 if (softwareType is null)
                 {
-                    throw new ServerSoftwareIsNotRegisteredException();
+                    throw new ServerSoftwareIsNotRegisteredException(softwareID);
                 }
                 else
                 {
@@ -208,9 +227,10 @@ namespace WitherTorch.Core
         /// <typeparam name="T">軟體的型別</typeparam>
         /// <param name="serverDirectory">伺服器路徑</param>
         /// <returns>建立好的伺服器</returns>
+        /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
         public static T CreateServer<T>(string serverDirectory) where T : Server
         {
-            return CreateServerInternal(typeof(T), serverDirectory) as T;
+            return (T)CreateServerInternal(typeof(T), serverDirectory);
         }
 
         /// <summary>
@@ -219,6 +239,7 @@ namespace WitherTorch.Core
         /// <param name="softwareType">軟體的型別</typeparam>
         /// <param name="serverDirectory">伺服器路徑</param>
         /// <returns>建立好的伺服器</returns>
+        /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
         public static Server CreateServer(Type softwareType, string serverDirectory)
         {
             if (softwareType?.IsSubclassOf(typeof(Server)) == true)
@@ -227,13 +248,13 @@ namespace WitherTorch.Core
                 return null;
         }
 
-        [Obsolete]
         /// <summary>
         /// 建立伺服器
         /// </summary>
-        /// <param name="softwareID">軟體的ID</typeparam>
+        /// <param name="softwareID">軟體的ID</param>
         /// <param name="serverDirectory">伺服器路徑</param>
         /// <returns>建立好的伺服器</returns>
+        /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
         public static Server CreateServer(string softwareID, string serverDirectory)
         {
             return CreateServerInternal(SoftwareRegister.GetSoftwareFromID(softwareID), serverDirectory);
@@ -263,7 +284,7 @@ namespace WitherTorch.Core
             }
             else
             {
-                throw new ServerSoftwareIsNotRegisteredException();
+                throw new ServerSoftwareIsNotRegisteredException(softwareType);
             }
             return null;
         }
@@ -317,12 +338,18 @@ namespace WitherTorch.Core
         /// </summary>
         /// <returns>是否成功開始更新伺服器軟體</returns>
         public abstract bool UpdateServer();
-        public delegate void ServerInstallingEventHandler(InstallTask task);
-        public event ServerInstallingEventHandler ServerInstalling;
-        protected void OnInstallSoftware(InstallTask task)
+
+        /// <summary>
+        /// 子類別應覆寫此方法為儲存伺服器的程式碼
+        /// </summary>
+        /// <returns>是否成功儲存伺服器</returns>
+        protected abstract bool BeforeServerSaved();
+
+        protected void OnServerInstalling(InstallTask task)
         {
-            ServerInstalling?.Invoke(task);
+            ServerInstalling?.Invoke(this, task);
         }
+
         /// <summary>
         /// 儲存伺服器
         /// </summary>
@@ -333,7 +360,7 @@ namespace WitherTorch.Core
                 ServerInfoJson = new JsonPropertyFile(configuationPath, true, true);
             ServerInfoJson["name"] = new JValue(ServerName);
             ServerInfoJson["software"] = new JValue(GetSoftwareID());
-            if (OnServerSaving())
+            if (BeforeServerSaved())
             {
                 ServerInfoJson.Save(false);
             }
@@ -352,11 +379,6 @@ namespace WitherTorch.Core
             {
             }
         }
-        /// <summary>
-        /// 子類別應覆寫此方法為儲存伺服器的程式碼
-        /// </summary>
-        /// <returns>是否成功儲存伺服器</returns>
-        protected abstract bool OnServerSaving();
 
         /// <summary>
         /// 伺服器物件的標籤，可供操作者儲存額外的伺服器資訊<br/>

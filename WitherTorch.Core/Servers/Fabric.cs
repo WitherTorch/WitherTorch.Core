@@ -132,14 +132,14 @@ namespace WitherTorch.Core.Servers
         private void InstallSoftware()
         {
             installingTask = new InstallTask(this);
-            OnInstallSoftware(installingTask);
+            OnServerInstalling(installingTask);
             FabricInstaller.Instance.Install(installingTask, versionString);
         }
 
         private void InstallSoftware(string fabricVersion)
         {
             installingTask = new InstallTask(this);
-            OnInstallSoftware(installingTask);
+            OnServerInstalling(installingTask);
             FabricInstaller.Instance.Install(installingTask, versionString, fabricVersion);
         }
 
@@ -330,7 +330,7 @@ namespace WitherTorch.Core.Servers
                 this.environment = null;
         }
 
-        protected override bool OnServerSaving()
+        protected override bool BeforeServerSaved()
         {
             JsonPropertyFile serverInfoJson = ServerInfoJson;
             serverInfoJson["version"] = versionString;

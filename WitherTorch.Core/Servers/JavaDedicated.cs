@@ -32,7 +32,7 @@ namespace WitherTorch.Core.Servers
         private void InstallSoftware()
         {
             InstallTask installingTask = new InstallTask(this);
-            OnInstallSoftware(installingTask);
+            OnServerInstalling(installingTask);
             installingTask.ChangeStatus(PreparingInstallStatus.Instance);
             MojangAPI.VersionInfo versionInfo = mojangVersionInfo;
             string manifestURL = versionInfo.ManifestURL;
@@ -223,7 +223,7 @@ namespace WitherTorch.Core.Servers
             }
         }
 
-        protected override bool OnServerSaving()
+        protected override bool BeforeServerSaved()
         {
             JsonPropertyFile serverInfoJson = ServerInfoJson;
             serverInfoJson["version"] = versionString;

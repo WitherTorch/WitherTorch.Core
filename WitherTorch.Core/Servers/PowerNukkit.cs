@@ -77,7 +77,7 @@ namespace WitherTorch.Core.Servers
         private void InstallSoftware()
         {
             InstallTask installingTask = new InstallTask(this);
-            OnInstallSoftware(installingTask);
+            OnServerInstalling(installingTask);
             if (versionDict.TryGetValue(versionString, out string fullVersionString))
             {
                 DownloadHelper helper = new DownloadHelper(
@@ -227,7 +227,7 @@ namespace WitherTorch.Core.Servers
             return true;
         }
 
-        protected override bool OnServerSaving()
+        protected override bool BeforeServerSaved()
         {
             JsonPropertyFile serverInfoJson = ServerInfoJson;
             serverInfoJson["version"] = versionString;

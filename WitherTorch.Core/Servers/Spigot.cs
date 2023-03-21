@@ -35,7 +35,7 @@ namespace WitherTorch.Core.Servers
         private void InstallSoftware()
         {
             installingTask = new InstallTask(this);
-            OnInstallSoftware(installingTask);
+            OnServerInstalling(installingTask);
             SpigotBuildTools.Instance.Install(installingTask, SpigotBuildTools.BuildTarget.Spigot, GetReadableVersion());
         }
 
@@ -201,7 +201,7 @@ namespace WitherTorch.Core.Servers
             }
         }
 
-        protected override bool OnServerSaving()
+        protected override bool BeforeServerSaved()
         {
             JsonPropertyFile serverInfoJson = ServerInfoJson;
             serverInfoJson["version"] = versionString;
