@@ -1,11 +1,9 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Xml;
@@ -67,9 +65,10 @@ namespace WitherTorch.Core.Servers
                         string version;
                         unsafe
                         {
-                            fixed (char* rawVersionString = versionSplits[0])
+                            string rawVersion = versionSplits[0];
+                            fixed (char* rawVersionString = rawVersion)
                             {
-                                char* rawVersionStringEnd = rawVersionString + versionSplits[0].Length;
+                                char* rawVersionStringEnd = rawVersionString + rawVersion.Length;
                                 char* pointerChar = rawVersionString;
                                 while (pointerChar < rawVersionStringEnd)
                                 {
@@ -80,7 +79,7 @@ namespace WitherTorch.Core.Servers
                                     }
                                     pointerChar++;
                                 }
-                                version = new string(rawVersionString);
+                                version = new string(rawVersionString).Replace(".0", "");
                             }
                         }
                         if (!preparingVersionDict.ContainsKey(version))
@@ -118,9 +117,10 @@ namespace WitherTorch.Core.Servers
                     comparer = MojangAPI.VersionComparer.Instance;
                 }
             }
-            versions = versionKeys.ToArray();
+            string[] versions = versionKeys.ToArray();
             Array.Sort(versions, comparer);
             Array.Reverse(versions);
+            Forge.versions = versions;
             for (int i = 0; i < versions.Length; i++)
             {
                 string key = versions[i];

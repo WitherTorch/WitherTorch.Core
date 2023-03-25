@@ -28,6 +28,19 @@ namespace WitherTorch.Core.Utils
                 return versions;
             }
         }
+        
+        private static string[] javaDedicatedVersions;
+        internal static string[] JavaDedicatedVersions
+        {
+            get
+            {
+                if (javaDedicatedVersions is null)
+                {
+                    LoadVersionList();
+                }
+                return javaDedicatedVersions;
+            }
+        }
 
         public sealed class VersionInfo : IComparable<string>, IComparable<VersionInfo>
         {
@@ -153,18 +166,34 @@ namespace WitherTorch.Core.Utils
 
             }
             VersionDictionary = versionPairs;
-            versions = versionPairs.Count > 0 ? versionPairs.Keys.ToArray() : Array.Empty<string>();
+            if (versionPairs.Count > 0)
+            {
+                versions = versionPairs.Keys.ToArray();
+                javaDedicatedVersions = versionPairs.Where(kp => IsVanillaHasServer(kp.Value)).Select(kp => kp.Key).ToArray();
+            }
+            else
+            {
+                versions = javaDedicatedVersions = Array.Empty<string>();
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsValidTime(in DateTime time)
         {
+            int month = time.Month;
+            int day = time.Day;
+            return month != 4 || day != 1; // 過濾愚人節版本
+        }
+
+        private static bool IsVanillaHasServer(in VersionInfo versionInfo)
+        {
+            DateTime time = versionInfo.ReleaseDate;
             int year = time.Year;
             int month = time.Month;
             int day = time.Day;
             if (year > 2012 || (year == 2012 && (month > 3 || (month == 3 && day >= 29)))) //1.2.5 開始有 server 版本 (1.2.5 發布日期: 2012/3/29)
             {
-                return month != 4 || day != 1; // 過濾愚人節版本
+                return true;
             }
             return false;
         }
@@ -187,7 +216,7 @@ namespace WitherTorch.Core.Utils
             public int Compare(string x, string y)
             {
                 bool success = VersionDictionary.TryGetValue(x, out VersionInfo infoA);
-                if (!success) return 0;
+                if (!success) return -1;
                 success = VersionDictionary.TryGetValue(y, out VersionInfo infoB);
                 if (success)
                 {
@@ -195,7 +224,7 @@ namespace WitherTorch.Core.Utils
                 }
                 else
                 {
-                    return 0;
+                    return 1;
                 }
             }
         }

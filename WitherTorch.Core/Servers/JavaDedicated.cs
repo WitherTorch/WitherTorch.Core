@@ -111,7 +111,7 @@ namespace WitherTorch.Core.Servers
         /// <inheritdoc/>
         public override string[] GetSoftwareVersions()
         {
-            return MojangAPI.Versions;
+            return MojangAPI.JavaDedicatedVersions;
         }
 
         protected override void BuildVersionInfo()
