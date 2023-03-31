@@ -35,12 +35,10 @@ namespace WitherTorch.Core.Servers
         IPropertyFile[] propertyFiles = new IPropertyFile[1];
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
 
-        public Fabric()
+        static Fabric()
         {
-            if (IsInit)
-            {
-                SoftwareID = "fabric";
-            }
+            CallWhenStaticInitialize();
+            SoftwareID = "fabric";
         }
 
         private static void LoadVersionList()

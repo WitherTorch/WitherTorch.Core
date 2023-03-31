@@ -20,12 +20,10 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         protected SystemProcess process;
 
-        public CraftBukkit()
+        static CraftBukkit()
         {
-            if (IsInit)
-            {
-                SoftwareID = "craftbukkit";
-            }
+            CallWhenStaticInitialize();
+            SoftwareID = "craftbukkit";
         }
 
         InstallTask installingTask;

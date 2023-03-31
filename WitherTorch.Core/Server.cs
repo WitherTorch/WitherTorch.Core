@@ -15,27 +15,9 @@ namespace WitherTorch.Core
         /// </summary>
         internal protected static string SoftwareID { get; protected set; }
 
-        internal static bool isNeedInitialize = true;
-
-        /// <summary>
-        /// 指示是否為伺服器軟體註冊時的初始化實體 <br/> <br/>
-        /// 如果為 <c>true</c>, 軟體類別需初始化 <c>SoftwareRegistrationDelegate</c> 和 <c>SoftwareID</c> 欄位<br/>
-        /// 如果為 <c>false</c>, 軟體類別應將此物件當作一般伺服器實體對待
-        /// </summary>
-        protected readonly bool IsInit;
-
         // 面向外部的空參數建構子
         public Server()
         {
-            if (isNeedInitialize)
-            {
-                isNeedInitialize = false;
-                IsInit = true;
-            }
-            else
-            {
-                IsInit = false;
-            }
         }
 
         internal override string GetSoftwareID()

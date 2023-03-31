@@ -23,12 +23,9 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         private IPropertyFile[] propertyFiles = new IPropertyFile[2];
 
-        public PowerNukkit()
+        static PowerNukkit()
         {
-            if (IsInit)
-            {
-                SoftwareID = "powerNukkit";
-            }
+            SoftwareID = "powerNukkit";
         }
 
         private static void LoadVersionList()

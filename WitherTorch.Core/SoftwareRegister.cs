@@ -37,10 +37,8 @@ namespace WitherTorch.Core
         /// <typeparam name="T">伺服器軟體的類別</typeparam>
         public static void RegisterServerSoftware<T>() where T : Server<T>, new()
         {
-            if (Server<T>.isNeedInitialize)
-            {
-                new T().Dispose();
-            }
+            Type t = typeof(T);
+            System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(t.TypeHandle);
             string softwareID = Server<T>.SoftwareID;
             Action regDelegate = Server<T>.SoftwareRegistrationDelegate;
             if (!string.IsNullOrEmpty(softwareID))
@@ -71,7 +69,7 @@ namespace WitherTorch.Core
                         }
                     }
                 }
-                registeredServerSoftwares.Add(typeof(T), softwareID);
+                registeredServerSoftwares.Add(t, softwareID);
             }
         }
 

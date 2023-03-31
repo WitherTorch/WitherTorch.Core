@@ -23,12 +23,9 @@ namespace WitherTorch.Core.Servers
         private IPropertyFile[] propertyFiles = new IPropertyFile[1];
         private static string[] versions;
 
-        public BedrockDedicated()
+        static BedrockDedicated()
         {
-            if (IsInit)
-            {
-                SoftwareID = "bedrockDedicated";
-            }
+            SoftwareID = "bedrockDedicated";
         }
 
         private static void LoadVersionList()
@@ -137,7 +134,7 @@ namespace WitherTorch.Core.Servers
             StrongBox<bool> stopFlag = new StrongBox<bool>();
             void StopRequestedHandler(object sender, EventArgs e)
             {
-               try
+                try
                 {
                     client?.CancelAsync();
                 }

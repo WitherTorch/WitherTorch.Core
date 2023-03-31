@@ -9,10 +9,9 @@ namespace WitherTorch.Core.Servers
     {
         protected Utils.MojangAPI.VersionInfo mojangVersionInfo;
 
-        protected AbstractJavaEditionServer()
+        protected static void CallWhenStaticInitialize()
         {
-            if (IsInit)                
-                SoftwareRegistrationDelegate += Utils.MojangAPI.Initialize; //呼叫 Mojang API 進行版本列表提取
+            SoftwareRegistrationDelegate = Utils.MojangAPI.Initialize; //呼叫 Mojang API 進行版本列表提取
         }
 
         /// <summary>

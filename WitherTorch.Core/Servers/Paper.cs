@@ -34,13 +34,11 @@ namespace WitherTorch.Core.Servers
         internal static string[] versions;
         private static MojangAPI.VersionInfo mc1_19;
 
-        public Paper()
+        static Paper()
         {
-            if (IsInit)
-            {
-                SoftwareRegistrationDelegate += Initialize;
-                SoftwareID = "paper";
-            }
+            CallWhenStaticInitialize();
+            SoftwareRegistrationDelegate += Initialize;
+            SoftwareID = "paper";
         }
 
         private static void Initialize()
@@ -175,7 +173,7 @@ namespace WitherTorch.Core.Servers
                                 sha256 = null;
                             DownloadHelper helper = new DownloadHelper(
                             task: installingTask, webClient: client, downloadUrl: string.Format(downloadURL, versionString, build, nameToken.ToString()),
-                            filename: Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"), 
+                            filename: Path.Combine(ServerDirectory, @"paper-" + versionString + ".jar"),
                             hash: sha256, hashMethod: DownloadHelper.HashMethod.Sha256);
                             helper.DownloadCompleted += DownloadHelper_DownloadCompleted;
                             helper.Start();

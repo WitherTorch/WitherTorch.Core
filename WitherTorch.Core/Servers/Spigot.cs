@@ -23,12 +23,10 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         protected SystemProcess process;
 
-        public Spigot()
+        static Spigot()
         {
-            if (IsInit)
-            {
-                SoftwareID = "spigot";
-            }
+            CallWhenStaticInitialize();
+            SoftwareID = "spigot";
         }
 
         InstallTask installingTask;

@@ -15,6 +15,12 @@ namespace WitherTorch.Core.Servers
     /// </summary>
     public class JavaDedicated : AbstractJavaEditionServer<JavaDedicated>
     {
+        static JavaDedicated()
+        {
+            CallWhenStaticInitialize();
+            SoftwareID = "javaDedicated";
+        }
+
         protected bool _isStarted;
 
         protected SystemProcess process;
@@ -22,12 +28,6 @@ namespace WitherTorch.Core.Servers
         private JavaRuntimeEnvironment environment;
         IPropertyFile[] propertyFiles = new IPropertyFile[1];
         public JavaPropertyFile ServerPropertiesFile => propertyFiles[0] as JavaPropertyFile;
-
-        public JavaDedicated()
-        {
-            if (IsInit)
-                SoftwareID = "javaDedicated";
-        }
 
         private void InstallSoftware()
         {
