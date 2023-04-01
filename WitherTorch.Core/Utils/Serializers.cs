@@ -7,7 +7,7 @@ using IYamlSerializer = YamlDotNet.Serialization.ISerializer;
 
 namespace WitherTorch.Core.Utils
 {
-    internal static class GlobalSerializers
+    public static class GlobalSerializers
     {
         private static JsonSerializer jsonSerializer;
         private static IYamlDeserializer yamlDeserializer;
@@ -27,7 +27,7 @@ namespace WitherTorch.Core.Utils
             }
         }
 
-        internal static IYamlDeserializer YamlDeserializer
+        public static IYamlDeserializer YamlDeserializer
         {
             [MethodImpl(MethodImplOptions.NoInlining)]
             get
@@ -36,7 +36,7 @@ namespace WitherTorch.Core.Utils
             }
         }
 
-        internal static IYamlSerializer YamlSerializer
+        public static IYamlSerializer YamlSerializer
         {
             [MethodImpl(MethodImplOptions.NoInlining)]
             get
