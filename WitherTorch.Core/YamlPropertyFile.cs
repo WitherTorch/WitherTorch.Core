@@ -23,8 +23,7 @@ namespace WitherTorch.Core
                 {
                     try
                     {
-                        Dictionary<object, object> yamlObject = GlobalSerializers.YamlDeserializer.Deserialize(reader) as Dictionary<object, object>;
-                        if (yamlObject != null)
+                        if (GlobalSerializers.YamlDeserializer.Deserialize(reader) is Dictionary<object, object> yamlObject)
                         {
                             currentObject = JObject.FromObject(yamlObject);
                         }
@@ -68,6 +67,7 @@ namespace WitherTorch.Core
                         GlobalSerializers.YamlSerializer.Serialize(writer, currentObject.ToObject<System.Dynamic.ExpandoObject>());
                         writer.Flush();
                         writer.Close();
+                        create = false;
                     }
                     catch (Exception)
                     {

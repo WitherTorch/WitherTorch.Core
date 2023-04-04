@@ -76,7 +76,7 @@ namespace WitherTorch.Core.Utils
                 {
                     builder.Remove(length, builder.Length - length);
                 }
-                builder.Append((++i).ToString());
+                builder.Append(++i);
                 result = builder.ToString();
             }
             return result;
@@ -97,7 +97,7 @@ namespace WitherTorch.Core.Utils
 
         private void StopRequestedHandler(object sender, EventArgs e)
         {
-            if (webClient != null) webClient.CancelAsync();
+            webClient?.CancelAsync();
             Dispose();
             task.StopRequested -= StopRequestedHandler;
         }

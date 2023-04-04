@@ -36,6 +36,7 @@ namespace WitherTorch.Core
 
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _path = "";
             currentObject = null;
         }
@@ -177,6 +178,7 @@ namespace WitherTorch.Core
                         }
                         writer.Flush();
                         writer.Close();
+                        create = false;
                     }
                     catch (Exception)
                     {

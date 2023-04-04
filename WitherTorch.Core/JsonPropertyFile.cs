@@ -36,6 +36,7 @@ namespace WitherTorch.Core
 
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _path = "";
             currentObject = null;
         }
@@ -141,6 +142,7 @@ namespace WitherTorch.Core
                     {
                         GlobalSerializers.JsonSerializer.Serialize(writer, currentObject);
                         writer.Flush();
+                        create = false;
                     }
                     catch (Exception)
                     {
@@ -184,10 +186,9 @@ namespace WitherTorch.Core
             bool canMove = enumerator.MoveNext();
             while (canMove)
             {
-                string path = enumerator.Current as string;
                 canMove = enumerator.MoveNext();
                 bool isLastPath = !canMove;
-                if (path != null)
+                if (enumerator.Current is string path)
                 {
                     int leftBracketIndexOf = path.LastIndexOf('[');
                     int rightBracketIndexOf = path.LastIndexOf(']');
@@ -201,7 +202,7 @@ namespace WitherTorch.Core
                         }
                         else
                         {
-                            throw new ArgumentException();
+                            throw new ArgumentException("無效的路徑", nameof(path));
                         }
                     }
                     JToken tempToken = result[path];
