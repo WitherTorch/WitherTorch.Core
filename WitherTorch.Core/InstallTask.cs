@@ -25,7 +25,7 @@ namespace WitherTorch.Core
             /// <summary>
             /// 重新下載
             /// </summary>
-            Retry= 2
+            Retry = 2
         }
 
         /// <summary>

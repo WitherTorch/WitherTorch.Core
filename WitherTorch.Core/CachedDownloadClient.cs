@@ -1,9 +1,9 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace WitherTorch.Core
 {
@@ -28,7 +28,7 @@ namespace WitherTorch.Core
                 return _inst;
             }
         }
-        
+
         private static void SaveCacheFile(Task lastTask)
         {
             if (lastTask?.IsCompleted != false)
@@ -180,7 +180,7 @@ namespace WitherTorch.Core
                         }
                     }
                     catch (Exception)
-                    { 
+                    {
                     }
                     lock (this)
                     {

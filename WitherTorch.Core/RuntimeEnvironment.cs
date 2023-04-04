@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace WitherTorch.Core
+﻿namespace WitherTorch.Core
 {
     /// <summary>
     /// 定義一個 Java 執行環境

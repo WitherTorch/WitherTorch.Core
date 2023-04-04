@@ -1,7 +1,7 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Newtonsoft.Json.Linq;
 using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core

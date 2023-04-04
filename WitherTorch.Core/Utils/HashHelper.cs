@@ -77,7 +77,7 @@ namespace WitherTorch.Core.Utils
             using (SHA1 sha1 = SHA1.Create())
                 return sha1.ComputeHash(stream);
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte[] ComputeSha256Hash(System.IO.Stream stream)
         {

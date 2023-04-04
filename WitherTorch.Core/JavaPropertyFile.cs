@@ -163,17 +163,17 @@ namespace WitherTorch.Core
                             }
                             lineIndex++;
 #elif NET5_0
-                        if (descriptionDict.TryGetValue(lineIndex, out string line))
-                        {
-                            writer.WriteLine(line);
-                        }
-                        else
-                        {
-                            KeyValuePair<string, string> kvPair = keyValueArray[keyValueIndex];
-                            writer.WriteLine(kvPair.Key + "=" + kvPair.Value);
-                            keyValueIndex++;
-                        }
-                        lineIndex++;
+                            if (descriptionDict.TryGetValue(lineIndex, out string line))
+                            {
+                                writer.WriteLine(line);
+                            }
+                            else
+                            {
+                                KeyValuePair<string, string> kvPair = keyValueArray[keyValueIndex];
+                                writer.WriteLine(kvPair.Key + "=" + kvPair.Value);
+                                keyValueIndex++;
+                            }
+                            lineIndex++;
 #endif
                         }
                         writer.Flush();
@@ -223,17 +223,17 @@ namespace WitherTorch.Core
                     }
                     lineIndex++;
 #elif NET5_0
-                        if (descriptionDict.TryGetValue(lineIndex, out string line))
-                        {
-                            result += line + "\n";
-                        }
-                        else
-                        {
-                            KeyValuePair<string, string> kvPair = keyValueArray[keyValueIndex];
-                            result += kvPair.Key + "=" + kvPair.Value + "\n";
-                            keyValueIndex++;
-                        }
-                        lineIndex++;
+                    if (descriptionDict.TryGetValue(lineIndex, out string line))
+                    {
+                        result += line + "\n";
+                    }
+                    else
+                    {
+                        KeyValuePair<string, string> kvPair = keyValueArray[keyValueIndex];
+                        result += kvPair.Key + "=" + kvPair.Value + "\n";
+                        keyValueIndex++;
+                    }
+                    lineIndex++;
 #endif
                 }
                 return result.TrimEnd('\n');
