@@ -186,67 +186,65 @@ namespace WitherTorch.Core
             bool canMove = enumerator.MoveNext();
             while (canMove)
             {
+                string path = enumerator.Current.ToString();
                 canMove = enumerator.MoveNext();
                 bool isLastPath = !canMove;
-                if (enumerator.Current is string path)
+                int leftBracketIndexOf = path.LastIndexOf('[');
+                int rightBracketIndexOf = path.LastIndexOf(']');
+                int index = -1;
+                if (leftBracketIndexOf != -1 && rightBracketIndexOf == path.Length - 1 && leftBracketIndexOf < rightBracketIndexOf)
                 {
-                    int leftBracketIndexOf = path.LastIndexOf('[');
-                    int rightBracketIndexOf = path.LastIndexOf(']');
-                    int index = -1;
-                    if (leftBracketIndexOf != -1 && rightBracketIndexOf == path.Length - 1 && leftBracketIndexOf < rightBracketIndexOf)
+                    string indexString = path.Substring(leftBracketIndexOf, path.Length - leftBracketIndexOf - 2);
+                    if (int.TryParse(indexString, out index))
                     {
-                        string indexString = path.Substring(leftBracketIndexOf, path.Length - leftBracketIndexOf - 2);
-                        if (int.TryParse(indexString, out index))
-                        {
-                            path = path.Substring(0, leftBracketIndexOf);
-                        }
-                        else
-                        {
-                            throw new ArgumentException("無效的路徑", nameof(path));
-                        }
-                    }
-                    JToken tempToken = result[path];
-                    if (index == -1)
-                    {
-                        if (isLastPath)
-                        {
-                            result[path] = token;
-                        }
-                        else if (tempToken is null || tempToken.Type == JTokenType.Array)
-                        {
-                            tempToken = new JObject();
-                            result[path] = tempToken;
-                            result = tempToken;
-                        }
-                        else
-                        {
-                            result = tempToken;
-                        }
+                        path = path.Substring(0, leftBracketIndexOf);
                     }
                     else
                     {
-                        if (tempToken is null || tempToken.Type != JTokenType.Array)
+                        throw new ArgumentException("無效的路徑", nameof(path));
+                    }
+                }
+                JToken tempToken = result[path];
+                if (index == -1)
+                {
+                    if (isLastPath)
+                    {
+                        result[path] = token;
+                    }
+                    else if (tempToken is null || tempToken.Type == JTokenType.Array)
+                    {
+                        tempToken = new JObject();
+                        result[path] = tempToken;
+                        result = tempToken;
+                    }
+                    else
+                    {
+                        result = tempToken;
+                    }
+                }
+                else
+                {
+                    if (tempToken is null || tempToken.Type != JTokenType.Array)
+                    {
+                        tempToken = isLastPath ? token : new JObject() as JToken;
+                        result[path] = new JArray(new JToken[] { tempToken });
+                        result = tempToken;
+                    }
+                    else
+                    {
+                        JArray tempArray = tempToken as JArray;
+                        tempToken = tempArray[index];
+                        if (isLastPath)
                         {
-                            tempToken = isLastPath ? token : new JObject() as JToken;
-                            result[path] = new JArray(new JToken[] { tempToken });
-                            result = tempToken;
+                            tempToken = token;
+                            tempArray[index] = tempToken;
                         }
-                        else
+                        else if (tempToken is null)
                         {
-                            JArray tempArray = tempToken as JArray;
-                            tempToken = tempArray[index];
-                            if (isLastPath)
-                            {
-                                tempToken = token;
-                                tempArray[index] = tempToken;
-                            }
-                            else if (tempToken is null)
-                            {
-                                tempToken = new JObject();
-                                tempArray[index] = tempToken;
-                            }
-                            result = tempToken;
+                            tempToken = new JObject();
+                            tempArray[index] = tempToken;
                         }
+                        result = tempToken;
                     }
                 }
             }
