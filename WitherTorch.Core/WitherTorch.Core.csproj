@@ -5,7 +5,7 @@
 		<Platforms>AnyCPU;x64;ARM64</Platforms>
 		<Configurations>Debug;Release</Configurations>
 		<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
-		<Deterministic>False</Deterministic>
+		<Deterministic>True</Deterministic>
 		<Authors>WitherTorch 製作組</Authors>
 		<Product>WitherTorch</Product>
 		<Description>WitherTorch 的核心程式庫</Description>
@@ -13,13 +13,16 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
 		<PackageProjectUrl>https://github.com/WitherTorch/WitherTorch.Core</PackageProjectUrl>
-		<Version>1.8.1-CI-11</Version>
+		<RepositoryUrl>https://github.com/WitherTorch/WitherTorch.Core</RepositoryUrl>
+		<Version>1.8.1-CI-12</Version>
 		<PackageIcon>withertorch_core_128.png</PackageIcon>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>minecraft;minecraft-server</PackageTags>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>package_README.md</PackageReadmeFile>
+		<SignAssembly>True</SignAssembly>
+		<AssemblyOriginatorKeyFile>keypair.snk</AssemblyOriginatorKeyFile>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
