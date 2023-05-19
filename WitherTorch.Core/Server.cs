@@ -83,6 +83,14 @@ namespace WitherTorch.Core
         }
 
         /// <summary>
+        /// 伺服器版本
+        /// </summary>
+        /// <remarks>
+        /// 若要保證取得可讀的伺服器版本，請使用 <see cref="GetReadableVersion"/> 函數
+        /// </remarks>
+        public abstract string ServerVersion { get; }
+
+        /// <summary>
         /// 伺服器資料夾路徑
         /// </summary>
         public string ServerDirectory { get; set; }
