@@ -9,8 +9,6 @@ namespace WitherTorch.Core
     public static class WTCore
     {
         private static string _cachePath = "./Cache";
-        private static string _spigotBuildToolsPath = "./SpigotBuildTools";
-        private static string _fabricInstallerPath = "./FabricInstaller";
 
         /// <summary>
         /// 取得或設定 <see cref="CachedDownloadClient"/> 產生的快取檔案所存放的位置
@@ -41,56 +39,6 @@ namespace WitherTorch.Core
                         System.IO.Directory.CreateDirectory(_cachePath);
                     }
                     CachedDownloadClient.ResetCache();
-                }
-                catch (Exception)
-                {
-                }
-            }
-        }
-
-        /// <summary>
-        /// <b>Spigot BuildTools</b> 的根位置
-        /// </summary>
-        public static string SpigotBuildToolsPath
-        {
-            get
-            {
-                return _spigotBuildToolsPath;
-            }
-            set
-            {
-                _spigotBuildToolsPath = value;
-                try
-                {
-                    if (!System.IO.Directory.Exists(_spigotBuildToolsPath))
-                    {
-                        System.IO.Directory.CreateDirectory(_spigotBuildToolsPath);
-                    }
-                }
-                catch (Exception)
-                {
-                }
-            }
-        }
-
-        /// <summary>
-        /// <b>Fabric Installer</b> 的根位置
-        /// </summary>
-        public static string FabricInstallerPath
-        {
-            get
-            {
-                return _fabricInstallerPath;
-            }
-            set
-            {
-                _fabricInstallerPath = value;
-                try
-                {
-                    if (!System.IO.Directory.Exists(_fabricInstallerPath))
-                    {
-                        System.IO.Directory.CreateDirectory(_fabricInstallerPath);
-                    }
                 }
                 catch (Exception)
                 {
