@@ -101,12 +101,13 @@ namespace WitherTorch.Core.Utils
         /// <exception cref="HttpRequestException"/>
         public void DownloadStringAsync(Uri address, object userToken)
         {
+            CancellationToken cancellationToken = tokenSource.Token;
             Task.Factory.StartNew((token) =>
             {
                 DownloadStringCompletedEventArgs eventArgs;
                 try
                 {
-                    using (HttpResponseMessage response = GetAsync(address, HttpCompletionOption.ResponseHeadersRead, tokenSource.Token).Result)
+                    using (HttpResponseMessage response = GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken).Result)
                     {
                         if (response.IsSuccessStatusCode)
                         {
@@ -121,7 +122,7 @@ namespace WitherTorch.Core.Utils
                                     memoryStream = new MemoryStream(length <= int.MaxValue ? (int)length : int.MaxValue);
                                 using (memoryStream)
                                 {
-                                    DownloadBits(contentStream, memoryStream, length, token);
+                                    DownloadBits(contentStream, memoryStream, length, token, cancellationToken);
                                     contentStream.Close();
                                     memoryStream.Position = 0;
                                     using (StreamReader reader = new StreamReader(memoryStream))
@@ -142,7 +143,7 @@ namespace WitherTorch.Core.Utils
                     eventArgs = new DownloadStringCompletedEventArgs(null, ex, false, token);
                 }
                 OnDownloadStringCompleted(eventArgs);
-            }, userToken, tokenSource.Token);
+            }, userToken, cancellationToken);
         }
         #endregion
 
@@ -171,12 +172,13 @@ namespace WitherTorch.Core.Utils
         /// <exception cref="HttpRequestException"/>
         public void DownloadDataAsync(Uri address, object userToken)
         {
+            CancellationToken cancellationToken = tokenSource.Token;
             Task.Factory.StartNew((token) =>
             {
                 DownloadDataCompletedEventArgs eventArgs;
                 try
                 {
-                    using (HttpResponseMessage response = GetAsync(address, HttpCompletionOption.ResponseHeadersRead, tokenSource.Token).Result)
+                    using (HttpResponseMessage response = GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken).Result)
                     {
                         if (response.IsSuccessStatusCode)
                         {
@@ -191,7 +193,7 @@ namespace WitherTorch.Core.Utils
                                     memoryStream = new MemoryStream(length <= int.MaxValue ? (int)length : int.MaxValue);
                                 using (memoryStream)
                                 {
-                                    DownloadBits(contentStream, memoryStream, length, token);
+                                    DownloadBits(contentStream, memoryStream, length, token, cancellationToken);
                                     contentStream.Close();
                                     memoryStream.Position = 0;
                                     eventArgs = new DownloadDataCompletedEventArgs(memoryStream.ToArray(), null, false, token);
@@ -211,7 +213,7 @@ namespace WitherTorch.Core.Utils
                     eventArgs = new DownloadDataCompletedEventArgs(null, ex, false, token);
                 }
                 OnDownloadDataCompleted(eventArgs);
-            }, userToken, tokenSource.Token);
+            }, userToken, cancellationToken);
         }
         #endregion
 
@@ -254,12 +256,13 @@ namespace WitherTorch.Core.Utils
         /// <exception cref="HttpRequestException"/>
         public void DownloadFileAsync(Uri address, string fileName, object userToken)
         {
+            CancellationToken cancellationToken = tokenSource.Token;
             Task.Factory.StartNew((token) =>
             {
                 AsyncCompletedEventArgs eventArgs;
                 try
                 {
-                    using (HttpResponseMessage response = GetAsync(address, HttpCompletionOption.ResponseHeadersRead, tokenSource.Token).Result)
+                    using (HttpResponseMessage response = GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken).Result)
                     {
                         if (response.IsSuccessStatusCode)
                         {
@@ -267,9 +270,10 @@ namespace WitherTorch.Core.Utils
                             using (Stream contentStream = content.ReadAsStreamAsync().Result)
                             using (FileStream fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, true))
                             {
+                                cancellationToken.ThrowIfCancellationRequested();
                                 fileStream.Position = 0;
                                 long length = content.Headers.ContentLength ?? -1;
-                                DownloadBits(contentStream, fileStream, length, token);
+                                DownloadBits(contentStream, fileStream, length, token, cancellationToken);
                                 contentStream.Close();
                                 fileStream.Close();
                             }
@@ -286,7 +290,7 @@ namespace WitherTorch.Core.Utils
                     eventArgs = new AsyncCompletedEventArgs(ex, false, token);
                 }
                 OnDownloadFileCompleted(eventArgs);
-            }, userToken, tokenSource.Token);
+            }, userToken, cancellationToken);
         }
         #endregion
 
@@ -391,13 +395,14 @@ namespace WitherTorch.Core.Utils
         #endregion
 
         #region Download Helpers
-        private void DownloadBits(Stream contentStream, Stream downloadStream, long contentStreamLength, object token)
+        private void DownloadBits(Stream contentStream, Stream downloadStream, long contentStreamLength, object token, CancellationToken cancellationToken)
         {
             int bufferSize = Environment.SystemPageSize;
             byte[] buffer = new byte[bufferSize];
             long position = 0;
             while (position < contentStreamLength || contentStreamLength < 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 int bytesRead = contentStream.Read(buffer, 0, bufferSize);
                 if (bytesRead <= 0)
                     break;
