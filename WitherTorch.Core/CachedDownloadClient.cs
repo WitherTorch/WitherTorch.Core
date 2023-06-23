@@ -9,7 +9,6 @@ namespace WitherTorch.Core
 {
     public class CachedDownloadClient : IDisposable
     {
-        internal const string UserAgent = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36";
         private static volatile JsonPropertyFile cacheFile;
         private static CachedDownloadClient _inst;
         private System.Net.Http.HttpClient _client;
@@ -49,7 +48,7 @@ namespace WitherTorch.Core
         private CachedDownloadClient()
         {
             _client = new System.Net.Http.HttpClient();
-            _client.DefaultRequestHeaders.Add("User-Agent", UserAgent);
+            _client.DefaultRequestHeaders.Add("User-Agent", Constants.UserAgent);
             _client.DefaultRequestHeaders.Accept.Add(Utils.MIMETypes.JSON);
             _client.DefaultRequestHeaders.Accept.Add(Utils.MIMETypes.XML);
             ResetCache();

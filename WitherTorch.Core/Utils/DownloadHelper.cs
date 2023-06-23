@@ -1,8 +1,8 @@
 ﻿using System;
 using System.ComponentModel;
 using System.IO;
-using System.Net;
 using System.Text;
+using static WitherTorch.Core.Utils.WebClient2;
 
 namespace WitherTorch.Core.Utils
 {
@@ -22,7 +22,7 @@ namespace WitherTorch.Core.Utils
         public event EventHandler DownloadFailed;
 
         private readonly InstallTask task;
-        private readonly WebClient webClient;
+        private readonly WebClient2 webClient;
         private readonly Uri downloadUrl;
         private readonly DownloadStatus status;
         private readonly HashMethod hashMethod;
@@ -32,7 +32,7 @@ namespace WitherTorch.Core.Utils
         private readonly double initPercentage, percentageMultiplier;
         private readonly bool finishInstallTaskAfterDownload, disposeWebClientAfterUsed;
 
-        public DownloadHelper(InstallTask task, WebClient webClient, string downloadUrl, string filename, bool finishInstallTaskAfterDownload = true,
+        public DownloadHelper(InstallTask task, WebClient2 webClient, string downloadUrl, string filename, bool finishInstallTaskAfterDownload = true,
             double initPercentage = 0.0, double percentageMultiplier = 1.0, byte[] hash = null, HashMethod hashMethod = HashMethod.None,
             bool disposeWebClientAfterUsed = true)
         {
@@ -84,7 +84,7 @@ namespace WitherTorch.Core.Utils
 
         public void Start()
         {
-            WebClient webClient = this.webClient;
+            WebClient2 webClient = this.webClient;
             InstallTask task = this.task;
             DownloadStatus status = this.status;
             status.Percentage = 0;
