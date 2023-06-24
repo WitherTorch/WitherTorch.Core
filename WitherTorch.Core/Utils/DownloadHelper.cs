@@ -120,7 +120,20 @@ namespace WitherTorch.Core.Utils
             task.StopRequested -= StopRequestedHandler;
             webClient.DownloadProgressChanged -= WebClient_DownloadProgressChanged;
             webClient.DownloadFileCompleted -= WebClient_DownloadFileCompleted;
-            if (!e.Cancelled)
+            string filenameTemp = this.filenameTemp;
+            if (e.Cancelled)
+            {
+                try
+                {
+                    if (File.Exists(filenameTemp))
+                        File.Delete(filenameTemp);
+                }
+                catch (Exception)
+                {
+
+                }
+            }
+            else
             {
                 if (e.Error is null)
                 {
