@@ -118,12 +118,24 @@ namespace WitherTorch.Core
             {
                 try
                 {
-                    downloadedString = _client.GetStringAsync(address).Result;
+#if NET5_0_OR_GREATER
+                    using CancellationTokenSource downloadTokenSource = new CancellationTokenSource();
+                    using Task<string> downloadTask = _client.GetStringAsync(address);
+                    if (downloadTask.Wait(WTCore.CDCDownloadTimeout))
+                        downloadedString = downloadTask.Result;
+                    else
+                        downloadTokenSource.Cancel(true);
+#elif NET472_OR_GREATER
+                    using (Task<string> downloadTask = _client.GetStringAsync(address))
+                    {
+                        if (downloadTask.Wait(WTCore.CDCDownloadTimeout))
+                            downloadedString = downloadTask.Result;
+                    }
+#endif
                 }
                 catch (Exception)
                 {
                 }
-
                 if (downloadedString is null && hasCacheFile)
                 {
                     try
