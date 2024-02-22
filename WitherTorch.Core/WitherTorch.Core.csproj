@@ -23,6 +23,7 @@
 		<PackageReadmeFile>package_README.md</PackageReadmeFile>
 		<SignAssembly>True</SignAssembly>
 		<AssemblyOriginatorKeyFile>keypair.snk</AssemblyOriginatorKeyFile>
+		<Nullable>disable</Nullable>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
