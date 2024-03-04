@@ -20,7 +20,7 @@ namespace WitherTorch.Core
         {
         }
 
-        internal override string GetSoftwareID()
+        public override string GetSoftwareID()
         {
             return SoftwareID;
         }
@@ -304,7 +304,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 取得伺服器軟體ID
         /// </summary>
-        internal abstract string GetSoftwareID();
+        public abstract string GetSoftwareID();
         /// <summary>
         /// 更改伺服器軟體版本
         /// </summary>
