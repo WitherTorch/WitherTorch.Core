@@ -73,7 +73,7 @@ namespace WitherTorch.Core
             }
         }
 
-        internal static Type GetSoftwareFromID(string id)
+        public static Type GetSoftwareTypeFromID(string id)
         {
             foreach (KeyValuePair<Type, string> software in registeredServerSoftwares)
             {
@@ -82,6 +82,13 @@ namespace WitherTorch.Core
                     return software.Key;
                 }
             }
+            return null;
+        }
+
+        public static string GetSoftwareIDFromType(Type type)
+        {
+            if (registeredServerSoftwares.TryGetValue(type, out string result))
+                return result;
             return null;
         }
     }

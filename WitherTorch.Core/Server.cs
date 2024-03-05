@@ -141,7 +141,7 @@ namespace WitherTorch.Core
             {
                 JsonPropertyFile serverInformation = new JsonPropertyFile(Path.Combine(serverDirectory, @"server_info.json"), true, true);
                 string softwareID = serverInformation["software"]?.Value<string>();
-                Type softwareType = SoftwareRegister.GetSoftwareFromID(softwareID);
+                Type softwareType = SoftwareRegister.GetSoftwareTypeFromID(softwareID);
                 if (softwareType is null)
                 {
                     throw new ServerSoftwareIsNotRegisteredException(softwareID);
@@ -182,7 +182,7 @@ namespace WitherTorch.Core
             if (File.Exists(Path.Combine(serverDirectory, @"server_info.json")))
             {
                 JsonPropertyFile serverInformation = new JsonPropertyFile(Path.Combine(serverDirectory, @"server_info.json"), true, true);
-                Type softwareType = SoftwareRegister.GetSoftwareFromID(softwareID);
+                Type softwareType = SoftwareRegister.GetSoftwareTypeFromID(softwareID);
                 if (softwareType is null)
                 {
                     throw new ServerSoftwareIsNotRegisteredException(softwareID);
@@ -247,7 +247,7 @@ namespace WitherTorch.Core
         /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
         public static Server CreateServer(string softwareID, string serverDirectory)
         {
-            return CreateServerInternal(SoftwareRegister.GetSoftwareFromID(softwareID), serverDirectory);
+            return CreateServerInternal(SoftwareRegister.GetSoftwareTypeFromID(softwareID), serverDirectory);
         }
 
         internal static Server CreateServerInternal(Type softwareType, string serverDirectory)
