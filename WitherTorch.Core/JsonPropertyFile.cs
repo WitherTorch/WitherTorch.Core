@@ -37,7 +37,7 @@ namespace WitherTorch.Core
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _path = "";
+            _path = string.Empty;
             currentObject = null;
         }
 

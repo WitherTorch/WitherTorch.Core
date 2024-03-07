@@ -37,7 +37,7 @@ namespace WitherTorch.Core
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _path = "";
+            _path = string.Empty;
             currentObject = null;
         }
 
@@ -204,7 +204,7 @@ namespace WitherTorch.Core
                 Initialize();
             try
             {
-                string result = "";
+                string result = string.Empty;
                 int totalLine = currentObject.Count + descriptionDict.Count;
                 int lineIndex = 0, keyValueIndex = 0;
                 KeyValuePair<string, string>[] keyValueArray = currentObject.ToArray();
@@ -242,7 +242,7 @@ namespace WitherTorch.Core
             {
 
             }
-            return "";
+            return string.Empty;
         }
 
         public string GetFilePath()
