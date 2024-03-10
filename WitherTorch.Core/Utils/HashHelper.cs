@@ -7,6 +7,14 @@ namespace WitherTorch.Core.Utils
 {
     public static class HashHelper
     {
+        public enum HashMethod
+        {
+            None = 0,
+            MD5 = 1,
+            SHA1 = 2,
+            SHA256 = 3,
+        }
+
         public unsafe static byte[] HexStringToByte(string hexString)
         {
             int len = hexString.Length >> 1;
@@ -72,17 +80,26 @@ namespace WitherTorch.Core.Utils
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte[] ComputeSha1Hash(System.IO.Stream stream)
+        public static byte[] ComputeHash(System.IO.Stream stream, HashMethod method)
         {
-            using (SHA1 sha1 = SHA1.Create())
-                return sha1.ComputeHash(stream);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte[] ComputeSha256Hash(System.IO.Stream stream)
-        {
-            using (SHA256 sha256 = SHA256.Create())
-                return sha256.ComputeHash(stream);
+            HashAlgorithm algorithm;
+            switch (method)
+            {
+                case HashMethod.None:
+                    return Array.Empty<byte>();
+                case HashMethod.MD5:
+                    algorithm = MD5.Create();
+                    break;
+                case HashMethod.SHA1:
+                    algorithm = SHA1.Create();
+                    break;                
+                case HashMethod.SHA256:
+                    algorithm = SHA256.Create();
+                    break;
+                default:
+                    goto case HashMethod.None;
+            }
+            return algorithm?.ComputeHash(stream) ?? Array.Empty<byte>();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

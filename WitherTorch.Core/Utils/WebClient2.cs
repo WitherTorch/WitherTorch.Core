@@ -467,14 +467,17 @@ namespace WitherTorch.Core.Utils
         }
 
         #region Alternate EventArgs
+        /// <inheritdoc cref="System.Net.DownloadProgressChangedEventArgs"/>
         public class DownloadProgressChangedEventArgs : ProgressChangedEventArgs
         {
             private long m_BytesReceived;
 
             private long m_TotalBytesToReceive;
 
+            /// <inheritdoc cref="System.Net.DownloadProgressChangedEventArgs.BytesReceived"/>
             public long BytesReceived => m_BytesReceived;
 
+            /// <inheritdoc cref="System.Net.DownloadProgressChangedEventArgs.TotalBytesToReceive"/>
             public long TotalBytesToReceive => m_TotalBytesToReceive;
 
             public DownloadProgressChangedEventArgs(int progressPercentage, object userToken, long bytesReceived, long totalBytesToReceive)
@@ -485,10 +488,12 @@ namespace WitherTorch.Core.Utils
             }
         }
 
+        /// <inheritdoc cref="System.Net.DownloadStringCompletedEventArgs"/>
         public class DownloadStringCompletedEventArgs : AsyncCompletedEventArgs
         {
             private string m_Result;
 
+            /// <inheritdoc cref="System.Net.DownloadStringCompletedEventArgs.Result"/>
             public string Result
             {
                 get
@@ -505,10 +510,12 @@ namespace WitherTorch.Core.Utils
             }
         }
 
+        /// <inheritdoc cref="System.Net.DownloadDataCompletedEventArgs"/>
         public class DownloadDataCompletedEventArgs : AsyncCompletedEventArgs
         {
             private byte[] m_Result;
 
+            /// <inheritdoc cref="System.Net.DownloadDataCompletedEventArgs.Result"/>
             public byte[] Result
             {
                 get
@@ -525,10 +532,12 @@ namespace WitherTorch.Core.Utils
             }
         }
 
+        /// <inheritdoc cref="System.Net.OpenReadCompletedEventArgs"/>
         public class OpenReadCompletedEventArgs : AsyncCompletedEventArgs
         {
             private Stream m_Result;
 
+            /// <inheritdoc cref="System.Net.OpenReadCompletedEventArgs.Result"/>
             public Stream Result
             {
                 get
