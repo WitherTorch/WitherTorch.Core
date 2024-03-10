@@ -123,82 +123,78 @@ namespace WitherTorch.Core.Utils
             string filenameTemp = this.filenameTemp;
             if (e.Cancelled)
             {
-                try
+                if (File.Exists(filenameTemp))
                 {
-                    if (File.Exists(filenameTemp))
+                    try
+                    {
                         File.Delete(filenameTemp);
-                }
-                catch (Exception)
-                {
+                    }
+                    catch (Exception)
+                    {
 
+                    }
                 }
+                return;
+            }
+            if (e.Error is object)
+            {
+                Failed();
+                return;
+            }
+            byte[] exceptedHash = hash;
+            if (exceptedHash is null)
+            {
+                Finished();
+                return;
+            }
+            byte[] actualHash;
+            switch (hashMethod)
+            {
+                case HashMethod.Sha1://SHA-1 校驗
+                    task.ChangeStatus(new ValidatingStatus(filename));
+                    try
+                    {
+                        using (FileStream stream = File.Open(filenameTemp, FileMode.Open, FileAccess.Read, FileShare.Read))
+                            actualHash = HashHelper.ComputeSha1Hash(stream);
+                    }
+                    catch (Exception)
+                    {
+                        actualHash = null;
+                    }
+                    break;
+                case HashMethod.Sha256://SHA-256 校驗
+                    task.ChangeStatus(new ValidatingStatus(filename));
+                    try
+                    {
+                        using (FileStream stream = File.Open(filenameTemp, FileMode.Open, FileAccess.Read, FileShare.Read))
+                            actualHash = HashHelper.ComputeSha256Hash(stream);
+                    }
+                    catch (Exception)
+                    {
+                        actualHash = null;
+                    }
+                    break;
+                default:
+                    actualHash = exceptedHash;
+                    break;
+            }
+            if (HashHelper.ByteArrayEquals(actualHash, exceptedHash))
+            {
+                Finished();
             }
             else
             {
-                if (e.Error is null)
+                switch (task.OnValidateFailed(filename, actualHash, exceptedHash))
                 {
-                    byte[] exceptedHash = hash;
-                    if (exceptedHash is object) //SHA-1 校驗
-                    {
-                        byte[] actualHash;
-                        switch (hashMethod)
-                        {
-                            case HashMethod.Sha1:
-                                task.ChangeStatus(new ValidatingStatus(filename));
-                                try
-                                {
-                                    using (FileStream stream = File.Open(filenameTemp, FileMode.Open, FileAccess.Read, FileShare.Read))
-                                        actualHash = HashHelper.ComputeSha1Hash(stream);
-                                }
-                                catch (Exception)
-                                {
-                                    actualHash = null;
-                                }
-                                break;
-                            case HashMethod.Sha256:
-                                task.ChangeStatus(new ValidatingStatus(filename));
-                                try
-                                {
-                                    using (FileStream stream = File.Open(filenameTemp, FileMode.Open, FileAccess.Read, FileShare.Read))
-                                        actualHash = HashHelper.ComputeSha256Hash(stream);
-                                }
-                                catch (Exception)
-                                {
-                                    actualHash = null;
-                                }
-                                break;
-                            default:
-                                actualHash = exceptedHash;
-                                break;
-                        }
-                        if (HashHelper.ByteArrayEquals(actualHash, exceptedHash))
-                        {
-                            Finished();
-                        }
-                        else
-                        {
-                            switch (task.OnValidateFailed(filename, actualHash, exceptedHash))
-                            {
-                                case InstallTask.ValidateFailedState.Cancel:
-                                    Finished();
-                                    break;
-                                case InstallTask.ValidateFailedState.Ignore:
-                                    Failed();
-                                    break;
-                                case InstallTask.ValidateFailedState.Retry:
-                                    Start();
-                                    break;
-                            }
-                        }
-                    }
-                    else
-                    {
+                    case InstallTask.ValidateFailedState.Cancel:
+                        Failed();
+                        break;
+                    case InstallTask.ValidateFailedState.Ignore:
                         Finished();
-                    }
-                }
-                else
-                {
-                    Failed();
+                        break;
+                    case InstallTask.ValidateFailedState.Retry:
+                        Start();
+                        break;
                 }
             }
         }
