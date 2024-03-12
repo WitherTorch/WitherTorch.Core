@@ -17,6 +17,11 @@ namespace WitherTorch.Core
 
         public override void Reload()
         {
+            if (WTCore.WatchPropertyFileModified)
+            {
+                watcher = new FileWatcher(_path);
+                watcher.Changed += Watcher_Changed;
+            }
             if (File.Exists(_path))
             {
                 using (StreamReader reader = new StreamReader(_path))
@@ -60,6 +65,10 @@ namespace WitherTorch.Core
             }
             if ((isDirty && isInitialized) || force)
             {
+                if (watcher is object)
+                {
+                    watcher.Changed -= Watcher_Changed;
+                }
                 using (StreamWriter writer = new StreamWriter(new FileStream(_path, FileMode.Create, FileAccess.Write)))
                 {
                     try
@@ -74,6 +83,11 @@ namespace WitherTorch.Core
 
                     }
                 }
+                if (watcher is object)
+                {
+                    watcher.Changed += Watcher_Changed;
+                }
+
             }
         }
     }

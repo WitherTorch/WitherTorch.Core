@@ -74,6 +74,11 @@ namespace WitherTorch.Core
         /// <summary>
         /// 是否檢查在下載後檢查伺服器檔案的雜湊碼 (如果該伺服器軟體類別有支援該功能的話)
         /// </summary>
-        public static bool CheckFileHashIfExist { get; set; } = true;
+        public static bool CheckFileHashIfExist { get; set; } = true; 
+        
+        /// <summary>
+        /// 是否在設定檔案受到外部更改時，自動重新載入檔案 (該操作為延遲載入，僅在該設定檔未受到任何未儲存的內部更改的情況下生效)
+        /// </summary>
+        public static bool WatchPropertyFileModified { get; set; } = true;
     }
 }
