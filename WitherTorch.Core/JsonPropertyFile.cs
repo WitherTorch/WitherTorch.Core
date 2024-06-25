@@ -17,6 +17,7 @@ namespace WitherTorch.Core
         protected JObject currentObject;
         protected bool create;
         protected bool isInitialized;
+        protected FileWatcher watcher;
 
         public JsonPropertyFile(string path, bool create = true, bool ignoreLazyRequest = false)
         {
@@ -37,8 +38,9 @@ namespace WitherTorch.Core
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _path = "";
+            _path = string.Empty;
             currentObject = null;
+            watcher?.Dispose();
         }
 
         protected bool isDirty = false;
@@ -81,8 +83,22 @@ namespace WitherTorch.Core
             }
         }
 
+        protected void Watcher_Changed(object sender, FileSystemEventArgs e)
+        {
+            if (isInitialized && !isDirty)
+            {
+                isInitialized = false; 
+                currentObject = null;
+            }
+        }
+
         public virtual void Reload()
         {
+            if (WTCore.WatchPropertyFileModified)
+            {
+                watcher = new FileWatcher(_path);
+                watcher.Changed += Watcher_Changed;
+            }
             if (File.Exists(_path))
             {
                 using (StreamReader reader = new StreamReader(new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.Read)))
@@ -136,6 +152,10 @@ namespace WitherTorch.Core
             }
             if ((isDirty && isInitialized) || force)
             {
+                if (watcher is object)
+                {
+                    watcher.Changed -= Watcher_Changed;
+                }
                 using (JsonTextWriter writer = new JsonTextWriter(new StreamWriter(new FileStream(_path, FileMode.Create, FileAccess.Write, FileShare.Read))) { CloseOutput = true })
                 {
                     try
@@ -149,6 +169,11 @@ namespace WitherTorch.Core
                     }
                     writer.Close();
                 }
+                if (watcher is object)
+                {
+                    watcher.Changed += Watcher_Changed;
+                }
+
             }
         }
 

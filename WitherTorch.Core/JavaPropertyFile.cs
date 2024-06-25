@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core
 {
@@ -10,13 +12,15 @@ namespace WitherTorch.Core
     public class JavaPropertyFile : IPropertyFile
     {
         private IPropertyFileDescriptor descriptor;
-        private string _path;
         private Dictionary<string, string> currentObject;
         private Dictionary<int, string> descriptionDict;
-        private bool create;
-        private bool isInitialized;
 
-        bool isDirty = false;
+        protected string _path;
+        protected bool create;
+        protected bool isInitialized;
+        protected FileWatcher watcher;
+        protected bool isDirty = false;
+
         public JavaPropertyFile(string path, bool create = true, bool ignoreLazyRequest = false)
         {
             _path = path;
@@ -24,6 +28,16 @@ namespace WitherTorch.Core
             if (!WTCore.UseLazyLoadingOnPropertyFiles || ignoreLazyRequest)
             {
                 Initialize();
+            }
+        }
+
+        private void Watcher_Changed(object sender, FileSystemEventArgs e)
+        {
+            if (isInitialized && !isDirty)
+            {
+                isInitialized = false;
+                currentObject = null;
+                descriptionDict = null;
             }
         }
 
@@ -37,8 +51,9 @@ namespace WitherTorch.Core
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _path = "";
+            _path = string.Empty;
             currentObject = null;
+            watcher?.Dispose();
         }
 
         public string this[string key]
@@ -77,6 +92,11 @@ namespace WitherTorch.Core
 
         public void Reload()
         {
+            if (WTCore.WatchPropertyFileModified)
+            {
+                watcher = new FileWatcher(_path);
+                watcher.Changed += Watcher_Changed;
+            }
             if (System.IO.File.Exists(_path))
             {
                 using (System.IO.StreamReader reader = new System.IO.StreamReader(_path))
@@ -127,6 +147,10 @@ namespace WitherTorch.Core
             }
             if ((isDirty && isInitialized) || force)
             {
+                if (watcher is object)
+                {
+                    watcher.Changed -= Watcher_Changed;
+                }
                 using (System.IO.StreamWriter writer = new System.IO.StreamWriter(new System.IO.FileStream(_path, System.IO.File.Exists(_path) ? System.IO.FileMode.Truncate : System.IO.FileMode.CreateNew, System.IO.FileAccess.Write)))
                 {
                     try
@@ -185,6 +209,10 @@ namespace WitherTorch.Core
 
                     }
                 }
+                if (watcher is object)
+                {
+                    watcher.Changed += Watcher_Changed;
+                }
             }
         }
         public IPropertyFileDescriptor GetDescriptor()
@@ -204,7 +232,7 @@ namespace WitherTorch.Core
                 Initialize();
             try
             {
-                string result = "";
+                string result = string.Empty;
                 int totalLine = currentObject.Count + descriptionDict.Count;
                 int lineIndex = 0, keyValueIndex = 0;
                 KeyValuePair<string, string>[] keyValueArray = currentObject.ToArray();
@@ -242,7 +270,7 @@ namespace WitherTorch.Core
             {
 
             }
-            return "";
+            return string.Empty;
         }
 
         public string GetFilePath()

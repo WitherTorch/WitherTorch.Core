@@ -57,7 +57,7 @@ namespace WitherTorch.Core
         internal static void ResetCache()
         {
             cacheFile?.Dispose();
-            cacheFile = new JsonPropertyFile(Path.Combine(WTCore.CachePath, "./index.json"), true, true);
+            cacheFile = new JsonPropertyFile(Path.GetFullPath(Path.Combine(WTCore.CachePath, "./index.json")), true, true);
         }
 
         public System.Net.Http.HttpClient InnerHttpClient => _client;
