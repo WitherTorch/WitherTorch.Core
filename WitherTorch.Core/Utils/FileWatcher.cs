@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -60,7 +61,14 @@ namespace WitherTorch.Core.Utils
 
         public FileWatcher(string path)
         {
-            path = Path.GetFullPath(path).ToLower();
+            path = Path.GetFullPath(path);
+#if NET5_0_OR_GREATER
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                path = path.ToLower();
+#else
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+                path = path.ToLower();
+#endif
             _path = path;
             string dirPath = Path.GetDirectoryName(path);
             data = watcherDict.AddOrUpdate(dirPath, _path => new FileSystemWatcherData(_path), (_, _data) =>
