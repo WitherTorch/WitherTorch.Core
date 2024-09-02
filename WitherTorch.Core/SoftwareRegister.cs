@@ -26,7 +26,7 @@ namespace WitherTorch.Core
         /// <param name="type">伺服器軟體的類別</param>
         public static void RegisterServerSoftware(Type type)
         {
-            if (type is null || !type.IsSubclassOf(typeof(Server)) || type.IsSubclassOf(typeof(Server<>).MakeGenericType(type)))
+            if (type is null || !type.IsSubclassOf(typeof(Server)) || !type.IsSubclassOf(typeof(Server<>).MakeGenericType(type)))
                 return;
             _genericMethodInfo.Value.MakeGenericMethod(type).Invoke(null, null);
         }
