@@ -340,12 +340,12 @@ namespace WitherTorch.Core
         /// <returns>是否成功儲存伺服器</returns>
         protected abstract bool BeforeServerSaved();
 
-        protected void OnServerInstalling(InstallTask task)
+        protected virtual void OnServerInstalling(InstallTask task)
         {
             ServerInstalling?.Invoke(this, task);
         }
                 
-        protected void OnServerVersionChanged()
+        protected virtual void OnServerVersionChanged()
         {
             ServerVersionChanged?.Invoke(this, EventArgs.Empty);
         }
