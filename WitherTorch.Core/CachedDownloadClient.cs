@@ -1,66 +1,65 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+
+using System;
 using System.IO;
-using System.Runtime.CompilerServices;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
+
+using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core
 {
-    public class CachedDownloadClient : IDisposable
+    public sealed class CachedDownloadClient
     {
-        private static volatile JsonPropertyFile cacheFile;
-        private static CachedDownloadClient _inst;
-        private System.Net.Http.HttpClient _client;
-        private CancellationTokenSource cacheSavingTaskToken;
-        private bool disposedValue;
+        private static readonly Lazy<CachedDownloadClient> _inst = new Lazy<CachedDownloadClient>(
+            () => new CachedDownloadClient(), LazyThreadSafetyMode.PublicationOnly);
 
-        public static CachedDownloadClient Instance
-        {
-            [MethodImpl(MethodImplOptions.Synchronized)]
-            get
-            {
-                if (_inst is null || _inst.disposedValue)
-                {
-                    _inst = new CachedDownloadClient();
-                }
-                return _inst;
-            }
-        }
+        private readonly HttpClient _client;
+        private AutoDisposer<JsonPropertyFile> _disposableCacheFile;
+        private int _cacheFileRefresh;
+        private CancellationTokenSource _saveCacheFileToken;
 
-        private static void SaveCacheFile(Task lastTask)
-        {
-            if (lastTask?.IsCompleted != false)
-            {
-                lock (cacheFile)
-                {
-                    try
-                    {
-                        cacheFile.Save(false);
-                    }
-                    catch (Exception)
-                    {
-                    }
-                }
-            }
-        }
+        public static CachedDownloadClient Instance => _inst.Value;
+        public static bool HasInstance => _inst.IsValueCreated;
 
         private CachedDownloadClient()
         {
-            _client = new System.Net.Http.HttpClient();
-            _client.DefaultRequestHeaders.Add("User-Agent", Constants.UserAgent);
-            _client.DefaultRequestHeaders.Accept.Add(Utils.MIMETypes.JSON);
-            _client.DefaultRequestHeaders.Accept.Add(Utils.MIMETypes.XML);
-            ResetCache();
+            HttpClient client = new HttpClient();
+            HttpRequestHeaders headers = client.DefaultRequestHeaders;
+            headers.Add("User-Agent", Constants.UserAgent);
+            headers.Accept.Add(MIMETypes.JSON);
+            headers.Accept.Add(MIMETypes.XML);
+            _client = client;
+            _disposableCacheFile = AutoDisposer.Create(new JsonPropertyFile(Path.GetFullPath(Path.Combine(WTCore.CachePath, "./index.json")), true, true));
         }
 
-        internal static void ResetCache()
+        private void SaveCacheFile(Task lastTask)
         {
-            cacheFile?.Dispose();
-            cacheFile = new JsonPropertyFile(Path.GetFullPath(Path.Combine(WTCore.CachePath, "./index.json")), true, true);
+            if (lastTask is object && !lastTask.IsCompleted)
+                return;
+            JsonPropertyFile cacheFile = Interlocked.CompareExchange(ref _disposableCacheFile, null, null)?.Data;
+            if (cacheFile is null)
+                return;
+            lock (cacheFile)
+            {
+                try
+                {
+                    cacheFile.Save(false);
+                }
+                catch (Exception)
+                {
+                }
+            }
         }
 
-        public System.Net.Http.HttpClient InnerHttpClient => _client;
+        internal void ResetCache()
+        {
+            Interlocked.Exchange(ref _cacheFileRefresh, 1);
+        }
+
+        public HttpClient InnerHttpClient => _client;
 
         public string DownloadString(string address)
         {
@@ -68,6 +67,22 @@ namespace WitherTorch.Core
             string result = null, path = null;
             bool hasCacheFile = false;
             bool isCacheNotOutdated = false;
+
+            AutoDisposer<JsonPropertyFile> disposableCacheFile;
+
+            if (Interlocked.Exchange(ref _cacheFileRefresh, 0) != 0)
+            {
+                Interlocked.Exchange(ref _disposableCacheFile,
+                    disposableCacheFile = AutoDisposer.Create(new JsonPropertyFile(
+                        Path.GetFullPath(Path.Combine(WTCore.CachePath, "./index.json")), true, true)));
+            }
+            else
+            {
+                disposableCacheFile = Interlocked.CompareExchange(ref _disposableCacheFile, null, null);
+            }
+
+            JsonPropertyFile cacheFile = disposableCacheFile.Data;
+
             if (cacheFile[tokenKey] is JObject tokenObject)
             {
                 long? expiredTime = tokenObject["expiredTime"]?.Value<long>();
@@ -193,16 +208,21 @@ namespace WitherTorch.Core
                     catch (Exception)
                     {
                     }
-                    lock (this)
+                    CancellationTokenSource saveCacheFileToken = new CancellationTokenSource();
+                    CancellationTokenSource saveCacheFileTokenOld = Interlocked.Exchange(ref _saveCacheFileToken, saveCacheFileToken);
+                    if (saveCacheFileTokenOld is object)
                     {
-                        if (cacheSavingTaskToken is object)
+                        try
                         {
-                            cacheSavingTaskToken.Cancel();
-                            cacheSavingTaskToken.Dispose();
+                            saveCacheFileTokenOld.Cancel();
+                            saveCacheFileTokenOld.Dispose();
+                        }
+                        catch (Exception)
+                        {
                         }
                     }
-                    cacheSavingTaskToken = new CancellationTokenSource();
-                    Task.Delay(1000, cacheSavingTaskToken.Token).ContinueWith(SaveCacheFile);
+                    if (!saveCacheFileToken.IsCancellationRequested)
+                        Task.Delay(1000, saveCacheFileToken.Token).ContinueWith(SaveCacheFile);
                 }
             }
 
@@ -211,39 +231,25 @@ namespace WitherTorch.Core
 
         ~CachedDownloadClient()
         {
-            // 請勿變更此程式碼。請將清除程式碼放入 'Dispose(bool disposing)' 方法
-            Dispose(disposing: false);
+            Dispose();
         }
 
-        protected virtual void Dispose(bool disposing)
+        private void Dispose()
         {
-            if (!disposedValue)
+            _client.Dispose();
+            CancellationTokenSource saveCacheFileTokenOld = Interlocked.Exchange(ref _saveCacheFileToken, null);
+            if (saveCacheFileTokenOld is object)
             {
-                if (disposing)
+                try
                 {
-                    // TODO: 處置受控狀態 (受控物件)
+                    saveCacheFileTokenOld.Cancel();
+                    saveCacheFileTokenOld.Dispose();
                 }
-                // TODO: 釋出非受控資源 (非受控物件) 並覆寫完成項
-                _client.Dispose();
-                lock (this)
+                catch (Exception)
                 {
-                    if (cacheSavingTaskToken is object)
-                    {
-                        cacheSavingTaskToken.Cancel();
-                        cacheSavingTaskToken.Dispose();
-                    }
                 }
-                SaveCacheFile(null);
-                // TODO: 將大型欄位設為 Null
-                disposedValue = true;
             }
-        }
-
-        public void Dispose()
-        {
-            // 請勿變更此程式碼。請將清除程式碼放入 'Dispose(bool disposing)' 方法
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            SaveCacheFile(null);
         }
     }
 }
