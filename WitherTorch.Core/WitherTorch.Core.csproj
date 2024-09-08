@@ -9,7 +9,7 @@
 		<Authors>WitherTorch 製作組</Authors>
 		<Product>WitherTorch</Product>
 		<Description>WitherTorch 的核心程式庫</Description>
-		<Copyright>Copyright © WitherTorch 製作組 2022</Copyright>
+		<Copyright>Copyright © WitherTorch 製作組 2024</Copyright>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
 		<PackageProjectUrl>https://github.com/WitherTorch/WitherTorch.Core</PackageProjectUrl>
