@@ -23,12 +23,12 @@ namespace WitherTorch.Core
         /// </summary>
         public abstract DateTime StartTime { get; }
 
-        public delegate void ProcessMessageEventHandler(object sender, ProcessMessageEventArgs e);
+        public delegate void MessageReceivedEventHandler(object sender, MessageReceivedEventArgs e);
 
         /// <summary>
         /// 在接收到處理序的執行訊息時觸發
         /// </summary>                                                      
-        public event ProcessMessageEventHandler MessageRecived;
+        public event MessageReceivedEventHandler MessageReceived;
 
         /// <summary>
         /// 在處理序啟動時觸發
@@ -42,13 +42,13 @@ namespace WitherTorch.Core
 
 
         /// <summary>
-        /// 觸發 <see cref="MessageRecived"/> 事件
+        /// 觸發 <see cref="MessageReceived"/> 事件
         /// </summary>
         /// <param name="e">事件內容</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void OnMessageRecived(ProcessMessageEventArgs e)
+        protected void OnMessageRecived(MessageReceivedEventArgs e)
         {
-            MessageRecived?.Invoke(this, e);
+            MessageReceived?.Invoke(this, e);
         }
 
         /// <summary>
@@ -75,7 +75,7 @@ namespace WitherTorch.Core
         /// <param name="command">命令內容</param>
         public abstract void InputCommand(string command);
     }
-    public class ProcessMessageEventArgs : EventArgs
+    public class MessageReceivedEventArgs : EventArgs
     {
         /// <summary>
         /// 指示此訊息是否是從錯誤訊息流傳出的
@@ -86,7 +86,7 @@ namespace WitherTorch.Core
         /// </summary>
         public string Message { get; private set; }
 
-        public ProcessMessageEventArgs(bool isError, string msg)
+        public MessageReceivedEventArgs(bool isError, string msg)
         {
             IsError = isError;
             Message = msg;
