@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net472;net5</TargetFrameworks>
+		<TargetFrameworks>net472;net6</TargetFrameworks>
 		<Platforms>AnyCPU;x64;ARM64</Platforms>
 		<Configurations>Debug;Release</Configurations>
 		<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
@@ -9,12 +9,12 @@
 		<Authors>WitherTorch 製作組</Authors>
 		<Product>WitherTorch</Product>
 		<Description>WitherTorch 的核心程式庫</Description>
-		<Copyright>Copyright © WitherTorch 製作組 2022</Copyright>
+		<Copyright>Copyright © WitherTorch 製作組 2024</Copyright>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
 		<PackageProjectUrl>https://github.com/WitherTorch/WitherTorch.Core</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/WitherTorch/WitherTorch.Core</RepositoryUrl>
-		<Version>1.8.2-CI-14</Version>
+		<Version>1.8.3-CI-15</Version>
 		<PackageIcon>withertorch_core_128.png</PackageIcon>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>minecraft;minecraft-server</PackageTags>
@@ -37,7 +37,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-		<PackageReference Include="System.IO.Compression" Version="4.3.0" Condition="'$(TargetFramework)' == 'net5'" />
+		<PackageReference Include="System.IO.Compression" Version="4.3.0" Condition="'$(TargetFramework)' == 'net6'" />
 		<PackageReference Include="YamlDotNet" Version="16.1.2" />
 	</ItemGroup>
 

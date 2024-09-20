@@ -38,7 +38,7 @@ namespace WitherTorch.Core
                     {
                         System.IO.Directory.CreateDirectory(_cachePath);
                     }
-                    CachedDownloadClient.ResetCache();
+                    CachedDownloadClient.Instance.ResetCache();
                 }
                 catch (Exception)
                 {

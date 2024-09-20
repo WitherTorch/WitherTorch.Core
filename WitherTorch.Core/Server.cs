@@ -41,6 +41,11 @@ namespace WitherTorch.Core
         public event EventHandler ServerNameChanged;
 
         /// <summary>
+        /// 當伺服器的版本改變時觸發
+        /// </summary>
+        public event EventHandler ServerVersionChanged;
+
+        /// <summary>
         /// 當伺服器正在安裝軟體時觸發
         /// </summary>
         public event ServerInstallingEventHandler ServerInstalling;
@@ -335,9 +340,14 @@ namespace WitherTorch.Core
         /// <returns>是否成功儲存伺服器</returns>
         protected abstract bool BeforeServerSaved();
 
-        protected void OnServerInstalling(InstallTask task)
+        protected virtual void OnServerInstalling(InstallTask task)
         {
             ServerInstalling?.Invoke(this, task);
+        }
+                
+        protected virtual void OnServerVersionChanged()
+        {
+            ServerVersionChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>

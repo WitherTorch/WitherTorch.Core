@@ -163,12 +163,12 @@ namespace WitherTorch.Core
 
         private void Process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            OnMessageRecived(new ProcessMessageEventArgs(true, e.Data ?? string.Empty));
+            OnMessageRecived(new MessageReceivedEventArgs(true, e.Data ?? string.Empty));
         }
 
         private void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
-            OnMessageRecived(new ProcessMessageEventArgs(false, e.Data ?? string.Empty));
+            OnMessageRecived(new MessageReceivedEventArgs(false, e.Data ?? string.Empty));
         }
 
         protected virtual void Dispose(bool disposing)

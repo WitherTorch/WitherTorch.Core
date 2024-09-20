@@ -186,7 +186,7 @@ namespace WitherTorch.Core
                                 writer.WriteLine(node.Path[0] + "=" + node.DefaultValue);
                             }
                             lineIndex++;
-#elif NET5_0
+#elif NET5_0_OR_GREATER
                             if (descriptionDict.TryGetValue(lineIndex, out string line))
                             {
                                 writer.WriteLine(line);
@@ -250,7 +250,7 @@ namespace WitherTorch.Core
                         keyValueIndex++;
                     }
                     lineIndex++;
-#elif NET5_0
+#elif NET5_0_OR_GREATER
                     if (descriptionDict.TryGetValue(lineIndex, out string line))
                     {
                         result += line + "\n";

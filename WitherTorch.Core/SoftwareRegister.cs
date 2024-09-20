@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,7 +16,9 @@ namespace WitherTorch.Core
         internal static Dictionary<Type, string> registeredServerSoftwares = new Dictionary<Type, string>();
         public static Type[] RegisteredServerSoftwares => registeredServerSoftwares.Keys.ToArray();
 
-        private static MethodInfo _genericMethodInfo;
+        private static readonly Lazy<MethodInfo> _genericMethodInfo = new Lazy<MethodInfo>(() 
+            => typeof(SoftwareRegister).GetMethod(nameof(RegisterServerSoftware), BindingFlags.Static | BindingFlags.Public, Type.DefaultBinder, Type.EmptyTypes, null), 
+            true);
 
         /// <summary>
         /// 註冊伺服器軟體
@@ -23,12 +26,9 @@ namespace WitherTorch.Core
         /// <param name="type">伺服器軟體的類別</param>
         public static void RegisterServerSoftware(Type type)
         {
-            if (type != null && type.IsSubclassOf(typeof(Server<>).MakeGenericType(type)))
-            {
-                if (_genericMethodInfo is null)
-                    _genericMethodInfo = typeof(SoftwareRegister).GetMethod("RegisterServerSoftware", BindingFlags.Static | BindingFlags.Public, Type.DefaultBinder, Type.EmptyTypes, null);
-                _genericMethodInfo.MakeGenericMethod(type).Invoke(null, null);
-            }
+            if (type is null || !type.IsSubclassOf(typeof(Server)) || !type.IsSubclassOf(typeof(Server<>).MakeGenericType(type)))
+                return;
+            _genericMethodInfo.Value.MakeGenericMethod(type).Invoke(null, null);
         }
 
         /// <summary>

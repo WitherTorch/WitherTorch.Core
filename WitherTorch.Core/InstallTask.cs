@@ -3,9 +3,9 @@
 namespace WitherTorch.Core
 {
     /// <summary>
-    /// 表示一個安裝工作，此類別無法被繼承
+    /// 表示一個安裝工作
     /// </summary>
-    public sealed class InstallTask
+    public class InstallTask
     {
         public delegate void ValidateFailedEventHandler(object sender, ValidateFailedCallbackEventArgs e);
 
@@ -59,6 +59,11 @@ namespace WitherTorch.Core
         public Server Owner { get; }
 
         /// <summary>
+        /// 取得此安裝工作的所要安裝的版本
+        /// </summary>
+        public string Version { get; }
+
+        /// <summary>
         /// 取得目前的安裝總進度百分比
         /// </summary>
         public double InstallPercentage { get; private set; }
@@ -70,9 +75,10 @@ namespace WitherTorch.Core
 
         private bool _isStopped;
 
-        public InstallTask(Server owner)
+        public InstallTask(Server owner, string version)
         {
             Owner = owner;
+            Version = version;
         }
 
         /// <summary>
