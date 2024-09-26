@@ -19,6 +19,6 @@ namespace WitherTorch.Core
             SoftwareTypeName = softwareTypeName;
         }
 
-        public override string Message => $"{SoftwareTypeName} 未註冊在 SoftwareRegister 中!";
+        public override string Message => $"{SoftwareTypeName} isn't registered in SoftwareRegister !";
     }
 }

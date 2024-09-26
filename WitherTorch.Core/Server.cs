@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+
 using Newtonsoft.Json.Linq;
 
 namespace WitherTorch.Core
@@ -257,29 +258,19 @@ namespace WitherTorch.Core
 
         internal static Server CreateServerInternal(Type softwareType, string serverDirectory)
         {
-            if (SoftwareRegister.registeredServerSoftwares.ContainsKey(softwareType))
-            {
-                Server server = Activator.CreateInstance(softwareType) as Server;
-                server.ServerDirectory = serverDirectory;
-                server.ServerName = GetDefaultServerName(server);
-                if (server.CreateServer())
-                {
-                    return server;
-                }
-                else
-                {
-                    try
-                    {
-                        server.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                    }
-                }
-            }
-            else
-            {
+            if (SoftwareRegister.GetSoftwareIDFromType(softwareType) is null)
                 throw new ServerSoftwareIsNotRegisteredException(softwareType);
+            Server server = Activator.CreateInstance(softwareType) as Server;
+            server.ServerDirectory = serverDirectory;
+            server.ServerName = GetDefaultServerName(server);
+            if (server.CreateServer())
+                return server;
+            try
+            {
+                server.Dispose();
+            }
+            catch (Exception)
+            {
             }
             return null;
         }
@@ -344,7 +335,7 @@ namespace WitherTorch.Core
         {
             ServerInstalling?.Invoke(this, task);
         }
-                
+
         protected virtual void OnServerVersionChanged()
         {
             ServerVersionChanged?.Invoke(this, EventArgs.Empty);
