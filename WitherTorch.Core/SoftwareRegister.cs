@@ -43,15 +43,15 @@ namespace WitherTorch.Core
         {
             Type type = typeof(T);
             System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-            string softwareID = Server<T>.SoftwareId;
-            if (string.IsNullOrEmpty(softwareID))
+            string softwareId = Server<T>.SoftwareId;
+            if (string.IsNullOrEmpty(softwareId))
                 return;
             Action regDelegate = Server<T>.SoftwareRegistrationDelegate;
             if (regDelegate == null)
             {
                 _lock.EnterWriteLock();
-                _softwareDict[softwareID] = type;
-                _softwareDictReversed[type] = softwareID;
+                _softwareDict[softwareId] = type;
+                _softwareDictReversed[type] = softwareId;
                 _lock.ExitWriteLock();
                 return;
             }
@@ -79,12 +79,12 @@ namespace WitherTorch.Core
                 }
             }
             _lock.EnterWriteLock();
-            _softwareDict[softwareID] = type;
-            _softwareDictReversed[type] = softwareID;
+            _softwareDict[softwareId] = type;
+            _softwareDictReversed[type] = softwareId;
             _lock.ExitWriteLock();
         }
 
-        public static Type GetSoftwareTypeFromID(string id)
+        public static Type GetSoftwareTypeFromId(string id)
         {
             _lock.EnterReadLock();
             Type result = _softwareDict.TryGetValue(id, out Type type) ? type : null;
@@ -92,7 +92,7 @@ namespace WitherTorch.Core
             return result;
         }
 
-        public static string GetSoftwareIDFromType(Type type)
+        public static string GetSoftwareIdFromType(Type type)
         {
             _lock.EnterReadLock();
             string result = _softwareDictReversed.TryGetValue(type, out string id) ? id : null;
