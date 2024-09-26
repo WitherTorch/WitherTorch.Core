@@ -14,7 +14,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 伺服器軟體ID
         /// </summary>
-        internal protected static string SoftwareID { get; protected set; }
+        internal protected static string SoftwareId { get; protected set; }
 
         // 面向外部的空參數建構子
         public Server()
@@ -23,7 +23,7 @@ namespace WitherTorch.Core
 
         public override string GetSoftwareID()
         {
-            return SoftwareID;
+            return SoftwareId;
         }
     }
     /// <summary>
