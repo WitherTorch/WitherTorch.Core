@@ -11,7 +11,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 取得當前處理序的 ID
         /// </summary>                                 
-        public abstract int ID { get; }
+        public abstract int Id { get; }
 
         /// <summary>
         /// 如果當前處理序已經啟動，則為 <see langword="true"/>，否則為 <see langword="false"/>
@@ -101,7 +101,7 @@ namespace WitherTorch.Core
         bool isAlive = false;
         DateTime start;
 
-        public override int ID { get; }
+        public override int Id { get; }
 
         /// <summary>
         /// 設定此處理序是否正在運行

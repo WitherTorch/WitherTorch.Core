@@ -17,7 +17,7 @@ namespace WitherTorch.Core
         /// </summary>
         public DProcess InnerProcess { get; protected set; }
 
-        public override int ID
+        public override int Id
         {
             get
             {
