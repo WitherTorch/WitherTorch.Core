@@ -92,7 +92,7 @@ namespace WitherTorch.Core.Property
 
             using StreamReader reader = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read), Encoding.UTF8);
             int lineIndex = 0;
-            for (string? line = reader.ReadLine(); line is not null; line = reader.ReadLine())
+            for (string? line = reader.ReadLine(); line is not null; line = reader.ReadLine(), lineIndex++)
             {
                 if (line.Length <= 0)
                     continue;
@@ -163,18 +163,19 @@ namespace WitherTorch.Core.Property
                     }
                 }
             }
-            int lineCount = 0;
+            int lineIndex = 0;
             foreach (KeyValuePair<string, string> pair in propertyDict)
             {
-                while (descriptionDict.TryGetValue(lineCount, out string? description) == true)
+                while (descriptionDict.TryGetValue(lineIndex, out string? description) == true)
                 {
-                    descriptionDict.Remove(lineCount);
+                    descriptionDict.Remove(lineIndex);
                     writer.WriteLine(description);
-                    lineCount++;
+                    lineIndex++;
                 }
                 writer.Write(pair.Key);
                 writer.Write('=');
                 writer.WriteLine(pair.Value);
+                lineIndex++;
             }
             if (descriptionDict.Count > 0)
             {

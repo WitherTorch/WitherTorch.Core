@@ -1,7 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
 using YamlDotNet.Serialization;
-using YamlDotNet.System.Text.Json;
 
 namespace WitherTorch.Core.Utils
 {
@@ -9,16 +8,14 @@ namespace WitherTorch.Core.Utils
     {
         private static readonly IDeserializer yamlDeserializer;
         private static readonly ISerializer yamlSerializer;
+        private static readonly ISerializer jsonSerializer;
 
         static GlobalSerializers()
         {
-            yamlDeserializer = new DeserializerBuilder()
-                .WithTypeConverter(new SystemTextJsonYamlTypeConverter())
-                .WithTypeInspector(x => new SystemTextJsonTypeInspector(x))
-                .Build();
-            yamlSerializer = new SerializerBuilder()
-                .WithTypeConverter(new SystemTextJsonYamlTypeConverter())
-                .WithTypeInspector(x => new SystemTextJsonTypeInspector(x))
+            yamlDeserializer = new DeserializerBuilder().Build();
+            yamlSerializer = new SerializerBuilder().Build();
+            jsonSerializer = new SerializerBuilder()
+                .JsonCompatible()
                 .Build();
         }
 
@@ -32,6 +29,12 @@ namespace WitherTorch.Core.Utils
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => yamlSerializer;
+        }
+
+        public static ISerializer JsonSerializer
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => jsonSerializer;
         }
     }
 }

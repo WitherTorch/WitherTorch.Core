@@ -1,11 +1,12 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.Dynamic;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization.Metadata;
 
 using WitherTorch.Core.Utils;
-
-using YamlDotNet.System.Text.Json;
 
 namespace WitherTorch.Core.Property
 {
@@ -14,6 +15,12 @@ namespace WitherTorch.Core.Property
     /// </summary>
     public class YamlPropertyFile : JsonPropertyFile
     {
+        private static readonly JsonSerializerOptions serializerOptions = new JsonSerializerOptions
+        {
+            Converters = { new DynamicJsonConverter() },
+            WriteIndented = true
+        };
+
         public YamlPropertyFile(string path, bool create = true, bool ignoreLazyRequest = false) : base(path, create, ignoreLazyRequest)
         {
         }
@@ -28,8 +35,14 @@ namespace WitherTorch.Core.Property
                 return;
             }
             using StreamReader reader = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read), Encoding.UTF8);
-            _jsonObject = YamlConverter.Deserialize<JsonObject>(reader.ReadToEnd(), GlobalSerializers.YamlDeserializer) ?? new JsonObject();
+            object? graph = GlobalSerializers.YamlDeserializer.Deserialize(reader);
             reader.Close();
+            if (graph is null)
+            {
+                _jsonObject = new JsonObject();
+                return;
+            }
+            _jsonObject = JsonNode.Parse(GlobalSerializers.JsonSerializer.Serialize(graph)) as JsonObject ?? new JsonObject();
         }
 
         protected override void Save(bool isDirty, bool force)
@@ -42,9 +55,11 @@ namespace WitherTorch.Core.Property
             JsonObject? jsonObject = _jsonObject;
             if (jsonObject is null)
                 return;
+
+            dynamic obj = JsonSerializer.Deserialize<dynamic>(jsonObject, serializerOptions);
             SetFileWatching(false);
             using StreamWriter writer = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read), Encoding.UTF8);
-            writer.Write(YamlConverter.Serialize(jsonObject, GlobalSerializers.YamlSerializer));
+            GlobalSerializers.YamlSerializer.Serialize(writer, obj);
             writer.Flush();
             writer.Close();
             SetFileWatching(true);
