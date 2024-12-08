@@ -104,7 +104,7 @@ namespace WitherTorch.Core.Utils
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe bool ByteArrayEquals(byte[] a, byte[] b)
+        public static unsafe bool ByteArrayEquals(byte[]? a, byte[]? b)
         {
             if (a is null || b is null) return false;
             else if (ReferenceEquals(a, b)) return true;

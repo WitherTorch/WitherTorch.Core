@@ -43,7 +43,7 @@ namespace WitherTorch.Core
         {
             Type t = typeof(T);
             System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(t.TypeHandle);
-            string softwareID = Server<T>.SoftwareID;
+            string softwareID = Server<T>.SoftwareId;
             Action regDelegate = Server<T>.SoftwareRegistrationDelegate;
             if (!string.IsNullOrEmpty(softwareID))
             {

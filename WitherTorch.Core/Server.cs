@@ -16,16 +16,16 @@ namespace WitherTorch.Core
         /// <summary>
         /// 伺服器軟體ID
         /// </summary>
-        internal protected static string SoftwareID { get; protected set; }
+        internal protected static string SoftwareId { get; protected set; }
 
         // 面向外部的空參數建構子
         public Server()
         {
         }
 
-        public override string GetSoftwareID()
+        public override string GetSoftwareId()
         {
-            return SoftwareID;
+            return SoftwareId;
         }
     }
 #pragma warning restore CS8618
@@ -43,6 +43,11 @@ namespace WitherTorch.Core
         /// 當伺服器的名稱改變時觸發
         /// </summary>
         public event EventHandler? ServerNameChanged;
+
+        /// <summary>
+        /// 當伺服器的版本改變時觸發
+        /// </summary>
+        public event EventHandler? ServerVersionChanged;
 
         /// <summary>
         /// 當伺服器正在安裝軟體時觸發
@@ -127,13 +132,13 @@ namespace WitherTorch.Core
         /// 取得伺服器的執行環境資訊
         /// </summary>
         /// <returns>若無特殊的執行環境資訊，應回傳 <see langword="null"/> 來指示伺服器軟體執行者以預設環境執行</returns>
-        public abstract RuntimeEnvironment GetRuntimeEnvironment();
+        public abstract RuntimeEnvironment? GetRuntimeEnvironment();
 
         /// <summary>
         /// 設定伺服器的執行環境資訊
         /// </summary>
         /// <returns></returns>
-        public abstract void SetRuntimeEnvironment(RuntimeEnvironment environment);
+        public abstract void SetRuntimeEnvironment(RuntimeEnvironment? environment);
 
         /// <summary>
         /// 取得伺服器
@@ -272,7 +277,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 取得伺服器軟體ID
         /// </summary>
-        public abstract string GetSoftwareID();
+        public abstract string GetSoftwareId();
         /// <summary>
         /// 更改伺服器軟體版本
         /// </summary>
@@ -286,7 +291,8 @@ namespace WitherTorch.Core
         /// <summary>
         /// 啟動伺服器
         /// </summary>
-        public abstract void RunServer(RuntimeEnvironment environment);
+        /// <returns>伺服器是否已啟動</returns>
+        public abstract bool RunServer(RuntimeEnvironment? environment);
         /// <summary>
         /// 停止伺服器
         /// </summary>
@@ -308,6 +314,11 @@ namespace WitherTorch.Core
             ServerInstalling?.Invoke(this, task);
         }
 
+        protected virtual void OnServerVersionChanged()
+        {
+            ServerVersionChanged?.Invoke(this, EventArgs.Empty);
+        }
+
         /// <summary>
         /// 儲存伺服器
         /// </summary>
@@ -321,7 +332,7 @@ namespace WitherTorch.Core
                 ServerInfoJson = serverInfoJson;
             }
             serverInfoJson["name"] = JsonValue.Create(ServerName);
-            serverInfoJson["software"] = JsonValue.Create(GetSoftwareID());
+            serverInfoJson["software"] = JsonValue.Create(GetSoftwareId());
             if (BeforeServerSaved())
                 serverInfoJson.Save(false);
             IPropertyFile[] properties = GetServerPropertyFiles();
