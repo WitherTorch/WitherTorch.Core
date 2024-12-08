@@ -174,7 +174,7 @@ namespace WitherTorch.Core
 
         private static Server? GetServerFromDirectoryCore(string serverDirectory, JsonPropertyFile serverInformation, string softwareID)
         {
-            Type? softwareType = SoftwareRegister.GetSoftwareTypeFromID(softwareID);
+            Type? softwareType = SoftwareRegister.GetSoftwareTypeFromId(softwareID);
             if (softwareType is null)
                 throw new ServerSoftwareIsNotRegisteredException(softwareID);
             object? newObj = Activator.CreateInstance(softwareType);
@@ -229,7 +229,7 @@ namespace WitherTorch.Core
         /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
         public static Server? CreateServer(string softwareID, string serverDirectory)
         {
-            Type? type = SoftwareRegister.GetSoftwareTypeFromID(softwareID);
+            Type? type = SoftwareRegister.GetSoftwareTypeFromId(softwareID);
             if (type is null)
                 throw new ServerSoftwareIsNotRegisteredException(softwareID);
             return CreateServerInternal(type, serverDirectory);

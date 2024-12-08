@@ -43,9 +43,9 @@ namespace WitherTorch.Core
         {
             Type t = typeof(T);
             System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(t.TypeHandle);
-            string softwareID = Server<T>.SoftwareId;
+            string softwareId = Server<T>.SoftwareId;
             Action regDelegate = Server<T>.SoftwareRegistrationDelegate;
-            if (!string.IsNullOrEmpty(softwareID))
+            if (!string.IsNullOrEmpty(softwareId))
             {
                 if (regDelegate != null)
                 {
@@ -71,11 +71,11 @@ namespace WitherTorch.Core
                         }
                     }
                 }
-                _softwareDict.Add(t, softwareID);
+                _softwareDict.Add(t, softwareId);
             }
         }
 
-        public static Type? GetSoftwareTypeFromID(string? id)
+        public static Type? GetSoftwareTypeFromId(string? id)
         {
             foreach (KeyValuePair<Type, string> software in _softwareDict)
             {
@@ -87,7 +87,7 @@ namespace WitherTorch.Core
             return null;
         }
 
-        public static string? GetSoftwareIDFromType(Type? type)
+        public static string? GetSoftwareIdFromType(Type? type)
         {
             if (type is null)
                 return null;
