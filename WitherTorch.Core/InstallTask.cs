@@ -31,27 +31,27 @@ namespace WitherTorch.Core
         /// <summary>
         /// 當安裝完成時觸發
         /// </summary>
-        public event EventHandler InstallFinished;
+        public event EventHandler? InstallFinished;
         /// <summary>
         /// 當安裝失敗時觸發
         /// </summary>
-        public event EventHandler InstallFailed;
+        public event EventHandler? InstallFailed;
         /// <summary>
         /// 當安裝檔案驗證失敗時觸發，此事件是個回呼事件
         /// </summary>
-        public event ValidateFailedEventHandler ValidateFailed;
+        public event ValidateFailedEventHandler? ValidateFailed;
         /// <summary>
         /// 當安裝進度改變時觸發
         /// </summary>
-        public event EventHandler PercentageChanged;
+        public event EventHandler? PercentageChanged;
         /// <summary>
         /// 當安裝狀態改變時觸發
         /// </summary>
-        public event EventHandler StatusChanged;
+        public event EventHandler? StatusChanged;
         /// <summary>
         /// 當安裝工作被要求停止時觸發
         /// </summary>
-        public event EventHandler StopRequested;
+        public event EventHandler? StopRequested;
 
         /// <summary>
         /// 取得此安裝工作的所有者
@@ -71,7 +71,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 取得目前的安裝狀態物件，此屬性有可能是 <see langword="null"/>
         /// </summary>
-        public AbstractInstallStatus Status { get; private set; }
+        public AbstractInstallStatus? Status { get; private set; }
 
         private bool _isStopped;
 

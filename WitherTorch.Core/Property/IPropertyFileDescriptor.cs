@@ -1,4 +1,4 @@
-﻿namespace WitherTorch.Core
+﻿namespace WitherTorch.Core.Property
 {
     /// <summary>
     /// 表示一個設定檔案的節點
@@ -26,7 +26,7 @@
         /// </summary>
         public string DefaultValue { get; }
 
-        public PropertyFileNode(string[] _path, string _title, string _description, bool isOptional = true, string defaultValue = null)
+        public PropertyFileNode(string[] _path, string _title, string _description, bool isOptional = true, string? defaultValue = null)
         {
             Path = _path;
             Title = _title;

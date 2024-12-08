@@ -1,10 +1,11 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+
+using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core
 {
@@ -13,26 +14,25 @@ namespace WitherTorch.Core
     /// </summary>
     public sealed class SoftwareRegister
     {
-        private static readonly Dictionary<string, Type> _softwareDict = new Dictionary<string, Type>();
-        private static readonly Dictionary<Type, string> _softwareDictReversed = new Dictionary<Type, string>();
+        private static readonly Dictionary<Type, string> _softwareDict = new Dictionary<Type, string>();
+        private static readonly Lazy<MethodInfo> _genericMethodInfoLazy = new Lazy<MethodInfo>(() =>
+        {
+            MethodInfo? result = typeof(SoftwareRegister).GetMethod(nameof(RegisterServerSoftware), 
+                BindingFlags.Static | BindingFlags.Public, Type.DefaultBinder, Type.EmptyTypes, null);
+            return ObjectUtils.ThrowIfNull(result);
+        });
 
-        private static readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
-
-        private static readonly Lazy<MethodInfo> _genericMethodInfo = new Lazy<MethodInfo>(()
-            => typeof(SoftwareRegister).GetMethod(nameof(RegisterServerSoftware), BindingFlags.Static | BindingFlags.Public, Type.DefaultBinder, Type.EmptyTypes, null),
-            true);
-
-        public static Type[] RegisteredServerSoftwares => _softwareDict.Values.ToArray();
+        public static Type[] RegisteredServerSoftwares => _softwareDict.Keys.ToArray();
 
         /// <summary>
         /// 註冊伺服器軟體
         /// </summary>
         /// <param name="type">伺服器軟體的類別</param>
-        public static void RegisterServerSoftware(Type type)
+        public static void RegisterServerSoftware(Type? type)
         {
-            if (type is null || !type.IsSubclassOf(typeof(Server)) || !type.IsSubclassOf(typeof(Server<>).MakeGenericType(type)))
+            if (type is null || !type.IsSubclassOf(typeof(Server<>).MakeGenericType(type)))
                 return;
-            _genericMethodInfo.Value.MakeGenericMethod(type).Invoke(null, null);
+            _genericMethodInfoLazy.Value.MakeGenericMethod(type).Invoke(null, null);
         }
 
         /// <summary>
@@ -41,63 +41,57 @@ namespace WitherTorch.Core
         /// <typeparam name="T">伺服器軟體的類別</typeparam>
         public static void RegisterServerSoftware<T>() where T : Server<T>, new()
         {
-            Type type = typeof(T);
-            System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-            string softwareId = Server<T>.SoftwareId;
-            if (string.IsNullOrEmpty(softwareId))
-                return;
+            Type t = typeof(T);
+            System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(t.TypeHandle);
+            string softwareID = Server<T>.SoftwareID;
             Action regDelegate = Server<T>.SoftwareRegistrationDelegate;
-            if (regDelegate == null)
+            if (!string.IsNullOrEmpty(softwareID))
             {
-                _lock.EnterWriteLock();
-                _softwareDict[softwareId] = type;
-                _softwareDictReversed[type] = softwareId;
-                _lock.ExitWriteLock();
-                return;
-            }
-            if (WTCore.RegisterSoftwareTimeout == Timeout.InfiniteTimeSpan)
-            {
-                try
+                if (regDelegate != null)
                 {
-                    regDelegate();
-                }
-                catch (Exception)
-                {
-                    return;
-                }
-            }
-            else
-            {
-                using (CancellationTokenSource tokenSource = new CancellationTokenSource())
-                {
-                    Task result = Task.Run(regDelegate);
-                    if (!result.Wait(unchecked((int)(WTCore.RegisterSoftwareTimeout.Ticks / TimeSpan.TicksPerMillisecond)), tokenSource.Token))
+                    if (WTCore.RegisterSoftwareTimeout == Timeout.InfiniteTimeSpan)
                     {
-                        tokenSource.Cancel();
-                        return;
+                        try
+                        {
+                            regDelegate();
+                        }
+                        catch (Exception)
+                        {
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        using CancellationTokenSource tokenSource = new CancellationTokenSource();
+                        Task result = Task.Run(regDelegate);
+                        if (!result.Wait((int)WTCore.RegisterSoftwareTimeout.TotalMilliseconds, tokenSource.Token))
+                        {
+                            tokenSource.Cancel();
+                            return;
+                        }
                     }
                 }
+                _softwareDict.Add(t, softwareID);
             }
-            _lock.EnterWriteLock();
-            _softwareDict[softwareId] = type;
-            _softwareDictReversed[type] = softwareId;
-            _lock.ExitWriteLock();
         }
 
-        public static Type GetSoftwareTypeFromId(string id)
+        public static Type? GetSoftwareTypeFromID(string? id)
         {
-            _lock.EnterReadLock();
-            Type result = _softwareDict.TryGetValue(id, out Type type) ? type : null;
-            _lock.ExitReadLock();
-            return result;
+            foreach (KeyValuePair<Type, string> software in _softwareDict)
+            {
+                if (id == software.Value)
+                {
+                    return software.Key;
+                }
+            }
+            return null;
         }
 
-        public static string GetSoftwareIdFromType(Type type)
+        public static string? GetSoftwareIDFromType(Type? type)
         {
-            _lock.EnterReadLock();
-            string result = _softwareDictReversed.TryGetValue(type, out string id) ? id : null;
-            _lock.ExitReadLock();
-            return result;
+            if (type is null)
+                return null;
+            return _softwareDict.TryGetValue(type, out string? result) ? result : null;
         }
     }
 }

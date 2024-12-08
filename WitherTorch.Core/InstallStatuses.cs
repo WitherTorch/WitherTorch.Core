@@ -11,7 +11,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 當狀態物件的內容改變時觸發
         /// </summary>
-        public event EventHandler Updated;
+        public event EventHandler? Updated;
 
         protected void OnUpdated()
         {
@@ -21,7 +21,7 @@ namespace WitherTorch.Core
 
     public class ProcessStatus : AbstractInstallStatus
     {
-        public event DataReceivedEventHandler ProcessMessageReceived;
+        public event DataReceivedEventHandler? ProcessMessageReceived;
 
         private double _percentage;
         public double Percentage

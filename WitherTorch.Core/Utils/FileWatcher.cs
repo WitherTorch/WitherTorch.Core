@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace WitherTorch.Core.Utils
 {
@@ -53,7 +49,7 @@ namespace WitherTorch.Core.Utils
 
         private static readonly ConcurrentDictionary<string, FileSystemWatcherData> watcherDict = new ConcurrentDictionary<string, FileSystemWatcherData>();
 
-        public event FileSystemEventHandler Changed;
+        public event FileSystemEventHandler? Changed;
 
         private readonly string _path;
         private readonly FileSystemWatcherData data;
@@ -70,7 +66,9 @@ namespace WitherTorch.Core.Utils
                 path = path.ToLower();
 #endif
             _path = path;
-            string dirPath = Path.GetDirectoryName(path);
+            string? dirPath = Path.GetDirectoryName(path);
+            if (dirPath is null)
+                throw new InvalidOperationException();
             data = watcherDict.AddOrUpdate(dirPath, _path => new FileSystemWatcherData(_path), (_, _data) =>
             {
                 _data.Ref();
@@ -81,7 +79,7 @@ namespace WitherTorch.Core.Utils
 
         private void Watcher_Changed(object sender, FileSystemEventArgs e)
         {
-            FileSystemEventHandler handlers = Changed;
+            FileSystemEventHandler? handlers = Changed;
             if (handlers is null)
                 return;
             if (string.Equals(Path.GetFullPath(e.FullPath), _path, StringComparison.OrdinalIgnoreCase))

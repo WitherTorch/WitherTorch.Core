@@ -4,7 +4,7 @@ namespace WitherTorch.Core.Utils
 {
     internal sealed class AutoDisposer
     {
-        public static AutoDisposer<T> Create<T>(T disposable) where T : class, IDisposable
+        public static AutoDisposer<T>? Create<T>(T disposable) where T : class, IDisposable
         {
             return disposable is null ? null : new AutoDisposer<T>(disposable);
         }

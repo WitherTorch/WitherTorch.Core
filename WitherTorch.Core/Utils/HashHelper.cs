@@ -64,9 +64,10 @@ namespace WitherTorch.Core.Utils
             }
         }
 
-        public static string ByteToHexString(byte[] hash)
+        public static string? ByteToHexString(byte[]? hash)
         {
-            if (hash is null) return null;
+            if (hash is null) 
+                return null;
             else
             {
                 int hashLength = hash.Length;
