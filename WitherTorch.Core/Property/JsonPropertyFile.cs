@@ -96,8 +96,8 @@ namespace WitherTorch.Core.Property
             if (jsonObject is null)
                 return;
             SetFileWatching(false);
-            using Utf8JsonWriter writer = new Utf8JsonWriter(new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read),
-                new JsonWriterOptions() { Indented = true });
+            using FileStream stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read);
+            using Utf8JsonWriter writer = new Utf8JsonWriter(stream, new JsonWriterOptions() { Indented = true });
             jsonObject.WriteTo(writer);
             writer.Flush();
             SetFileWatching(true);
