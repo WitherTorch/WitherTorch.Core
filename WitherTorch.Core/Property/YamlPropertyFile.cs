@@ -55,8 +55,9 @@ namespace WitherTorch.Core.Property
             JsonObject? jsonObject = _jsonObject;
             if (jsonObject is null)
                 return;
-
-            dynamic obj = JsonSerializer.Deserialize<dynamic>(jsonObject, serializerOptions);
+            dynamic? obj = JsonSerializer.Deserialize<dynamic>(jsonObject, serializerOptions);
+            if (obj is null)
+                return;
             SetFileWatching(false);
             using StreamWriter writer = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read), Encoding.UTF8);
             GlobalSerializers.YamlSerializer.Serialize(writer, obj);
