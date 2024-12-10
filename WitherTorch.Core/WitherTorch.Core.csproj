@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
+		<GlobalUsings>false</GlobalUsings>
 		<TargetFrameworks>netstandard2.0;net6</TargetFrameworks>
-		<Platforms>AnyCPU;x64;ARM64;x86</Platforms>
+		<Platforms>AnyCPU</Platforms>
 		<Configurations>Debug;Release</Configurations>
 		<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
 		<Deterministic>True</Deterministic>
