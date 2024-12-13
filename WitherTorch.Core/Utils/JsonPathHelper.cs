@@ -34,7 +34,7 @@ namespace WitherTorch.Core.Utils
 
         public static void SetNodeFromPath(JsonObject? obj, string? path, JsonNode value)
         {
-            if (obj is null || obj.Count <= 0 || string.IsNullOrEmpty(path))
+            if (obj is null || string.IsNullOrEmpty(path))
                 return;
             ReadOnlySpan<char> pathSpan = path.AsSpan();
             JsonNode? currentNode = obj;
