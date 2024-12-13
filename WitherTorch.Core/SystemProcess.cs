@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Text;
+
 using DProcess = System.Diagnostics.Process;
 
 namespace WitherTorch.Core
@@ -15,27 +16,22 @@ namespace WitherTorch.Core
         /// <summary>
         /// 取得此處理序的系統處理序物件
         /// </summary>
-        public DProcess InnerProcess { get; protected set; }
+        public DProcess? InnerProcess { get; protected set; }
 
         public override int Id
         {
             get
             {
-                DProcess innerProcess = InnerProcess;
+                DProcess? innerProcess = InnerProcess;
                 if (innerProcess is null)
+                    return default;
+                try
+                {
+                    return innerProcess.Id;
+                }
+                catch (InvalidOperationException)
                 {
                     return default;
-                }
-                else
-                {
-                    try
-                    {
-                        return innerProcess.Id;
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        return default;
-                    }
                 }
             }
         }
@@ -44,21 +40,16 @@ namespace WitherTorch.Core
         {
             get
             {
-                DProcess innerProcess = InnerProcess;
+                DProcess? innerProcess = InnerProcess;
                 if (innerProcess is null)
+                    return default;
+                try
+                {
+                    return innerProcess.StartTime;
+                }
+                catch (InvalidOperationException)
                 {
                     return default;
-                }
-                else
-                {
-                    try
-                    {
-                        return innerProcess.StartTime;
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        return default;
-                    }
                 }
             }
         }
@@ -68,52 +59,45 @@ namespace WitherTorch.Core
         {
             get
             {
-                DProcess innerProcess = InnerProcess;
+                DProcess? innerProcess = InnerProcess;
                 if (innerProcess is null)
+                    return false;
+                try
+                {
+                    return !innerProcess.HasExited;
+                }
+                catch (InvalidOperationException)
                 {
                     return false;
-                }
-                else
-                {
-                    try
-                    {
-                        return !innerProcess.HasExited;
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        return false;
-                    }
                 }
             }
         }
 
         public void Kill()
         {
-            DProcess innerProcess = InnerProcess;
-            if (innerProcess != null)
+            DProcess? innerProcess = InnerProcess;
+            if (innerProcess is null)
+                return;
+            InnerProcess = null;
+            try
             {
-                InnerProcess = null;
-                try
-                {
-                    if (!innerProcess.HasExited)
-                        innerProcess.Kill();
-                }
-                catch (InvalidOperationException)
-                {
-
-                }
-                innerProcess.ErrorDataReceived -= Process_ErrorDataReceived;
-                innerProcess.OutputDataReceived -= Process_OutputDataReceived;
-                innerProcess.Exited -= Process_Exited;
-                try
-                {
-                    innerProcess.Dispose();
-                }
-                catch (InvalidOperationException)
-                {
-                }
-                OnProcessEnded();
+                if (!innerProcess.HasExited)
+                    innerProcess.Kill();
             }
+            catch (InvalidOperationException)
+            {
+            }
+            innerProcess.ErrorDataReceived -= Process_ErrorDataReceived;
+            innerProcess.OutputDataReceived -= Process_OutputDataReceived;
+            innerProcess.Exited -= Process_Exited;
+            try
+            {
+                innerProcess.Dispose();
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            OnProcessEnded();
         }
 
         /// <inheritdoc/>
@@ -123,7 +107,7 @@ namespace WitherTorch.Core
                 InnerProcess?.StandardInput.WriteLine(command);
         }
 
-        public virtual void StartProcess(ProcessStartInfo startInfo)
+        public virtual bool StartProcess(ProcessStartInfo startInfo)
         {
             if (WTCore.RedirectSystemProcessStream)
             {
@@ -133,7 +117,9 @@ namespace WitherTorch.Core
                 startInfo.RedirectStandardOutput = true;
                 startInfo.RedirectStandardInput = true;
             }
-            DProcess process = DProcess.Start(startInfo);
+            DProcess? process = DProcess.Start(startInfo);
+            if (process is null || process.HasExited)
+                return false;
             process.EnableRaisingEvents = true;
             if (startInfo.RedirectStandardInput)
             {
@@ -145,28 +131,28 @@ namespace WitherTorch.Core
             process.Exited += Process_Exited;
             InnerProcess = process;
             OnProcessStarted();
+            return true;
         }
 
-        private void Process_Exited(object sender, EventArgs e)
+        private void Process_Exited(object? sender, EventArgs e)
         {
-            DProcess innerProcess = InnerProcess;
-            if (innerProcess == sender)
-            {
-                InnerProcess = null;
-                innerProcess.ErrorDataReceived -= Process_ErrorDataReceived;
-                innerProcess.OutputDataReceived -= Process_OutputDataReceived;
-                innerProcess.Exited -= Process_Exited;
-                OnProcessEnded();
-                innerProcess.Dispose();
-            }
+            DProcess? innerProcess = InnerProcess;
+            if (!ReferenceEquals(innerProcess, sender) || innerProcess is null)
+                return;
+            InnerProcess = null;
+            innerProcess.ErrorDataReceived -= Process_ErrorDataReceived;
+            innerProcess.OutputDataReceived -= Process_OutputDataReceived;
+            innerProcess.Exited -= Process_Exited;
+            OnProcessEnded();
+            innerProcess.Dispose();
         }
 
-        private void Process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        private void Process_ErrorDataReceived(object? sender, DataReceivedEventArgs e)
         {
             OnMessageRecived(new MessageReceivedEventArgs(true, e.Data ?? string.Empty));
         }
 
-        private void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        private void Process_OutputDataReceived(object? sender, DataReceivedEventArgs e)
         {
             OnMessageRecived(new MessageReceivedEventArgs(false, e.Data ?? string.Empty));
         }

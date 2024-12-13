@@ -28,17 +28,17 @@ namespace WitherTorch.Core
         /// <summary>
         /// 在接收到處理序的執行訊息時觸發
         /// </summary>                                                      
-        public event MessageReceivedEventHandler MessageReceived;
+        public event MessageReceivedEventHandler? MessageReceived;
 
         /// <summary>
         /// 在處理序啟動時觸發
         /// </summary>
-        public event EventHandler ProcessStarted;
+        public event EventHandler? ProcessStarted;
 
         /// <summary>
         /// 在處理序終止時觸發
         /// </summary>
-        public event EventHandler ProcessEnded;
+        public event EventHandler? ProcessEnded;
 
 
         /// <summary>

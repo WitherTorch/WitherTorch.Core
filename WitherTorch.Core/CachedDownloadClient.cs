@@ -1,12 +1,13 @@
-﻿using Newtonsoft.Json.Linq;
-
-using System;
+﻿using System;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 
+using WitherTorch.Core.Property;
 using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core
@@ -17,9 +18,9 @@ namespace WitherTorch.Core
             () => new CachedDownloadClient(), LazyThreadSafetyMode.PublicationOnly);
 
         private readonly HttpClient _client;
-        private AutoDisposer<JsonPropertyFile> _disposableCacheFile;
+        private AutoDisposer<JsonPropertyFile>? _disposableCacheFile;
         private int _cacheFileRefresh;
-        private CancellationTokenSource _saveCacheFileToken;
+        private CancellationTokenSource? _saveCacheFileToken;
 
         public static CachedDownloadClient Instance => _inst.Value;
         public static bool HasInstance => _inst.IsValueCreated;
@@ -35,11 +36,11 @@ namespace WitherTorch.Core
             _disposableCacheFile = AutoDisposer.Create(new JsonPropertyFile(Path.GetFullPath(Path.Combine(WTCore.CachePath, "./index.json")), true, true));
         }
 
-        private void SaveCacheFile(Task lastTask)
+        private void SaveCacheFile(Task? lastTask)
         {
-            if (lastTask is object && !lastTask.IsCompleted)
+            if (lastTask is not null && !lastTask.IsCompleted)
                 return;
-            JsonPropertyFile cacheFile = Interlocked.CompareExchange(ref _disposableCacheFile, null, null)?.Data;
+            JsonPropertyFile? cacheFile = Interlocked.CompareExchange(ref _disposableCacheFile, null, null)?.Data;
             if (cacheFile is null)
                 return;
             lock (cacheFile)
@@ -61,10 +62,10 @@ namespace WitherTorch.Core
 
         public HttpClient InnerHttpClient => _client;
 
-        public string DownloadString(string address)
+        public string? DownloadString(string address)
         {
             string tokenKey = address.Replace(".", "%2E");
-            string result = null, path = null;
+            string? result = null, path = null;
             bool hasCacheFile = false;
             bool isCacheNotOutdated = false;
 
@@ -73,26 +74,28 @@ namespace WitherTorch.Core
             if (Interlocked.Exchange(ref _cacheFileRefresh, 0) != 0)
             {
                 Interlocked.Exchange(ref _disposableCacheFile,
-                    disposableCacheFile = AutoDisposer.Create(new JsonPropertyFile(
-                        Path.GetFullPath(Path.Combine(WTCore.CachePath, "./index.json")), true, true)));
+                    disposableCacheFile = ObjectUtils.ThrowIfNull(
+                        AutoDisposer.Create(new JsonPropertyFile(
+                            Path.GetFullPath(Path.Combine(WTCore.CachePath, "./index.json")), true, true)))
+                    );
             }
             else
             {
-                disposableCacheFile = Interlocked.CompareExchange(ref _disposableCacheFile, null, null);
+                disposableCacheFile = ObjectUtils.ThrowIfNull(Interlocked.CompareExchange(ref _disposableCacheFile, null, null));
             }
 
             JsonPropertyFile cacheFile = disposableCacheFile.Data;
 
-            if (cacheFile[tokenKey] is JObject tokenObject)
+            if (cacheFile[tokenKey] is JsonObject tokenObject)
             {
-                long? expiredTime = tokenObject["expiredTime"]?.Value<long>();
+                long? expiredTime = tokenObject["expiredTime"]?.GetValue<long>();
                 if (expiredTime.HasValue)
                 {
                     DateTime now = DateTime.UtcNow;
                     DateTime exTime = DateTime.FromBinary(expiredTime.Value);
                     isCacheNotOutdated = (now - exTime) <= WTCore.CacheFileTTL;
                 }
-                string value = tokenObject["value"]?.Value<string>();
+                string? value = tokenObject["value"]?.GetValue<string>();
                 if (!string.IsNullOrWhiteSpace(value))
                 {
                     path = Path.Combine(WTCore.CachePath, "./" + value);
@@ -104,19 +107,17 @@ namespace WitherTorch.Core
             }
             else
             {
-                tokenObject = new JObject();
+                tokenObject = new JsonObject();
                 cacheFile[tokenKey] = tokenObject;
             }
 
-            if (isCacheNotOutdated && hasCacheFile)
+            if (isCacheNotOutdated && hasCacheFile && path is not null)
             {
                 try
                 {
-                    using (StreamReader reader = new StreamReader(path))
-                    {
-                        result = reader.ReadToEnd();
-                        reader.Close();
-                    }
+                    using StreamReader reader = new StreamReader(path);
+                    result = reader.ReadToEnd();
+                    reader.Close();
                 }
                 catch (IOException) when (result is null)
                 {
@@ -128,7 +129,7 @@ namespace WitherTorch.Core
                 }
             }
 
-            string downloadedString = null;
+            string? downloadedString = null;
             if (result is null)
             {
                 try
@@ -140,26 +141,22 @@ namespace WitherTorch.Core
                         downloadedString = downloadTask.Result;
                     else
                         downloadTokenSource.Cancel(true);
-#elif NET472_OR_GREATER
-                    using (Task<string> downloadTask = _client.GetStringAsync(address))
-                    {
-                        if (downloadTask.Wait(WTCore.CDCDownloadTimeout))
-                            downloadedString = downloadTask.Result;
-                    }
+#else
+                    using Task<string> downloadTask = _client.GetStringAsync(address);
+                    if (downloadTask.Wait(WTCore.CDCDownloadTimeout))
+                        downloadedString = downloadTask.Result;
 #endif
                 }
                 catch (Exception)
                 {
                 }
-                if (downloadedString is null && hasCacheFile)
+                if (downloadedString is null && hasCacheFile && path is not null)
                 {
                     try
                     {
-                        using (StreamReader reader = new StreamReader(path))
-                        {
-                            result = reader.ReadToEnd();
-                            reader.Close();
-                        }
+                        using StreamReader reader = new StreamReader(path);
+                        result = reader.ReadToEnd();
+                        reader.Close();
                     }
                     catch (Exception)
                     {
@@ -178,11 +175,11 @@ namespace WitherTorch.Core
                     tokenObject["expiredTime"] = DateTime.UtcNow.ToBinary();
                     if (!hasCacheFile)
                     {
-                        string value = null;
+                        string? value = null;
                         bool hasKey = false;
-                        if (tokenObject.TryGetValue("value", out JToken valueToken))
+                        if (tokenObject.TryGetPropertyValue("value", out JsonNode? valueToken))
                         {
-                            value = valueToken?.Value<string>();
+                            value = valueToken?.GetValue<string>();
                             hasKey = true;
                         }
                         if (value is null)
@@ -196,21 +193,22 @@ namespace WitherTorch.Core
                         path = Path.Combine(WTCore.CachePath, "./" + value);
                     }
                     cacheFile[tokenKey] = tokenObject;
-                    try
+                    if (path is not null)
                     {
-                        using (StreamWriter writer = new StreamWriter(path, false))
+                        try
                         {
+                            using StreamWriter writer = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read), Encoding.UTF8);
                             writer.Write(downloadedString);
                             writer.Flush();
                             writer.Close();
                         }
-                    }
-                    catch (Exception)
-                    {
+                        catch (Exception)
+                        {
+                        }
                     }
                     CancellationTokenSource saveCacheFileToken = new CancellationTokenSource();
-                    CancellationTokenSource saveCacheFileTokenOld = Interlocked.Exchange(ref _saveCacheFileToken, saveCacheFileToken);
-                    if (saveCacheFileTokenOld is object)
+                    CancellationTokenSource? saveCacheFileTokenOld = Interlocked.Exchange(ref _saveCacheFileToken, saveCacheFileToken);
+                    if (saveCacheFileTokenOld is not null)
                     {
                         try
                         {
@@ -237,8 +235,8 @@ namespace WitherTorch.Core
         private void Dispose()
         {
             _client.Dispose();
-            CancellationTokenSource saveCacheFileTokenOld = Interlocked.Exchange(ref _saveCacheFileToken, null);
-            if (saveCacheFileTokenOld is object)
+            CancellationTokenSource? saveCacheFileTokenOld = Interlocked.Exchange(ref _saveCacheFileToken, null);
+            if (saveCacheFileTokenOld is not null)
             {
                 try
                 {
