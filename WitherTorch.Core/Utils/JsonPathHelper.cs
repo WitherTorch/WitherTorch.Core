@@ -43,10 +43,11 @@ namespace WitherTorch.Core.Utils
                 int indexOf = pathSpan.IndexOf('.');
                 if (indexOf < 0)
                 {
-                    DecodeSubPathOrCreate(pathSpan, currentNode, () => value);
+                    DecodeSubPathAndCreateOrSet(pathSpan, currentNode, Either.Right<Func<JsonNode>, JsonNode>(value));
                     return;
                 }
-                currentNode = DecodeSubPathOrCreate(pathSpan.Slice(0, indexOf), currentNode, () => new JsonObject());
+                currentNode = DecodeSubPathAndCreateOrSet(pathSpan.Slice(0, indexOf), currentNode,
+                    Either.Left<Func<JsonNode>, JsonNode>(() => new JsonObject()));
                 if (currentNode is null)
                     return;
                 pathSpan = pathSpan.Slice(indexOf + 1);
@@ -73,7 +74,7 @@ namespace WitherTorch.Core.Utils
             return array[index]; //Use forward index
         }
 
-        private static JsonNode? DecodeSubPathOrCreate(ReadOnlySpan<char> pathSpan, JsonNode? node, Func<JsonNode> createFunc)
+        private static JsonNode? DecodeSubPathAndCreateOrSet(ReadOnlySpan<char> pathSpan, JsonNode? node, EitherStruct<Func<JsonNode>, JsonNode> newNode)
         {
             if (node is not JsonObject obj)
                 return null;
@@ -82,10 +83,17 @@ namespace WitherTorch.Core.Utils
             if (bracketIndex < 0) //Is not an array
             {
                 path = pathSpan.ToString();
-                JsonNode? result = obj[path];
+                JsonNode? result;
+                if (newNode.IsRight)
+                {
+                    result = newNode.Right;
+                    obj[path] = result;
+                    return result;
+                }
+                result = obj[path];
                 if (result is null)
                 {
-                    result = createFunc();
+                    result = newNode.Left.Invoke();
                     obj[path] = result;
                 }
                 return result;
@@ -111,16 +119,36 @@ namespace WitherTorch.Core.Utils
                 index = count + index;
                 if (index < 0)
                 {
-                    node = createFunc();
+                    if (newNode.IsLeft)
+                        node = newNode.Left.Invoke();
+                    else
+                        node = newNode.Right;
                     array.Insert(0, node);
+                    return node;
+                }
+                if (newNode.IsRight)
+                {
+                    node = newNode.Right;
+                    array[index] = node;
                     return node;
                 }
                 return array[index];
             }
             //Use forward index
             if (index < count)
+            {
+                if (newNode.IsRight)
+                {
+                    node = newNode.Right;
+                    array[index] = node;
+                    return node;
+                }
                 return array[index];
-            node = createFunc();
+            }
+            if (newNode.IsLeft)
+                node = newNode.Left.Invoke();
+            else
+                node = newNode.Right;
             array.Add(node);
             return node;
         }
