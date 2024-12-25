@@ -82,11 +82,17 @@ namespace WitherTorch.Core.Property
             Dictionary<int, string>? descriptionDict = _descriptionDict;
 
             if (propertyDict is null)
+            {
                 propertyDict = new Dictionary<string, string>();
+                _propertyDict = propertyDict;
+            }
             else
                 propertyDict.Clear();
             if (descriptionDict is null)
+            {
                 descriptionDict = new Dictionary<int, string>();
+                _descriptionDict = descriptionDict;
+            }
             else
                 descriptionDict.Clear();
 
