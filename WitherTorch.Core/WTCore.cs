@@ -8,43 +8,10 @@ namespace WitherTorch.Core
     /// </summary>
     public static class WTCore
     {
-        private static string _cachePath = "./Cache";
-
         /// <summary>
         /// 取得或設定 <see cref="CachedDownloadClient"/> 產生的快取檔案所存放的位置
         /// </summary>
-        public static string CachePath
-        {
-            get
-            {
-                try
-                {
-                    if (!System.IO.Directory.Exists(_cachePath))
-                    {
-                        System.IO.Directory.CreateDirectory(_cachePath);
-                    }
-                }
-                catch (Exception)
-                {
-                }
-                return _cachePath;
-            }
-            set
-            {
-                _cachePath = value;
-                try
-                {
-                    if (!System.IO.Directory.Exists(_cachePath))
-                    {
-                        System.IO.Directory.CreateDirectory(_cachePath);
-                    }
-                    CachedDownloadClient.Instance.ResetCache();
-                }
-                catch (Exception)
-                {
-                }
-            }
-        }
+        public static string CachePath { get; set; } = "./Cache";
 
         /// <summary>
         /// 註冊伺服器軟體時的最大容許時間 (預設為無限等待)
