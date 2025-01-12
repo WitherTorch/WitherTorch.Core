@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -28,7 +27,14 @@ namespace WitherTorch.Core.Utils
 
         public CacheStorageData(long unixEpoch, string fileName, string fileFullName)
         {
-            ExpiredTime = DateTimeOffset.FromUnixTimeMilliseconds(unixEpoch);
+            try
+            {
+                ExpiredTime = DateTimeOffset.FromUnixTimeMilliseconds(unixEpoch);
+            }
+            catch (Exception)
+            {
+                ExpiredTime = default;
+            }
             FileName = fileName;
             FileFullName = fileFullName;
         }
@@ -211,10 +217,17 @@ namespace WitherTorch.Core.Utils
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private CacheStorageData GenerateStorageData()
         {
-            string name = Guid.NewGuid().ToString("N").ToLower();
+            string dirName = _dirName;
+            string name, fullName;
+            do
+            {
+                name = Guid.NewGuid().ToString("N").ToLower();
+                fullName = Path.Combine(dirName, "./", name);
+            } while (File.Exists(fullName));
+
             return new CacheStorageData(
                 fileName: name,
-                fileFullName: Path.Combine(_dirName, "./", name));
+                fileFullName: fullName);
         }
 
         private void DisposeCore()
