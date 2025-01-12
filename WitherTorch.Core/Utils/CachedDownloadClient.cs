@@ -24,7 +24,7 @@ namespace WitherTorch.Core
             string dirPath = WTCore.CachePath;
             if (!Directory.Exists(dirPath))
                 Directory.CreateDirectory(dirPath);
-            _storage = new CacheStorage(Path.Combine(dirPath, "./cache_manifest.json"));
+            _storage = new CacheStorage(Path.Combine(dirPath, "./manifest.json"));
             _client = new HttpClient();
         }
 
