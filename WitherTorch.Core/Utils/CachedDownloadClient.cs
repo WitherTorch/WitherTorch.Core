@@ -81,7 +81,7 @@ namespace WitherTorch.Core
                 if (!task.Wait(timeout))
                     return null;
 
-                return task.IsCompleted ? task.Result : null;
+                return (task.IsCompleted && task.Exception is null) ? task.Result : null;
 #endif
             });
         }
