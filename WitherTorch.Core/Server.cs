@@ -151,7 +151,7 @@ namespace WitherTorch.Core
             string path = Path.Combine(serverDirectory, @"server_info.json");
             if (!File.Exists(path))
                 return null;
-            JsonPropertyFile serverInformation = new JsonPropertyFile(path, true, true);
+            JsonPropertyFile serverInformation = new JsonPropertyFile(path, useFileWatcher: false);
             string? softwareID = serverInformation["software"]?.GetValue<string>();
             if (softwareID is null)
                 return null;
@@ -169,7 +169,7 @@ namespace WitherTorch.Core
             string path = Path.Combine(serverDirectory, @"server_info.json");
             if (!File.Exists(path))
                 return null;
-            return GetServerFromDirectoryCore(serverDirectory, new JsonPropertyFile(path, true, true), softwareID);
+            return GetServerFromDirectoryCore(serverDirectory, new JsonPropertyFile(path, useFileWatcher: false), softwareID);
         }
 
         private static Server? GetServerFromDirectoryCore(string serverDirectory, JsonPropertyFile serverInformation, string softwareID)
@@ -324,11 +324,10 @@ namespace WitherTorch.Core
         /// </summary>
         public void SaveServer()
         {
-            string configuationPath = Path.Combine(ServerDirectory, @"server_info.json");
             JsonPropertyFile? serverInfoJson = ServerInfoJson;
             if (serverInfoJson is null)
             {
-                serverInfoJson = new JsonPropertyFile(configuationPath, true, true);
+                serverInfoJson = new JsonPropertyFile(Path.Combine(ServerDirectory, @"server_info.json"), useFileWatcher: false);
                 ServerInfoJson = serverInfoJson;
             }
             serverInfoJson["name"] = JsonValue.Create(ServerName);

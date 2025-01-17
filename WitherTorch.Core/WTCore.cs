@@ -29,11 +29,6 @@ namespace WitherTorch.Core
         public static TimeSpan CDCDownloadTimeout { get; set; } = new TimeSpan(0, 0, 15);
 
         /// <summary>
-        /// 是否在設定檔類別 (xxxPropertyFile) 中使用延遲載入 (需要引用時才載入) 來節省初始記憶體 (預設為否)
-        /// </summary>
-        public static bool UseLazyLoadingOnPropertyFiles { get; set; } = false;
-
-        /// <summary>
         /// 是否重新導向 <see cref="SystemProcess"/> 內處理序的訊息流 (預設為是)
         /// </summary>
         public static bool RedirectSystemProcessStream { get; set; } = true;

@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading;
+
+#if NET5_0_OR_GREATER
+using System.Runtime.InteropServices;
+#endif
 
 namespace WitherTorch.Core.Utils
 {
@@ -97,7 +100,7 @@ namespace WitherTorch.Core.Utils
                     data.watcher.Changed -= Watcher_Changed;
                 }
 
-                data.Unref();
+                data?.Unref();
                 disposedValue = true;
             }
         }

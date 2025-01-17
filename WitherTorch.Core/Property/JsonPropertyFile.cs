@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -10,104 +11,88 @@ namespace WitherTorch.Core.Property
     /// <summary>
     /// 表示以 JSON 格式 (.json) 儲存的設定檔
     /// </summary>
-    public class JsonPropertyFile : AbstractPropertyFile
+    public class JsonPropertyFile : PropertyFileBase<JsonNode>
     {
-        protected bool _create;
-        protected JsonObject? _jsonObject;
+        private JsonObject? _jsonObject = null;
 
-        /// <inheritdoc/>
-        public JsonNode? this[string key]
+        public JsonPropertyFile(string path) : base(path) { }
+
+        public JsonPropertyFile(string path, bool useFileWatcher) : base(path, useFileWatcher) { }
+
+        protected override void LoadCore(Stream? stream)
         {
-            get
+            if (stream is null)
             {
-                if (key is null)
-                    return null;
-                Initialize();
-                return JsonPathHelper.GetNodeFromPath(_jsonObject, key);
+                LoadCore(new JsonObject());
+                return;
             }
-            set
+            JsonObject? obj;
+            try
             {
-                if (key is null)
-                    return;
-                Initialize();
-                if (value is null)
-                {
-                    JsonNode? node = JsonPathHelper.GetNodeFromPath(_jsonObject, key);
-                    if (node is not null)
-                    {
-                        switch (node.Parent)
-                        {
-                            case JsonObject _obj:
-                                int lastIndexOf = key.LastIndexOf('.');
-                                if (lastIndexOf >= 0)
-                                    key = key.Substring(lastIndexOf + 1);
-                                _obj.Remove(key);
-                                break;
-                            case JsonArray _arr:
-                                _arr.Remove(node);
-                                break;
-                        }
-                        MarkAsDirty();
-                    }
-                    return;
-                }
-                JsonPathHelper.SetNodeFromPath(_jsonObject, key, value);
-                MarkAsDirty();
+                obj = JsonNode.Parse(stream) as JsonObject;
             }
+            catch (Exception)
+            {
+                obj = null;
+            }
+            LoadCore(obj);
         }
 
-        public JsonPropertyFile(string path, bool create = true, bool ignoreLazyRequest = false) : base(path)
+        protected void LoadCore(JsonObject? obj)
         {
-            _create = create;
-            if (!WTCore.UseLazyLoadingOnPropertyFiles || ignoreLazyRequest)
-                Initialize();
+            _jsonObject = obj ?? new JsonObject();
         }
 
-        protected override void Initialize(bool isDirty) => Reload();
-
-        protected override void ClearCache()
+        protected override void UnloadCore()
         {
-            base.ClearCache();
             _jsonObject = null;
         }
 
-        protected override void Reload(bool isDirty)
+        protected override JsonNode? GetValueCore(string key)
         {
-            string path = FilePath;
-            if (!File.Exists(path))
+            return JsonPathHelper.GetNodeFromPath(_jsonObject, key);
+        }
+
+        protected override bool SetValueCore(string key, JsonNode value)
+        {
+            JsonPathHelper.SetNodeFromPath(_jsonObject, key, value);
+            return true;
+        }
+
+        protected override bool RemoveValueCore(string key)
+        {
+            JsonNode? node = JsonPathHelper.GetNodeFromPath(_jsonObject, key);
+            if (node is not null)
             {
-                if (_create)
-                    _jsonObject ??= new JsonObject();
-                return;
+                switch (node.Parent)
+                {
+                    case JsonObject _obj:
+                        int lastIndexOf = key.LastIndexOf('.');
+                        if (lastIndexOf >= 0)
+                            key = key.Substring(lastIndexOf + 1);
+                        return _obj.Remove(key);
+                    case JsonArray _arr:
+                        return _arr.Remove(node);
+                }
             }
-            using FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            _jsonObject = JsonNode.Parse(stream) as JsonObject ?? new JsonObject();
-            stream.Close();
+            return false;
         }
 
-        protected override void Save(bool isDirty, bool force)
+        protected override void SaveCore(Stream stream)
+            => SaveCore(stream, _jsonObject ?? new JsonObject());
+
+        protected virtual void SaveCore(Stream stream, JsonObject obj)
         {
-            string path = FilePath;
-            if (string.IsNullOrEmpty(path) || !force && !isDirty)
-                return;
-            if (force)
-                Initialize();
-            JsonObject? jsonObject = _jsonObject;
-            if (jsonObject is null)
-                return;
-            SetFileWatching(false);
-            using FileStream stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read);
             using Utf8JsonWriter writer = new Utf8JsonWriter(stream, new JsonWriterOptions() { Indented = true });
-            jsonObject.WriteTo(writer);
+            obj.WriteTo(writer);
             writer.Flush();
-            SetFileWatching(true);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
-            Initialize();
-            return _jsonObject?.ToString() ?? string.Empty;
+            Load(force: false);
+            JsonObject jsonObject = _jsonObject ?? new JsonObject();
+            return jsonObject.ToString();
         }
     }
 }

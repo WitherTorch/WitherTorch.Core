@@ -9,94 +9,28 @@ namespace WitherTorch.Core.Property
     /// <summary>
     /// 表示以 Java 設定檔格式 (.properties) 儲存的設定檔
     /// </summary>
-    public sealed class JavaPropertyFile : AbstractPropertyFile
+    public sealed class JavaPropertyFile : PropertyFileBase<string>
     {
-        private Dictionary<string, string>? _propertyDict;
-        private Dictionary<int, string>? _descriptionDict;
+        private readonly Dictionary<string, string> _propertyDict = new Dictionary<string, string>();
+        private readonly Dictionary<int, string> _descriptionDict = new Dictionary<int, string>();
 
-        private bool _create;
+        public JavaPropertyFile(string path) : base(path) { }
 
-        public JavaPropertyFile(string path, bool create = true, bool ignoreLazyRequest = false) : base(path)
+        public JavaPropertyFile(string path, bool useFileWatcher) : base(path, useFileWatcher) { }
+
+        protected override void LoadCore(Stream? stream)
         {
-            _create = create;
-            if (!WTCore.UseLazyLoadingOnPropertyFiles || ignoreLazyRequest)
-                Initialize();
-        }
+            Dictionary<string, string> propertyDict = _propertyDict;
+            Dictionary<int, string> descriptionDict = _descriptionDict;
 
-        protected override void ClearCache()
-        {
-            base.ClearCache();
-            _propertyDict = null;
-            _descriptionDict = null;
-        }
-
-        protected override void Initialize(bool isDirty) => Reload();
-
-        public string? this[string? key]
-        {
-            get
+            if (stream is null)
             {
-                if (string.IsNullOrEmpty(key))
-                    return null;
-                Initialize();
-                Dictionary<string, string>? propertyDict = _propertyDict;
-                if (propertyDict is null)
-                    return null;
-#pragma warning disable CS8604
-                return propertyDict.TryGetValue(key, out string? value) ? value : null;
-#pragma warning restore CS8604
-            }
-            set
-            {
-                if (string.IsNullOrEmpty(key))
-                    return;
-                Initialize();
-                Dictionary<string, string>? propertyDict = _propertyDict;
-                if (propertyDict is null)
-                    return;
-#pragma warning disable CS8604
-                if (value is null)
-                    propertyDict.Remove(key);
-                else
-                    propertyDict[key] = value;
-#pragma warning restore CS8604
-            }
-        }
-
-        protected override void Reload(bool isDirty)
-        {
-            string path = FilePath;
-            if (string.IsNullOrEmpty(path))
-                return;
-            if (!File.Exists(path))
-            {
-                if (_create)
-                {
-                    _propertyDict = new Dictionary<string, string>();
-                    _descriptionDict = new Dictionary<int, string>();
-                }
-                return;
-            }
-
-            Dictionary<string, string>? propertyDict = _propertyDict;
-            Dictionary<int, string>? descriptionDict = _descriptionDict;
-
-            if (propertyDict is null)
-            {
-                propertyDict = new Dictionary<string, string>();
-                _propertyDict = propertyDict;
-            }
-            else
                 propertyDict.Clear();
-            if (descriptionDict is null)
-            {
-                descriptionDict = new Dictionary<int, string>();
-                _descriptionDict = descriptionDict;
-            }
-            else
                 descriptionDict.Clear();
+                return;
+            }
 
-            using StreamReader reader = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read), Encoding.UTF8);
+            using StreamReader reader = new StreamReader(stream, Encoding.UTF8, false, bufferSize: 4096, leaveOpen: true);
             int lineIndex = 0;
             for (string? line = reader.ReadLine(); line is not null; line = reader.ReadLine(), lineIndex++)
             {
@@ -111,28 +45,46 @@ namespace WitherTorch.Core.Property
                 int indexOf = line.IndexOf('=');
                 if (indexOf < 0)
                     continue;
-                propertyDict[line.Substring(0, indexOf)] = line.Substring(indexOf + 1);
+                ReadOnlySpan<char> keySpan = line.AsSpan().Slice(0, indexOf).Trim();
+                if (keySpan.IsEmpty)
+                    continue;
+                propertyDict[keySpan.ToString()] = line.Substring(indexOf + 1);
             }
         }
 
-        protected override void Save(bool isDirty, bool force)
+        protected override void UnloadCore()
         {
-            string path = FilePath;
-            if (string.IsNullOrEmpty(path) || !force && !isDirty)
-                return;
-            if (force)
-                Initialize();
-            using StreamWriter writer = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read), Encoding.UTF8) { AutoFlush = true };
-            SetFileWatching(false);
-            OutputToWriter(writer, true);
-            writer.Close();
-            SetFileWatching(true);
+            _propertyDict.Clear();
+            _descriptionDict.Clear();
+        }
+
+        protected override void SaveCore(Stream stream)
+        {
+            using StreamWriter writer = new StreamWriter(stream, Encoding.UTF8, bufferSize: 4096, leaveOpen: true);
+            OutputToWriter(writer, useDescriptor: true);
+            writer.Flush();
+        }
+
+        protected override string? GetValueCore(string key)
+        {
+            return _propertyDict.TryGetValue(key, out string? result) ? result : null;
+        }
+
+        protected override bool SetValueCore(string key, string value)
+        {
+            _propertyDict[key] = value;
+            return true;
+        }
+
+        protected override bool RemoveValueCore(string key)
+        {
+            return _propertyDict.Remove(key);
         }
 
         /// <inheritdoc/>
         public override string ToString()
         {
-            Initialize();
+            Load(force: false);
             using StringWriter writer = new StringWriter();
             OutputToWriter(writer, false);
             string result = writer.ToString();

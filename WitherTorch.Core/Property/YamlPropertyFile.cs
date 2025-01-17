@@ -15,55 +15,36 @@ namespace WitherTorch.Core.Property
     /// </summary>
     public class YamlPropertyFile : JsonPropertyFile
     {
-        private static readonly JsonSerializerOptions serializerOptions = new JsonSerializerOptions
+        private static readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions
         {
             Converters = { new DynamicJsonConverter() },
             WriteIndented = true
         };
 
-        public YamlPropertyFile(string path, bool create = true, bool ignoreLazyRequest = false) : base(path, create, ignoreLazyRequest)
-        {
-        }
+        public YamlPropertyFile(string path) : base(path) { }
 
-        protected override void Reload(bool isDirty)
+        public YamlPropertyFile(string path, bool useFileWatcher) : base(path, useFileWatcher) { }
+
+        protected override void LoadCore(Stream? stream)
         {
-            string path = FilePath;
-            if (!File.Exists(path))
+            if (stream is null)
             {
-                if (_create)
-                    _jsonObject ??= new JsonObject();
+                LoadCore(new JsonObject());
                 return;
             }
-            using StreamReader reader = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read), Encoding.UTF8);
+            using StreamReader reader = new StreamReader(stream, Encoding.UTF8, false, bufferSize: 4096, leaveOpen: true);
             object? graph = GlobalSerializers.YamlDeserializer.Deserialize(reader);
-            reader.Close();
-            if (graph is null)
-            {
-                _jsonObject = new JsonObject();
-                return;
-            }
-            _jsonObject = JsonNode.Parse(GlobalSerializers.JsonSerializer.Serialize(graph)) as JsonObject ?? new JsonObject();
+            LoadCore(JsonNode.Parse(GlobalSerializers.JsonSerializer.Serialize(graph)) as JsonObject);
         }
 
-        protected override void Save(bool isDirty, bool force)
+        protected override void SaveCore(Stream stream, JsonObject obj)
         {
-            string path = FilePath;
-            if (string.IsNullOrEmpty(path) || !force && !isDirty)
+            dynamic? graph = JsonSerializer.Deserialize<dynamic>(obj, _serializerOptions);
+            if (graph is null)
                 return;
-            if (force)
-                Initialize();
-            JsonObject? jsonObject = _jsonObject;
-            if (jsonObject is null)
-                return;
-            dynamic? obj = JsonSerializer.Deserialize<dynamic>(jsonObject, serializerOptions);
-            if (obj is null)
-                return;
-            SetFileWatching(false);
-            using StreamWriter writer = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read), Encoding.UTF8);
-            GlobalSerializers.YamlSerializer.Serialize(writer, obj);
+            using StreamWriter writer = new StreamWriter(stream, Encoding.UTF8, bufferSize: 4096, leaveOpen: true);
+            GlobalSerializers.YamlSerializer.Serialize(writer, graph);
             writer.Flush();
-            writer.Close();
-            SetFileWatching(true);
         }
     }
 }
