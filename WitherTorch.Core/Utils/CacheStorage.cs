@@ -235,7 +235,7 @@ namespace WitherTorch.Core.Utils
             if (_disposed)
                 return;
             _disposed = true;
-            if (Interlocked.CompareExchange(ref _predictedSaveTime, 0L, 0L) != 0L)
+            if (Interlocked.Read(ref _predictedSaveTime) != 0L)
                 SaveCore();
         }
 

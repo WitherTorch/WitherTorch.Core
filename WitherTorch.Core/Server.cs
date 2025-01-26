@@ -148,7 +148,7 @@ namespace WitherTorch.Core
         /// <returns>指定的伺服器，若伺服器不存在則為 <see langword="null"/></returns>
         public static Server? LoadServer(string serverDirectory)
         {
-            string path = Path.Combine(serverDirectory, @"server_info.json");
+            string path = Path.Combine(serverDirectory, "./server_info.json");
             if (!File.Exists(path))
                 return null;
             JsonPropertyFile serverInformation = new JsonPropertyFile(path, useFileWatcher: false);
@@ -166,7 +166,7 @@ namespace WitherTorch.Core
         /// <returns>指定的伺服器，若伺服器不存在則為 <see langword="null"/></returns>
         public static Server? LoadServer(string serverDirectory, string softwareID)
         {
-            string path = Path.Combine(serverDirectory, @"server_info.json");
+            string path = Path.Combine(serverDirectory, "./server_info.json");
             if (!File.Exists(path))
                 return null;
             return LoadServerCore(serverDirectory, new JsonPropertyFile(path, useFileWatcher: false), softwareID);
@@ -335,7 +335,7 @@ namespace WitherTorch.Core
             JsonPropertyFile? serverInfoJson = ServerInfoJson;
             if (serverInfoJson is null)
             {
-                serverInfoJson = new JsonPropertyFile(Path.Combine(ServerDirectory, @"server_info.json"), useFileWatcher: false);
+                serverInfoJson = new JsonPropertyFile(Path.Combine(ServerDirectory, "./server_info.json"), useFileWatcher: false);
                 ServerInfoJson = serverInfoJson;
             }
             serverInfoJson["name"] = JsonValue.Create(ServerName);
