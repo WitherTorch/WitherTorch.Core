@@ -54,6 +54,11 @@ namespace WitherTorch.Core
         /// </summary>
         public event ServerInstallingEventHandler? ServerInstalling;
 
+        /// <summary>
+        /// 在 <see cref="RunServer"/> 或 <see cref="RunServer(RuntimeEnvironment?)"/> 被呼叫且準備啟動伺服器時觸發
+        /// </summary>
+        public event EventHandler? BeforeRunServer;
+
         // 內部空參數建構子 (防止有第三方伺服器軟體類別繼承自它)
         internal Server()
         {
@@ -317,7 +322,7 @@ namespace WitherTorch.Core
         /// <returns>是否成功儲存伺服器</returns>
         protected abstract bool SaveServerCore(JsonPropertyFile serverInfoJson);
 
-        protected void OnServerInstalling(InstallTask task)
+        protected virtual void OnServerInstalling(InstallTask task)
         {
             ServerInstalling?.Invoke(this, task);
         }
@@ -325,6 +330,11 @@ namespace WitherTorch.Core
         protected virtual void OnServerVersionChanged()
         {
             ServerVersionChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        protected virtual void OnBeforeRunServer()
+        {
+            BeforeRunServer?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
