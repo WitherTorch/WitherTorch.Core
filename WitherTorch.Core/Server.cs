@@ -140,13 +140,13 @@ namespace WitherTorch.Core
         /// <returns></returns>
         public abstract void SetRuntimeEnvironment(RuntimeEnvironment? environment);
 
-        /// <summary>
-        /// 取得伺服器
+        /// <summary>        
+        /// 載入位於指定路徑內的伺服器
         /// </summary>
         /// <param name="serverDirectory">伺服器資料夾路徑</param>
         /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
         /// <returns>指定的伺服器，若伺服器不存在則為 <see langword="null"/></returns>
-        public static Server? GetServerFromDirectory(string serverDirectory)
+        public static Server? LoadServer(string serverDirectory)
         {
             string path = Path.Combine(serverDirectory, @"server_info.json");
             if (!File.Exists(path))
@@ -155,24 +155,24 @@ namespace WitherTorch.Core
             string? softwareID = serverInformation["software"]?.GetValue<string>();
             if (softwareID is null)
                 return null;
-            return GetServerFromDirectoryCore(serverDirectory, serverInformation, softwareID);
+            return LoadServerCore(serverDirectory, serverInformation, softwareID);
         }
 
         /// <summary>
-        /// 取得伺服器
+        /// 載入位於指定路徑內的伺服器，並將其指定為 <paramref name="softwareID"/> 所對應的伺服器軟體
         /// </summary>
         /// <param name="serverDirectory">伺服器資料夾路徑</param>
         /// <param name="software">伺服器軟體 ID</param>
         /// <returns>指定的伺服器，若伺服器不存在則為 <see langword="null"/></returns>
-        public static Server? GetServerFromDirectory(string serverDirectory, string softwareID)
+        public static Server? LoadServer(string serverDirectory, string softwareID)
         {
             string path = Path.Combine(serverDirectory, @"server_info.json");
             if (!File.Exists(path))
                 return null;
-            return GetServerFromDirectoryCore(serverDirectory, new JsonPropertyFile(path, useFileWatcher: false), softwareID);
+            return LoadServerCore(serverDirectory, new JsonPropertyFile(path, useFileWatcher: false), softwareID);
         }
 
-        private static Server? GetServerFromDirectoryCore(string serverDirectory, JsonPropertyFile serverInformation, string softwareID)
+        private static Server? LoadServerCore(string serverDirectory, JsonPropertyFile serverInfoJson, string softwareID)
         {
             Type? softwareType = SoftwareRegister.GetSoftwareTypeFromId(softwareID);
             if (softwareType is null)
@@ -184,10 +184,10 @@ namespace WitherTorch.Core
                 return null;
             }
             serverDirectory = Path.GetFullPath(serverDirectory);
-            server.ServerInfoJson = serverInformation;
+            server.ServerInfoJson = serverInfoJson;
             server.ServerDirectory = serverDirectory;
-            server.ServerName = serverInformation["name"]?.GetValue<string>() ?? Path.GetDirectoryName(serverDirectory) ?? string.Empty;
-            if (server.OnServerLoading())
+            server.ServerName = serverInfoJson["name"]?.GetValue<string>() ?? Path.GetDirectoryName(serverDirectory) ?? string.Empty;
+            if (server.LoadServerCore(serverInfoJson))
                 return server;
             (server as IDisposable)?.Dispose();
             return null;
@@ -267,8 +267,9 @@ namespace WitherTorch.Core
         /// <summary>
         /// 子類別應覆寫此方法為加載伺服器的程式碼
         /// </summary>
+        /// <param name="serverInfoJson">伺服器的資訊檔案</param>
         /// <returns>是否成功加載伺服器</returns>
-        protected abstract bool OnServerLoading();
+        protected abstract bool LoadServerCore(JsonPropertyFile serverInfoJson);
         /// <summary>
         /// 子類別應覆寫此方法為建立伺服器的程式碼
         /// </summary>
@@ -289,8 +290,14 @@ namespace WitherTorch.Core
         /// </summary>
         public abstract AbstractProcess GetProcess();
         /// <summary>
-        /// 啟動伺服器
+        /// 以 <see cref="GetRuntimeEnvironment"/> 內的執行環境來啟動伺服器
         /// </summary>
+        /// <returns>伺服器是否已啟動</returns>
+        public bool RunServer() => RunServer(GetRuntimeEnvironment());
+        /// <summary>
+        /// 以 <paramref name="environment"/> 所指定的執行環境來啟動伺服器
+        /// </summary>
+        /// <param name="environment">啟動伺服器時所要使用的執行環境，或是傳入 <see langword="null"/> 來指示其使用預設的執行環境</param>
         /// <returns>伺服器是否已啟動</returns>
         public abstract bool RunServer(RuntimeEnvironment? environment);
         /// <summary>
@@ -306,8 +313,9 @@ namespace WitherTorch.Core
         /// <summary>
         /// 子類別應覆寫此方法為儲存伺服器的程式碼
         /// </summary>
+        /// <param name="serverInfoJson">伺服器的資訊檔案</param>
         /// <returns>是否成功儲存伺服器</returns>
-        protected abstract bool BeforeServerSaved();
+        protected abstract bool SaveServerCore(JsonPropertyFile serverInfoJson);
 
         protected void OnServerInstalling(InstallTask task)
         {
@@ -332,7 +340,7 @@ namespace WitherTorch.Core
             }
             serverInfoJson["name"] = JsonValue.Create(ServerName);
             serverInfoJson["software"] = JsonValue.Create(GetSoftwareId());
-            if (BeforeServerSaved())
+            if (SaveServerCore(serverInfoJson))
                 serverInfoJson.Save(false);
             IPropertyFile[] properties = GetServerPropertyFiles();
             if (properties is null)
