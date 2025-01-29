@@ -1,5 +1,7 @@
 ﻿using System;
 
+using WitherTorch.Core.Utils;
+
 namespace WitherTorch.Core
 {
     /// <summary>
@@ -7,18 +9,27 @@ namespace WitherTorch.Core
     /// </summary>
     public sealed class ServerSoftwareIsNotRegisteredException : Exception
     {
-        public string SoftwareTypeName { get; }
+        public EitherStruct<Type, string> Software { get; }
 
         public ServerSoftwareIsNotRegisteredException(Type softwareType)
         {
-            SoftwareTypeName = softwareType.ToString();
+            Software = Either.Left<Type, string>(softwareType);
         }
 
-        public ServerSoftwareIsNotRegisteredException(string softwareTypeName)
+        public ServerSoftwareIsNotRegisteredException(string softwareId)
         {
-            SoftwareTypeName = softwareTypeName;
+            Software = Either.Right<Type, string>(softwareId);
         }
 
-        public override string Message => $"{SoftwareTypeName} isn't registered in SoftwareRegister !";
+        public override string Message
+        {
+            get
+            {
+                EitherStruct<Type, string> software = Software;
+                if (software.IsLeft)
+                    return $"{software.Left.FullName} is not a valid server type registered in {nameof(SoftwareRegister)} !";
+                return $"{software.Right} is not registered in {nameof(SoftwareRegister)} !";
+            }
+        }
     }
 }
