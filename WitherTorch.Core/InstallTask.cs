@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Threading.Tasks;
+
+using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core
 {
@@ -73,12 +76,27 @@ namespace WitherTorch.Core
         /// </summary>
         public AbstractInstallStatus? Status { get; private set; }
 
+        private readonly EitherStruct<Action<InstallTask>, Action<InstallTask, object?>> _installAction;
+        private readonly object? _installActionState;
+
         private bool _isStopped;
 
-        public InstallTask(Server owner, string version)
+        public InstallTask(Server owner, string version, Action<InstallTask> installAction)
         {
             Owner = owner;
             Version = version;
+            Status = PreparingInstallStatus.Instance;
+            _installAction = Either.Left<Action<InstallTask>, Action<InstallTask, object?>>(installAction);
+            _installActionState = null;
+        }
+
+        public InstallTask(Server owner, string version, object? state, Action<InstallTask, object?> installAction)
+        {
+            Owner = owner;
+            Version = version;
+            Status = PreparingInstallStatus.Instance;
+            _installAction = Either.Right<Action<InstallTask>, Action<InstallTask, object?>>(installAction);
+            _installActionState = null;
         }
 
         /// <summary>
@@ -101,17 +119,16 @@ namespace WitherTorch.Core
         /// <param name="status">要替換的安裝狀態物件</param>
         public void ChangeStatus(AbstractInstallStatus status)
         {
-            if (Status != status)
-            {
-                Status = status;
-                StatusChanged?.Invoke(this, EventArgs.Empty);
-            }
+            if (Status == status)
+                return;
+            Status = status;
+            StatusChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
         /// 引發 <see cref="InstallFinished"/> 事件
         /// </summary>
-        public void OnInstallFinished()
+        public virtual void OnInstallFinished()
         {
             InstallFinished?.Invoke(this, EventArgs.Empty);
         }
@@ -119,10 +136,55 @@ namespace WitherTorch.Core
         /// <summary>
         /// 引發 <see cref="InstallFailed"/> 事件
         /// </summary>
-        public void OnInstallFailed()
+        public virtual void OnInstallFailed()
         {
             InstallFailed?.Invoke(this, EventArgs.Empty);
         }
+
+        /// <summary>
+        /// 要求開始安裝流程
+        /// </summary>
+        /// <remarks>(安裝過程為非同步執行，伺服器軟體會呼叫 <see cref="InstallTask"/> 內的各項事件以更新目前的安裝狀態)</remarks>
+        public void Start()
+        {
+            var installAction = _installAction;
+            if (installAction.IsLeft)
+            {
+                StartCore(installAction.Left);
+                return;
+            }
+            if (installAction.IsRight)
+            {
+                StartCore(installAction.Right, _installActionState);
+                return;
+            }
+        }
+
+        protected virtual void StartCore(Action<InstallTask> installAction)
+            => Task.Factory.StartNew(delegate ()
+            {
+                try
+                {
+                    installAction.Invoke(this);
+                }
+                catch (Exception)
+                {
+                    OnInstallFailed();
+                }
+            }, TaskCreationOptions.LongRunning | TaskCreationOptions.DenyChildAttach);
+
+        protected virtual void StartCore(Action<InstallTask, object?> installAction, object? state)
+            => Task.Factory.StartNew(delegate (object? state)
+            {
+                try
+                {
+                    installAction.Invoke(this, state);
+                }
+                catch (Exception)
+                {
+                    OnInstallFailed();
+                }
+            }, state, TaskCreationOptions.LongRunning | TaskCreationOptions.DenyChildAttach);
 
         /// <summary>
         /// 要求停止安裝流程

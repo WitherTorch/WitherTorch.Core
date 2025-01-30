@@ -121,7 +121,15 @@ namespace WitherTorch.Core.Utils
                     return result;
             }
 
-            result = renewFactory.Invoke();
+            try
+            {
+                result = renewFactory.Invoke();
+            }
+            catch (Exception)
+            {
+                result = null;
+            }
+
             if (result is not null)
             {
                 if (data.ExpiredTime == default)

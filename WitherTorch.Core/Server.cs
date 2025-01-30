@@ -1,41 +1,20 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 
 using WitherTorch.Core.Property;
+using WitherTorch.Core.Software;
 
 namespace WitherTorch.Core
 {
-    /// <summary>
-    /// 表示一個伺服器，這個類別是虛擬泛型類別
-    /// </summary>
-#pragma warning disable CS8618
-    public abstract class Server<T> : Server where T : Server<T>
-    {
-        internal protected static Action SoftwareRegistrationDelegate { get; protected set; }
-        /// <summary>
-        /// 伺服器軟體ID
-        /// </summary>
-        internal protected static string SoftwareId { get; protected set; }
-
-        // 面向外部的空參數建構子
-        public Server()
-        {
-        }
-
-        public override string GetSoftwareId()
-        {
-            return SoftwareId;
-        }
-    }
-#pragma warning restore CS8618
-
     /// <summary>
     /// 表示一個伺服器，這個類別是虛擬類別
     /// </summary>
     public abstract class Server
     {
-        private string _name;
+        private readonly string _serverDirectory;
+        private string _name = string.Empty;
 
         public delegate void ServerInstallingEventHandler(object sender, InstallTask task);
 
@@ -50,51 +29,22 @@ namespace WitherTorch.Core
         public event EventHandler? ServerVersionChanged;
 
         /// <summary>
-        /// 當伺服器正在安裝軟體時觸發
-        /// </summary>
-        public event ServerInstallingEventHandler? ServerInstalling;
-
-        /// <summary>
         /// 在 <see cref="RunServer"/> 或 <see cref="RunServer(RuntimeEnvironment?)"/> 被呼叫且準備啟動伺服器時觸發
         /// </summary>
         public event EventHandler? BeforeRunServer;
-
-        // 內部空參數建構子 (防止有第三方伺服器軟體類別繼承自它)
-        internal Server()
-        {
-            _name = string.Empty;
-            ServerDirectory = string.Empty;
-        }
-
-        /// <summary>
-        /// 檢測是否為指定類別的子伺服器類別
-        /// </summary>
-        /// <param name="baseServerType">欲查詢的基底伺服器類別</param>
-        public bool IsSubclassOf(Type baseServerType)
-        {
-            Type TServer = GetType();
-            return TServer.IsSubclassOf(baseServerType.MakeGenericType(TServer));
-        }
-
-        /// <summary>
-        /// 檢測是否為指定類別的子伺服器類別
-        /// </summary>
-        /// <typeparam name="TServerBase">欲查詢的基底伺服器類別</typeparam>
-        public bool IsSubclassOf<TServerBase>()
-        {
-            return IsSubclassOf(typeof(TServerBase));
-        }
 
         /// <summary>
         /// 伺服器名稱
         /// </summary>
         public string ServerName
         {
-            get { return _name; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _name;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
                 _name = value;
-                ServerNameChanged?.Invoke(this, EventArgs.Empty);
+                OnServerNameChanged();
             }
         }
 
@@ -109,17 +59,12 @@ namespace WitherTorch.Core
         /// <summary>
         /// 伺服器資料夾路徑
         /// </summary>
-        public string ServerDirectory { get; set; }
+        public string ServerDirectory => _serverDirectory;
 
         /// <summary>
         /// 取得人類可讀(human-readable)的軟體版本
         /// </summary>
         public abstract string GetReadableVersion();
-
-        /// <summary>
-        /// 取得伺服器軟體所有的可用版本
-        /// </summary>
-        public abstract string[] GetSoftwareVersions();
 
         /// <summary>
         /// 取得伺服器的設定檔案
@@ -145,6 +90,11 @@ namespace WitherTorch.Core
         /// <returns></returns>
         public abstract void SetRuntimeEnvironment(RuntimeEnvironment? environment);
 
+        protected Server(string serverDirectory)
+        {
+            _serverDirectory = serverDirectory;
+        }
+
         /// <summary>        
         /// 載入位於指定路徑內的伺服器
         /// </summary>
@@ -157,163 +107,193 @@ namespace WitherTorch.Core
             if (!File.Exists(path))
                 return null;
             JsonPropertyFile serverInformation = new JsonPropertyFile(path, useFileWatcher: false);
-            string? softwareID = serverInformation["software"]?.GetValue<string>();
-            if (softwareID is null)
+            ISoftwareContext? software = SoftwareRegister.GetSoftwareContext(serverInformation["software"]?.GetValue<string>(), throwExceptionIfNotRegistered: true);
+            if (software is null)
                 return null;
-            return LoadServerCore(serverDirectory, serverInformation, softwareID);
+            return LoadServerCore(software, serverDirectory, serverInformation);
         }
 
         /// <summary>
-        /// 載入位於指定路徑內的伺服器，並將其指定為 <paramref name="softwareID"/> 所對應的伺服器軟體
+        /// 載入位於指定路徑內的伺服器，並將其指定為 <paramref name="softwareId"/> 所對應的伺服器軟體
         /// </summary>
         /// <param name="serverDirectory">伺服器資料夾路徑</param>
         /// <param name="software">伺服器軟體 ID</param>
         /// <returns>指定的伺服器，若伺服器不存在則為 <see langword="null"/></returns>
-        public static Server? LoadServer(string serverDirectory, string softwareID)
+        public static Server? LoadServer(string serverDirectory, string softwareId)
         {
+            ISoftwareContext? software = SoftwareRegister.GetSoftwareContext(softwareId, throwExceptionIfNotRegistered: true);
+            if (software is null)
+                return null;
             string path = Path.Combine(serverDirectory, "./server_info.json");
             if (!File.Exists(path))
                 return null;
-            return LoadServerCore(serverDirectory, new JsonPropertyFile(path, useFileWatcher: false), softwareID);
+            return LoadServerCore(software, serverDirectory, new JsonPropertyFile(path, useFileWatcher: false));
         }
 
-        private static Server? LoadServerCore(string serverDirectory, JsonPropertyFile serverInfoJson, string softwareID)
+        private static Server? LoadServerCore(ISoftwareContext factory, string serverDirectory, JsonPropertyFile serverInfoJson)
         {
-            Type? softwareType = SoftwareRegister.GetSoftwareTypeFromId(softwareID);
-            if (softwareType is null)
-                throw new ServerSoftwareIsNotRegisteredException(softwareID);
-            object? newObj = Activator.CreateInstance(softwareType);
-            if (newObj is not Server server)
+            Server? server = factory.CreateServerInstance(serverDirectory);
+            if (server is null)
+                return null;
+            if (!factory.GetServerType().IsAssignableFrom(server.GetType()))
             {
-                (newObj as IDisposable)?.Dispose();
+                (server as IDisposable)?.Dispose();
                 return null;
             }
-            serverDirectory = Path.GetFullPath(serverDirectory);
             server.ServerInfoJson = serverInfoJson;
-            server.ServerDirectory = serverDirectory;
-            server.ServerName = serverInfoJson["name"]?.GetValue<string>() ?? Path.GetDirectoryName(serverDirectory) ?? string.Empty;
-            if (server.LoadServerCore(serverInfoJson))
-                return server;
-            (server as IDisposable)?.Dispose();
-            return null;
+            server.ServerName = serverInfoJson["name"]?.GetValue<string>() ?? GetDefaultServerNameCore(Path.GetFullPath(serverDirectory));
+            if (!server.LoadServerCore(serverInfoJson))
+            {
+                (server as IDisposable)?.Dispose();
+                return null;
+            }
+            return server;
         }
 
         /// <summary>
-        /// 建立伺服器
+        /// 以指定的伺服器物件類型與伺服器資料夾路徑來建立新的伺服器
         /// </summary>
-        /// <typeparam name="T">軟體的型別</typeparam>
-        /// <param name="serverDirectory">伺服器路徑</param>
-        /// <returns>建立好的伺服器</returns>
-        /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
+        /// <typeparam name="T">伺服器類型，需使用 <see cref="SoftwareRegister.TryRegisterServerSoftware(ISoftwareContext)"/> 註冊</typeparam>
+        /// <param name="serverDirectory">伺服器資料夾的路徑</param>
+        /// <returns>建立好的伺服器，或是 <see langword="null"/> (如果建立伺服器時發生問題的話)</returns>
         public static T? CreateServer<T>(string serverDirectory) where T : Server
         {
-            return CreateServerInternal(typeof(T), serverDirectory) as T;
-        }
-
-        /// <summary>
-        /// 建立伺服器
-        /// </summary>
-        /// <param name="softwareType">軟體的型別</typeparam>
-        /// <param name="serverDirectory">伺服器路徑</param>
-        /// <returns>建立好的伺服器</returns>
-        /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
-        public static Server? CreateServer(Type softwareType, string serverDirectory)
-        {
-            if (softwareType?.IsSubclassOf(typeof(Server)) == true)
-                return CreateServerInternal(softwareType, serverDirectory);
-            else
+            ISoftwareContext? software = SoftwareRegister.GetSoftwareContext(typeof(T), throwExceptionIfNotRegistered: true);
+            if (software is null)
                 return null;
-        }
-
-        /// <summary>
-        /// 建立伺服器
-        /// </summary>
-        /// <param name="softwareID">軟體的ID</param>
-        /// <param name="serverDirectory">伺服器路徑</param>
-        /// <returns>建立好的伺服器</returns>
-        /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
-        public static Server? CreateServer(string softwareID, string serverDirectory)
-        {
-            Type? type = SoftwareRegister.GetSoftwareTypeFromId(softwareID);
-            if (type is null)
-                throw new ServerSoftwareIsNotRegisteredException(softwareID);
-            return CreateServerInternal(type, serverDirectory);
-        }
-
-        private static Server? CreateServerInternal(Type softwareType, string serverDirectory)
-        {
-            object? newObj = Activator.CreateInstance(softwareType);
-            if (newObj is not Server server)
+            Server? server = CreateServerCore(software, serverDirectory);
+            if (server is not T result)
             {
-                (newObj as IDisposable)?.Dispose();
+                (server as IDisposable)?.Dispose();
                 return null;
             }
-            server.ServerDirectory = serverDirectory;
-            server.ServerName = GetDefaultServerName(server);
-            if (server.CreateServer())
-                return server;
-            (server as IDisposable)?.Dispose();
-            return null;
+            return result;
+        }
+
+        /// <summary>
+        /// 以指定的伺服器物件類型與伺服器資料夾路徑來建立新的伺服器
+        /// </summary>
+        /// <param name="serverType">伺服器類型，需繼承 <see cref="Server"/> 並使用 <see cref="SoftwareRegister.TryRegisterServerSoftware(ISoftwareContext)"/> 註冊</param>
+        /// <param name="serverDirectory">伺服器資料夾的路徑</param>
+        /// <returns>建立好的伺服器，或是 <see langword="null"/> (如果建立伺服器時發生問題的話)</returns>
+        public static Server? CreateServer(Type serverType, string serverDirectory)
+        {
+            ISoftwareContext? software = SoftwareRegister.GetSoftwareContext(serverType, throwExceptionIfNotRegistered: true);
+            if (software is null)
+                return null;
+            return CreateServerCore(software, serverDirectory);
+        }
+
+        /// <summary>
+        /// 建立伺服器
+        /// </summary>
+        /// <param name="softwareId">軟體的ID</param>
+        /// <param name="serverDirectory">伺服器路徑</param>
+        /// <returns>建立好的伺服器</returns>
+        /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
+        public static Server? CreateServer(string softwareId, string serverDirectory)
+        {
+            ISoftwareContext? software = SoftwareRegister.GetSoftwareContext(softwareId, throwExceptionIfNotRegistered: true);
+            if (software is null)
+                return null;
+            return CreateServerCore(software, serverDirectory);
+        }
+
+        private static Server? CreateServerCore(ISoftwareContext factory, string serverDirectory)
+        {
+            Server? server = factory.CreateServerInstance(serverDirectory);
+            if (server is null)
+                return null;
+            if (!factory.GetServerType().IsAssignableFrom(server.GetType()))
+            {
+                (server as IDisposable)?.Dispose();
+                return null;
+            }
+            server.ServerName = GetDefaultServerNameCore(Path.GetFullPath(serverDirectory));
+            if (!server.CreateServerCore())
+            {
+                (server as IDisposable)?.Dispose();
+                return null;
+            }
+            return server;
         }
 
         /// <summary>
         /// 取得預設的伺服器名稱 (通常是伺服器資料夾的名字)
         /// </summary>
-        /// <returns>是否成功加載伺服器</returns>
+        /// <returns>預設的伺服器名稱</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string GetDefaultServerName(Server server)
+            => GetDefaultServerNameCore(server.ServerDirectory);
+
+        private static string GetDefaultServerNameCore(string serverDirectory)
         {
-            string serverDirectory = server.ServerDirectory.TrimEnd(Path.DirectorySeparatorChar);
+#if NET5_0_OR_GREATER
+            ReadOnlySpan<char> span = serverDirectory.AsSpan().TrimEnd(Path.DirectorySeparatorChar);
+            if (span.Length > 3)
+                return Path.GetFileName(span).ToString();
+#else
+            serverDirectory = serverDirectory.TrimEnd(Path.DirectorySeparatorChar);
             if (serverDirectory.Length > 3)
-            {
                 return Path.GetFileName(serverDirectory);
-            }
+#endif
             return serverDirectory;
         }
+
         /// <summary>
         /// 子類別應覆寫此方法為加載伺服器的程式碼
         /// </summary>
         /// <param name="serverInfoJson">伺服器的資訊檔案</param>
         /// <returns>是否成功加載伺服器</returns>
         protected abstract bool LoadServerCore(JsonPropertyFile serverInfoJson);
+
         /// <summary>
         /// 子類別應覆寫此方法為建立伺服器的程式碼
         /// </summary>
         /// <returns>是否成功建立伺服器</returns>
-        protected abstract bool CreateServer();
+        protected abstract bool CreateServerCore();
+
         /// <summary>
         /// 取得伺服器軟體ID
         /// </summary>
         public abstract string GetSoftwareId();
-        /// <summary>
-        /// 更改伺服器軟體版本
-        /// </summary>
-        /// <param name="versionIndex">軟體傳回的版本索引值</param>
-        /// <returns>是否成功更改伺服器軟體版本</returns>
-        public abstract bool ChangeVersion(int versionIndex);
+
         /// <summary>
         /// 取得當前的處理序物件
         /// </summary>
         public abstract AbstractProcess GetProcess();
+
         /// <summary>
         /// 以 <see cref="GetRuntimeEnvironment"/> 內的執行環境來啟動伺服器
         /// </summary>
         /// <returns>伺服器是否已啟動</returns>
         public bool RunServer() => RunServer(GetRuntimeEnvironment());
+
         /// <summary>
         /// 以 <paramref name="environment"/> 所指定的執行環境來啟動伺服器
         /// </summary>
         /// <param name="environment">啟動伺服器時所要使用的執行環境，或是傳入 <see langword="null"/> 來指示其使用預設的執行環境</param>
         /// <returns>伺服器是否已啟動</returns>
         public abstract bool RunServer(RuntimeEnvironment? environment);
+
         /// <summary>
         /// 停止伺服器
         /// </summary>
         public abstract void StopServer(bool force);
+
         /// <summary>
-        /// 子類別應覆寫此方法為更新伺服器軟體的程式碼
+        /// 生成一個裝載伺服器安裝流程的 <see cref="InstallTask"/> 物件
         /// </summary>
-        /// <returns>是否成功開始更新伺服器軟體</returns>
-        public abstract bool UpdateServer();
+        /// <param name="version">要安裝的軟體版本</param>
+        /// <returns>如果成功裝載安裝流程，則為一個有效的 <see cref="InstallTask"/> 物件，否則會回傳 <see langword="null"/></returns>
+        public abstract InstallTask? GenerateInstallServerTask(string version);
+
+        /// <summary>
+        /// 生成一個裝載伺服器更新流程的 <see cref="InstallTask"/> 物件
+        /// </summary>
+        /// <param name="version">要安裝的軟體版本</param>
+        /// <returns>如果成功裝載更新流程，則為一個有效的 <see cref="InstallTask"/> 物件，否則會回傳 <see langword="null"/></returns>
+        public virtual InstallTask? GenerateUpdateServerTask() => GenerateInstallServerTask(ServerVersion);
 
         /// <summary>
         /// 子類別應覆寫此方法為儲存伺服器的程式碼
@@ -322,9 +302,9 @@ namespace WitherTorch.Core
         /// <returns>是否成功儲存伺服器</returns>
         protected abstract bool SaveServerCore(JsonPropertyFile serverInfoJson);
 
-        protected virtual void OnServerInstalling(InstallTask task)
+        protected virtual void OnServerNameChanged()
         {
-            ServerInstalling?.Invoke(this, task);
+            ServerNameChanged?.Invoke(this, EventArgs.Empty);
         }
 
         protected virtual void OnServerVersionChanged()

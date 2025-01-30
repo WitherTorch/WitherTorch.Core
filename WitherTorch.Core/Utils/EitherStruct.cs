@@ -15,7 +15,7 @@
             => new EitherStruct<TLeft, TRight>(right);
     }
 
-    public readonly ref struct EitherStruct<TLeft, TRight> where TLeft : class where TRight : class
+    public readonly struct EitherStruct<TLeft, TRight> where TLeft : class where TRight : class
     {
         private readonly TLeft? _left;
         private readonly TRight? _right;
