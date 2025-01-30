@@ -14,8 +14,8 @@ namespace WitherTorch.Core
     /// </summary>
     public static class SoftwareRegister
     {
-        private static readonly Dictionary<Type, ISoftwareEntry> _serverTypeDict = new();
-        private static readonly Dictionary<string, ISoftwareEntry> _softwareIdDict = new();
+        private static readonly Dictionary<Type, ISoftwareContext> _serverTypeDict = new();
+        private static readonly Dictionary<string, ISoftwareContext> _softwareIdDict = new();
 
         /// <summary>
         /// 已註冊的伺服器物件類別列表
@@ -29,13 +29,13 @@ namespace WitherTorch.Core
         /// <summary>
         /// 註冊伺服器軟體
         /// </summary>
-        /// <param name="entry">與特定伺服器軟體相關聯的物件</param>
-        public static bool TryRegisterServerSoftware(ISoftwareEntry entry)
+        /// <param name="software">與特定伺服器軟體相關聯的物件</param>
+        public static bool TryRegisterServerSoftware(ISoftwareContext software)
         {
-            Type serverType = entry.GetServerType();
+            Type serverType = software.GetServerType();
             if (serverType.IsAbstract || !typeof(Server).IsAssignableFrom(serverType))
                 return false;
-            string softwareId = entry.GetSoftwareId();
+            string softwareId = software.GetSoftwareId();
             if (string.IsNullOrWhiteSpace(softwareId))
                 return false;
 
@@ -44,42 +44,42 @@ namespace WitherTorch.Core
             bool result;
 
             if (timeout == Timeout.InfiniteTimeSpan)
-                result = TryRegisterServerSoftwareCore_NoTimeout(entry);
+                result = TryRegisterServerSoftwareCore_NoTimeout(software);
             else
-                result = TryRegisterServerSoftwareCore_WithTimeout(entry, timeout);
+                result = TryRegisterServerSoftwareCore_WithTimeout(software, timeout);
 
             if (!result)
                 return false;
 
-            Dictionary<Type, ISoftwareEntry> serverTypeDict = _serverTypeDict;
-            Dictionary<string, ISoftwareEntry> softwareIdDict = _softwareIdDict;
+            Dictionary<Type, ISoftwareContext> serverTypeDict = _serverTypeDict;
+            Dictionary<string, ISoftwareContext> softwareIdDict = _softwareIdDict;
             lock (serverTypeDict)
             {
 #if NET5_0_OR_GREATER
-                if (!serverTypeDict.TryAdd(serverType, entry))
+                if (!serverTypeDict.TryAdd(serverType, software))
                     return false;
 #else
                 if (serverTypeDict.ContainsKey(serverType))
                     return false;
-                serverTypeDict.Add(serverType, entry);
+                serverTypeDict.Add(serverType, software);
 #endif
             }
             lock (softwareIdDict)
             {
 #if NET5_0_OR_GREATER
-                if (!softwareIdDict.TryAdd(softwareId, entry))
+                if (!softwareIdDict.TryAdd(softwareId, software))
                     return false;
 #else
                 if (softwareIdDict.ContainsKey(softwareId))
                     return false;
-                softwareIdDict.Add(softwareId, entry);
+                softwareIdDict.Add(softwareId, software);
 #endif
             }
 
             return true;
         }
 
-        private static bool TryRegisterServerSoftwareCore_NoTimeout(ISoftwareEntry factory)
+        private static bool TryRegisterServerSoftwareCore_NoTimeout(ISoftwareContext factory)
         {
             using Task<bool> task = Task.Run(factory.TryInitialize);
             try
@@ -95,7 +95,7 @@ namespace WitherTorch.Core
             return false;
         }
 
-        private static bool TryRegisterServerSoftwareCore_WithTimeout(ISoftwareEntry factory, TimeSpan timeout)
+        private static bool TryRegisterServerSoftwareCore_WithTimeout(ISoftwareContext factory, TimeSpan timeout)
         {
             using CancellationTokenSource tokenSource = new CancellationTokenSource();
             using Task<bool> task = Task.Run(factory.TryInitialize, tokenSource.Token);
@@ -133,10 +133,10 @@ namespace WitherTorch.Core
         {
             if (string.IsNullOrWhiteSpace(softwareId)) 
                 return null;
-            Dictionary<string, ISoftwareEntry> softwareIdDict = _softwareIdDict;
+            Dictionary<string, ISoftwareContext> softwareIdDict = _softwareIdDict;
             lock (softwareIdDict)
             {
-                return softwareIdDict.TryGetValue(ObjectUtils.ThrowIfNull(softwareId), out ISoftwareEntry? software) ? software.GetServerType() : null;
+                return softwareIdDict.TryGetValue(ObjectUtils.ThrowIfNull(softwareId), out ISoftwareContext? software) ? software.GetServerType() : null;
             }
         }
 
@@ -149,31 +149,31 @@ namespace WitherTorch.Core
         {
             if (serverType is null || serverType.IsAbstract || !typeof(Server).IsAssignableFrom(serverType))
                 return null;
-            Dictionary<Type, ISoftwareEntry> serverTypeDict = _serverTypeDict;
+            Dictionary<Type, ISoftwareContext> serverTypeDict = _serverTypeDict;
             if (serverType is null)
                 return null;
             lock (serverTypeDict)
             {
-                return serverTypeDict.TryGetValue(ObjectUtils.ThrowIfNull(serverType), out ISoftwareEntry? software) ? software.GetSoftwareId() : null;
+                return serverTypeDict.TryGetValue(ObjectUtils.ThrowIfNull(serverType), out ISoftwareContext? software) ? software.GetSoftwareId() : null;
             }
         }
 
         /// <summary>
-        /// 取得與軟體 ID 相對應的 <see cref="ISoftwareEntry"/> 物件
+        /// 取得與軟體 ID 相對應的 <see cref="ISoftwareContext"/> 物件
         /// </summary>
         /// <param name="softwareId">伺服器軟體 ID</param>
         /// <param name="throwExceptionIfNotRegistered">是否在伺服器軟體 ID 符合格式但未註冊時擲回 <see cref="ServerSoftwareIsNotRegisteredException"/></param>
         /// <returns></returns>
         /// <exception cref="ServerSoftwareIsNotRegisteredException"></exception>
-        public static ISoftwareEntry? GetSoftwareEntry(string? softwareId, bool throwExceptionIfNotRegistered = false)
+        public static ISoftwareContext? GetSoftwareContext(string? softwareId, bool throwExceptionIfNotRegistered = false)
         {
             if (softwareId is null || string.IsNullOrWhiteSpace(softwareId))
                 return null;
-            Dictionary<string, ISoftwareEntry> softwareIdDict = _softwareIdDict;
-            ISoftwareEntry? software;
+            Dictionary<string, ISoftwareContext> softwareIdDict = _softwareIdDict;
+            ISoftwareContext? software;
             lock (softwareIdDict)
             {
-                software = softwareIdDict.TryGetValue(softwareId, out ISoftwareEntry? _factory) ? _factory : null;
+                software = softwareIdDict.TryGetValue(softwareId, out ISoftwareContext? _factory) ? _factory : null;
             }
             if (software is null && throwExceptionIfNotRegistered)
                 throw new ServerSoftwareIsNotRegisteredException(softwareId);
@@ -181,21 +181,21 @@ namespace WitherTorch.Core
         }
 
         /// <summary>
-        /// 取得與該伺服器物件類型相對應的 <see cref="ISoftwareEntry"/> 物件
+        /// 取得與該伺服器物件類型相對應的 <see cref="ISoftwareContext"/> 物件
         /// </summary>
         /// <param name="softwareId">該伺服器物件類型</param>
         /// <param name="throwExceptionIfNotRegistered">是否在伺服器物件類型符合要求但未註冊時擲回 <see cref="ServerSoftwareIsNotRegisteredException"/></param>
         /// <returns></returns>
         /// <exception cref="ServerSoftwareIsNotRegisteredException"></exception>
-        public static ISoftwareEntry? GetSoftwareEntry(Type? serverType, bool throwExceptionIfNotRegistered = false)
+        public static ISoftwareContext? GetSoftwareContext(Type? serverType, bool throwExceptionIfNotRegistered = false)
         {
             if (serverType is null || serverType.IsAbstract || !typeof(Server).IsAssignableFrom(serverType))
                 return null;
-            Dictionary<Type, ISoftwareEntry> serverTypeDict = _serverTypeDict;
-            ISoftwareEntry? software;
+            Dictionary<Type, ISoftwareContext> serverTypeDict = _serverTypeDict;
+            ISoftwareContext? software;
             lock (serverTypeDict)
             {
-                software = serverTypeDict.TryGetValue(serverType, out ISoftwareEntry? _factory) ? _factory : null;
+                software = serverTypeDict.TryGetValue(serverType, out ISoftwareContext? _factory) ? _factory : null;
             }
             if (software is null && throwExceptionIfNotRegistered)
                 throw new ServerSoftwareIsNotRegisteredException(serverType);

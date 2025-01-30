@@ -3,14 +3,14 @@
 namespace WitherTorch.Core.Software
 {
     /// <summary>
-    /// <see cref="ISoftwareEntry"/> 的抽象類別版本，方便開發者繼承
+    /// <see cref="ISoftwareContext"/> 的抽象類別版本，方便開發者繼承
     /// </summary>
-    public abstract class SoftwareEntryBase<T> : ISoftwareEntry where T : Server
+    public abstract class SoftwareContextBase<T> : ISoftwareContext where T : Server
     {
         private readonly string _softwareId;
         private readonly Type _serverType;
 
-        protected SoftwareEntryBase(string softwareId)
+        protected SoftwareContextBase(string softwareId)
         {
             _softwareId = softwareId;
             _serverType = typeof(T);
@@ -26,7 +26,7 @@ namespace WitherTorch.Core.Software
 
         public abstract bool TryInitialize();
 
-        Server? ISoftwareEntry.CreateServerInstance(string serverDirectory)
+        Server? ISoftwareContext.CreateServerInstance(string serverDirectory)
             => CreateServerInstance(serverDirectory);
     }
 }

@@ -6,7 +6,7 @@ namespace WitherTorch.Core.Software
     /// <summary>
     /// 表示一個與特定伺服器軟體相關聯的介面
     /// </summary>
-    public interface ISoftwareEntry
+    public interface ISoftwareContext
     {
         /// <summary>
         /// 取得伺服器軟體所對應的軟體 ID
@@ -33,7 +33,7 @@ namespace WitherTorch.Core.Software
         Server? CreateServerInstance(string serverDirectory);
 
         /// <summary>
-        /// 在使用者呼叫 <see cref="SoftwareRegister.TryRegisterServerSoftware(ISoftwareEntry)"/> 來註冊伺服器軟體時會呼叫的初始化程式碼
+        /// 在使用者呼叫 <see cref="SoftwareRegister.TryRegisterServerSoftware(ISoftwareContext)"/> 來註冊伺服器軟體時會呼叫的初始化程式碼
         /// </summary>
         /// <remarks>
         /// 初始化作業會在 <see cref="Task.Run(Action, System.Threading.CancellationToken)"/> 內運行，使用與特定執行緒相關聯的操作可能會導致失敗

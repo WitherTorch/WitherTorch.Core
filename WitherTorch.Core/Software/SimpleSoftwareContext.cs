@@ -6,7 +6,7 @@ using YamlDotNet.Core;
 
 namespace WitherTorch.Core.Software
 {
-    internal sealed class SimpleSoftwareEntry : ISoftwareEntry
+    internal sealed class SimpleSoftwareContext : ISoftwareContext
     {
         private readonly string _softwareId;
         private readonly EitherStruct<string[], Func<string[]?>> _versionsOrFactory;
@@ -14,7 +14,7 @@ namespace WitherTorch.Core.Software
         private readonly Func<string, Server?> _createServerFactory;
         private readonly Func<bool>? _initializer;
 
-        public SimpleSoftwareEntry(string softwareId, Type serverType, string[] versions, Func<string, Server?> createServerFactory, Func<bool>? initializer)
+        public SimpleSoftwareContext(string softwareId, Type serverType, string[] versions, Func<string, Server?> createServerFactory, Func<bool>? initializer)
         {
             _softwareId = softwareId;
             _serverType = serverType;
@@ -23,7 +23,7 @@ namespace WitherTorch.Core.Software
             _initializer = initializer;
         }
 
-        public SimpleSoftwareEntry(string softwareId, Type serverType, Func<string[]?> versionsFactory, Func<string, Server?> createServerFactory, Func<bool>? initializer)
+        public SimpleSoftwareContext(string softwareId, Type serverType, Func<string[]?> versionsFactory, Func<string, Server?> createServerFactory, Func<bool>? initializer)
         {
             _softwareId = softwareId;
             _serverType = serverType;
