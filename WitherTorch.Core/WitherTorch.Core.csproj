@@ -26,6 +26,7 @@
 		<AssemblyOriginatorKeyFile>keypair.snk</AssemblyOriginatorKeyFile>
 		<Nullable>enable</Nullable>
 		<LangVersion>9.0</LangVersion>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
