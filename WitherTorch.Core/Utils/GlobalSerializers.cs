@@ -4,7 +4,7 @@ using YamlDotNet.Serialization;
 
 namespace WitherTorch.Core.Utils
 {
-    public static class GlobalSerializers
+    internal static class GlobalSerializers
     {
         private static readonly IDeserializer yamlDeserializer;
         private static readonly ISerializer yamlSerializer;

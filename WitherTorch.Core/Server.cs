@@ -9,14 +9,12 @@ using WitherTorch.Core.Software;
 namespace WitherTorch.Core
 {
     /// <summary>
-    /// 表示一個伺服器，這個類別是虛擬類別
+    /// 表示一個伺服器，這個類別是抽象類別
     /// </summary>
     public abstract class Server
     {
         private readonly string _serverDirectory;
         private string _name = string.Empty;
-
-        public delegate void ServerInstallingEventHandler(object sender, InstallTask task);
 
         /// <summary>
         /// 當伺服器的名稱改變時觸發
@@ -29,7 +27,7 @@ namespace WitherTorch.Core
         public event EventHandler? ServerVersionChanged;
 
         /// <summary>
-        /// 在 <see cref="RunServer"/> 或 <see cref="RunServer(RuntimeEnvironment?)"/> 被呼叫且準備啟動伺服器時觸發
+        /// 在 <see cref="RunServer()"/> 或 <see cref="RunServer(RuntimeEnvironment?)"/> 被呼叫且準備啟動伺服器時觸發
         /// </summary>
         public event EventHandler? BeforeRunServer;
 
@@ -90,6 +88,10 @@ namespace WitherTorch.Core
         /// <returns></returns>
         public abstract void SetRuntimeEnvironment(RuntimeEnvironment? environment);
 
+        /// <summary>
+        /// <see cref="Server"/> 的建構子
+        /// </summary>
+        /// <param name="serverDirectory">伺服器資料夾路徑</param>
         protected Server(string serverDirectory)
         {
             _serverDirectory = serverDirectory;
@@ -117,7 +119,7 @@ namespace WitherTorch.Core
         /// 載入位於指定路徑內的伺服器，並將其指定為 <paramref name="softwareId"/> 所對應的伺服器軟體
         /// </summary>
         /// <param name="serverDirectory">伺服器資料夾路徑</param>
-        /// <param name="software">伺服器軟體 ID</param>
+        /// <param name="softwareId">伺服器軟體 ID</param>
         /// <returns>指定的伺服器，若伺服器不存在則為 <see langword="null"/></returns>
         public static Server? LoadServer(string serverDirectory, string softwareId)
         {
@@ -291,7 +293,6 @@ namespace WitherTorch.Core
         /// <summary>
         /// 生成一個裝載伺服器更新流程的 <see cref="InstallTask"/> 物件
         /// </summary>
-        /// <param name="version">要安裝的軟體版本</param>
         /// <returns>如果成功裝載更新流程，則為一個有效的 <see cref="InstallTask"/> 物件，否則會回傳 <see langword="null"/></returns>
         public virtual InstallTask? GenerateUpdateServerTask() => GenerateInstallServerTask(ServerVersion);
 
@@ -302,16 +303,25 @@ namespace WitherTorch.Core
         /// <returns>是否成功儲存伺服器</returns>
         protected abstract bool SaveServerCore(JsonPropertyFile serverInfoJson);
 
+        /// <summary>
+        /// 觸發 <see cref="ServerNameChanged"/> 事件
+        /// </summary>
         protected virtual void OnServerNameChanged()
         {
             ServerNameChanged?.Invoke(this, EventArgs.Empty);
         }
 
+        /// <summary>
+        /// 觸發 <see cref="ServerVersionChanged"/> 事件
+        /// </summary>
         protected virtual void OnServerVersionChanged()
         {
             ServerVersionChanged?.Invoke(this, EventArgs.Empty);
         }
 
+        /// <summary>
+        /// 觸發 <see cref="BeforeRunServer"/> 事件
+        /// </summary>
         protected virtual void OnBeforeRunServer()
         {
             BeforeRunServer?.Invoke(this, EventArgs.Empty);

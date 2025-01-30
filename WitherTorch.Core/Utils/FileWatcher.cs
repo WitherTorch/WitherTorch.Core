@@ -9,6 +9,9 @@ using System.Runtime.InteropServices;
 
 namespace WitherTorch.Core.Utils
 {
+    /// <summary>
+    /// 提供持續監測檔案狀態的服務
+    /// </summary>
     public sealed class FileWatcher : IDisposable
     {
         private sealed class FileSystemWatcherData : IDisposable
@@ -52,12 +55,20 @@ namespace WitherTorch.Core.Utils
 
         private static readonly ConcurrentDictionary<string, FileSystemWatcherData> watcherDict = new ConcurrentDictionary<string, FileSystemWatcherData>();
 
+        /// <summary>
+        /// 當檔案有所變化時，觸發此事件
+        /// </summary>
         public event FileSystemEventHandler? Changed;
 
         private readonly string _path;
         private readonly FileSystemWatcherData data;
         private bool disposedValue;
 
+        /// <summary>
+        /// <see cref="FileWatcher"/> 的建構子
+        /// </summary>
+        /// <param name="path">要監測的檔案路徑</param>
+        /// <exception cref="InvalidOperationException"></exception>
         public FileWatcher(string path)
         {
             path = Path.GetFullPath(path);
@@ -105,11 +116,15 @@ namespace WitherTorch.Core.Utils
             }
         }
 
+        /// <summary>
+        /// <see cref="FileWatcher"/> 的解構子
+        /// </summary>
         ~FileWatcher()
         {
             Dispose(disposing: false);
         }
 
+        /// <inheritdoc/>
         public void Dispose()
         {
             Dispose(disposing: true);

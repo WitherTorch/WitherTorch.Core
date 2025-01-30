@@ -5,6 +5,12 @@
     /// </summary>
     public class JavaRuntimeEnvironment : RuntimeEnvironment
     {
+        /// <summary>
+        /// <see cref="JavaRuntimeEnvironment"/> 的預設建構子
+        /// </summary>
+        /// <param name="path">執行時所使用的 Java 虛擬機 (java) 位置</param>
+        /// <param name="preArgs">執行時所使用的 Java 前置參數 (-jar server.jar 前的參數)</param>
+        /// <param name="postArgs">執行時所使用的 Java 後置參數 (-jar server.jar 後的參數)</param>
         public JavaRuntimeEnvironment(string? path = null, string? preArgs = null, string? postArgs = null)
         {
             JavaPath = path;
@@ -24,6 +30,9 @@
         /// </summary>
         public string? JavaPostArguments { get; set; }
 
+        /// <summary>
+        /// 傳回一個與目前物件相同的另一個 <see cref="JavaRuntimeEnvironment"/> 副本
+        /// </summary>
         public JavaRuntimeEnvironment Clone()
         {
             return new JavaRuntimeEnvironment(JavaPath, JavaPreArguments, JavaPostArguments);

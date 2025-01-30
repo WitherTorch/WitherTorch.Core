@@ -5,16 +5,39 @@ using System.Text;
 
 namespace WitherTorch.Core.Utils
 {
+    /// <summary>
+    /// 包含一些與雜湊相關的工具方法，此類別為靜態類別
+    /// </summary>
     public static class HashHelper
     {
+        /// <summary>
+        /// 雜湊演算法
+        /// </summary>
         public enum HashMethod
         {
+            /// <summary>
+            /// 無
+            /// </summary>
             None = 0,
+            /// <summary>
+            /// MD5 演算法
+            /// </summary>
             MD5 = 1,
+            /// <summary>
+            /// SHA-1 演算法
+            /// </summary>
             SHA1 = 2,
+            /// <summary>
+            /// SHA-256 演算法
+            /// </summary>
             SHA256 = 3,
         }
 
+        /// <summary>
+        /// 將雜湊字串轉換為二進制的雜湊數值
+        /// </summary>
+        /// <param name="hexString">傳入的雜湊字串</param>
+        /// <returns></returns>
         public unsafe static byte[] HexStringToByte(string hexString)
         {
             int len = hexString.Length >> 1;
@@ -64,6 +87,11 @@ namespace WitherTorch.Core.Utils
             }
         }
 
+        /// <summary>
+        /// 將二進制的雜湊數值轉換為雜湊字串
+        /// </summary>
+        /// <param name="hash">傳入的雜湊數值</param>
+        /// <returns></returns>
         public static string? ByteToHexString(byte[]? hash)
         {
             if (hash is null) 
@@ -80,6 +108,12 @@ namespace WitherTorch.Core.Utils
             }
         }
 
+        /// <summary>
+        /// 傳回以指定的 <see cref="HashMethod"/> 運算得到的雜湊數值
+        /// </summary>
+        /// <param name="stream">要進行運算的資料串流</param>
+        /// <param name="method">對 <paramref name="stream"/> 進行雜湊運算時所要使用的方法</param>
+        /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte[] ComputeHash(System.IO.Stream stream, HashMethod method)
         {
@@ -103,6 +137,12 @@ namespace WitherTorch.Core.Utils
             return algorithm?.ComputeHash(stream) ?? Array.Empty<byte>();
         }
 
+        /// <summary>
+        /// 傳回 <paramref name="a"/> 與 <paramref name="b"/> 是否相等
+        /// </summary>
+        /// <param name="a">第一個陣列</param>
+        /// <param name="b">第二個陣列</param>
+        /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe bool ByteArrayEquals(byte[]? a, byte[]? b)
         {

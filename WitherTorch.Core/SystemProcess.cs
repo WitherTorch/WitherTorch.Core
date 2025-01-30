@@ -7,7 +7,7 @@ using DProcess = System.Diagnostics.Process;
 namespace WitherTorch.Core
 {
     /// <summary>
-    /// 表示一個本機系統處理序
+    /// 可重覆使用的本機系統處理序類別
     /// </summary>
     public class SystemProcess : AbstractProcess, IDisposable
     {
@@ -18,6 +18,7 @@ namespace WitherTorch.Core
         /// </summary>
         public DProcess? InnerProcess { get; protected set; }
 
+        /// <inheritdoc/>
         public override int Id
         {
             get
@@ -36,6 +37,7 @@ namespace WitherTorch.Core
             }
         }
 
+        /// <inheritdoc/>
         public override DateTime StartTime
         {
             get
@@ -54,7 +56,7 @@ namespace WitherTorch.Core
             }
         }
 
-
+        /// <inheritdoc/>
         public override bool IsAlive
         {
             get
@@ -73,6 +75,9 @@ namespace WitherTorch.Core
             }
         }
 
+        /// <summary>
+        /// 強制停止已經啟動的本機系統處理序
+        /// </summary>
         public void Kill()
         {
             DProcess? innerProcess = InnerProcess;
@@ -107,6 +112,11 @@ namespace WitherTorch.Core
                 InnerProcess?.StandardInput.WriteLine(command);
         }
 
+        /// <summary>
+        /// 使用指定的 <see cref="ProcessStartInfo"/> 物件來啟動本機系統處理序
+        /// </summary>
+        /// <param name="startInfo">本機系統處理序的啟動資料</param>
+        /// <returns>是否成功啟動本機系統處理序</returns>
         public virtual bool StartProcess(ProcessStartInfo startInfo)
         {
             if (WTCore.RedirectSystemProcessStream)
@@ -157,32 +167,27 @@ namespace WitherTorch.Core
             OnMessageRecived(new MessageReceivedEventArgs(false, e.Data ?? string.Empty));
         }
 
-        protected virtual void Dispose(bool disposing)
+        /// <inheritdoc cref="Dispose()"/>
+        protected virtual void DisposeCore()
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    // TODO: 處置受控狀態 (受控物件)
-                }
-                InnerProcess?.Dispose();
-                // TODO: 釋出非受控資源 (非受控物件) 並覆寫完成項
-                // TODO: 將大型欄位設為 Null
-                disposedValue = true;
-            }
+            if (disposedValue)
+                return;
+            disposedValue = true;
+            InnerProcess?.Dispose();
         }
 
-        // TODO: 僅有當 'Dispose(bool disposing)' 具有會釋出非受控資源的程式碼時，才覆寫完成項
+        /// <summary>
+        /// <see cref="SystemProcess"/> 的解構子
+        /// </summary>
         ~SystemProcess()
         {
-            // 請勿變更此程式碼。請將清除程式碼放入 'Dispose(bool disposing)' 方法
-            Dispose(disposing: false);
+            DisposeCore();
         }
 
+        /// <inheritdoc/>
         public void Dispose()
         {
-            // 請勿變更此程式碼。請將清除程式碼放入 'Dispose(bool disposing)' 方法
-            Dispose(disposing: true);
+            DisposeCore();
             GC.SuppressFinalize(this);
         }
     }

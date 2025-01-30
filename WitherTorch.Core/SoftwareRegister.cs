@@ -130,33 +130,15 @@ namespace WitherTorch.Core
         /// <param name="softwareId">伺服器軟體 ID</param>
         /// <returns>對應的伺服器類型，或是 <see langword="null"/></returns>
         public static Type? GetServerTypeFromSoftwareId(string? softwareId)
-        {
-            if (string.IsNullOrWhiteSpace(softwareId)) 
-                return null;
-            Dictionary<string, ISoftwareContext> softwareIdDict = _softwareIdDict;
-            lock (softwareIdDict)
-            {
-                return softwareIdDict.TryGetValue(ObjectUtils.ThrowIfNull(softwareId), out ISoftwareContext? software) ? software.GetServerType() : null;
-            }
-        }
+            => GetSoftwareContext(softwareId, throwExceptionIfNotRegistered: false)?.GetType();
 
         /// <summary>
         /// 取得與該伺服器物件類型相對應的伺服器軟體 ID
         /// </summary>
-        /// <param name="softwareId">伺服器物件類型</param>
+        /// <param name="serverType">伺服器物件的類型</param>
         /// <returns>對應的軟體 ID，或是 <see langword="null"/></returns>
         public static string? GetSoftwareIdFromServerType(Type? serverType)
-        {
-            if (serverType is null || serverType.IsAbstract || !typeof(Server).IsAssignableFrom(serverType))
-                return null;
-            Dictionary<Type, ISoftwareContext> serverTypeDict = _serverTypeDict;
-            if (serverType is null)
-                return null;
-            lock (serverTypeDict)
-            {
-                return serverTypeDict.TryGetValue(ObjectUtils.ThrowIfNull(serverType), out ISoftwareContext? software) ? software.GetSoftwareId() : null;
-            }
-        }
+            => GetSoftwareContext(serverType, throwExceptionIfNotRegistered: false)?.GetSoftwareId();
 
         /// <summary>
         /// 取得與軟體 ID 相對應的 <see cref="ISoftwareContext"/> 物件
@@ -183,7 +165,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 取得與該伺服器物件類型相對應的 <see cref="ISoftwareContext"/> 物件
         /// </summary>
-        /// <param name="softwareId">該伺服器物件類型</param>
+        /// <param name="serverType">伺服器物件的類型</param>
         /// <param name="throwExceptionIfNotRegistered">是否在伺服器物件類型符合要求但未註冊時擲回 <see cref="ServerSoftwareIsNotRegisteredException"/></param>
         /// <returns></returns>
         /// <exception cref="ServerSoftwareIsNotRegisteredException"></exception>

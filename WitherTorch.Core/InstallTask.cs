@@ -10,7 +10,12 @@ namespace WitherTorch.Core
     /// </summary>
     public class InstallTask
     {
-        public delegate void ValidateFailedEventHandler(object sender, ValidateFailedCallbackEventArgs e);
+        /// <summary>
+        /// <see cref="ValidateFailed"/> 事件專用的委派方法
+        /// </summary>
+        /// <param name="sender">事件的發送者 (可能為 <see langword="null"/>)</param>
+        /// <param name="e">事件的回呼物件</param>
+        public delegate void ValidateFailedEventHandler(object? sender, ValidateFailedCallbackEventArgs e);
 
         /// <summary>
         /// 驗證失敗後的操作狀態
@@ -32,27 +37,27 @@ namespace WitherTorch.Core
         }
 
         /// <summary>
-        /// 當安裝完成時觸發
+        /// 安裝完成時將觸發此事件
         /// </summary>
         public event EventHandler? InstallFinished;
         /// <summary>
-        /// 當安裝失敗時觸發
+        /// 安裝失敗時將觸發此事件
         /// </summary>
         public event EventHandler? InstallFailed;
         /// <summary>
-        /// 當安裝檔案驗證失敗時觸發，此事件是個回呼事件
+        /// 安裝檔案驗證失敗時將觸發此事件，該事件是個回呼事件
         /// </summary>
         public event ValidateFailedEventHandler? ValidateFailed;
         /// <summary>
-        /// 當安裝進度改變時觸發
+        /// 安裝進度改變時將觸發此事件
         /// </summary>
         public event EventHandler? PercentageChanged;
         /// <summary>
-        /// 當安裝狀態改變時觸發
+        /// 安裝狀態改變時將觸發此事件
         /// </summary>
         public event EventHandler? StatusChanged;
         /// <summary>
-        /// 當安裝工作被要求停止時觸發
+        /// 安裝工作被要求停止時將觸發此事件
         /// </summary>
         public event EventHandler? StopRequested;
 
@@ -81,6 +86,12 @@ namespace WitherTorch.Core
 
         private bool _isStopped;
 
+        /// <summary>
+        /// <see cref="InstallTask"/> 的建構子
+        /// </summary>
+        /// <param name="owner">此安裝工作的擁有者</param>
+        /// <param name="version">此安裝工作的所要安裝的版本</param>
+        /// <param name="installAction">在觸發 <see cref="Start"/> 時所要執行的安裝動作</param>
         public InstallTask(Server owner, string version, Action<InstallTask> installAction)
         {
             Owner = owner;
@@ -90,13 +101,20 @@ namespace WitherTorch.Core
             _installActionState = null;
         }
 
+        /// <summary>
+        /// <see cref="InstallTask"/> 的建構子，提供一個額外的 <paramref name="state"/> 參數以便使用者儲存安裝時要使用的額外資訊
+        /// </summary>
+        /// <param name="owner">此安裝工作的擁有者</param>
+        /// <param name="version">此安裝工作的所要安裝的版本</param>
+        /// <param name="state">此安裝工作的額外資訊，會在觸發 <see cref="Start"/> 時傳入至 <paramref name="installAction"/></param>
+        /// <param name="installAction">在觸發 <see cref="Start"/> 時所要執行的安裝動作</param>
         public InstallTask(Server owner, string version, object? state, Action<InstallTask, object?> installAction)
         {
             Owner = owner;
             Version = version;
             Status = PreparingInstallStatus.Instance;
             _installAction = Either.Right<Action<InstallTask>, Action<InstallTask, object?>>(installAction);
-            _installActionState = null;
+            _installActionState = state;
         }
 
         /// <summary>
@@ -160,6 +178,10 @@ namespace WitherTorch.Core
             }
         }
 
+        /// <summary>
+        /// 若需覆寫，請將此方法覆寫為觸發 <see cref="Start"/> 後會執行的程式碼
+        /// </summary>
+        /// <param name="installAction"><see cref="InstallTask(Server, string, Action{InstallTask})"/> 所傳入的安裝工作</param>
         protected virtual void StartCore(Action<InstallTask> installAction)
             => Task.Factory.StartNew(delegate ()
             {
@@ -173,6 +195,11 @@ namespace WitherTorch.Core
                 }
             }, TaskCreationOptions.LongRunning | TaskCreationOptions.DenyChildAttach);
 
+        /// <summary>
+        /// 若需覆寫，請將此方法覆寫為觸發 <see cref="Start"/> 後會執行的程式碼
+        /// </summary>
+        /// <param name="installAction"><see cref="InstallTask(Server, string, object?, Action{InstallTask, object?})"/> 所傳入的安裝工作</param>
+        /// <param name="state">呼叫 <paramref name="installAction"/> 時需傳入的額外安裝資訊</param>
         protected virtual void StartCore(Action<InstallTask, object?> installAction, object? state)
             => Task.Factory.StartNew(delegate (object? state)
             {
@@ -207,17 +234,24 @@ namespace WitherTorch.Core
         }
 
         /// <summary>
-        /// 引發 <see cref="ValidateFailed"/> 事件，並傳回是否取消安裝的值
+        /// 觸發 <see cref="ValidateFailed"/> 事件，並傳回是否取消安裝的值
         /// </summary>
+        /// <param name="filename">觸發事件的檔案名稱</param>
+        /// <param name="actualFileHash">實際的檔案雜湊</param>
+        /// <param name="exceptedFileHash">預期的檔案雜湊</param>
+        /// <returns><see cref="ValidateFailed"/> 後使用者所指示的操作狀態，預設為 <see cref="ValidateFailedState.Ignore"/></returns>
         public ValidateFailedState OnValidateFailed(string filename, byte[] actualFileHash, byte[] exceptedFileHash)
         {
+            ValidateFailedEventHandler? handler = ValidateFailed;
+            if (handler is null)
+                return ValidateFailedState.Ignore;
             ValidateFailedCallbackEventArgs callback = new ValidateFailedCallbackEventArgs(filename, actualFileHash, exceptedFileHash);
-            StatusChanged?.Invoke(this, callback);
+            handler.Invoke(this, callback);
             return callback.GetState();
         }
 
         /// <summary>
-        /// 提供 <see cref="ValidateFailed"/> 事件的資料
+        /// 提供 <see cref="ValidateFailed"/> 事件的資料和回呼方法
         /// </summary>
         public class ValidateFailedCallbackEventArgs : EventArgs
         {
@@ -238,6 +272,12 @@ namespace WitherTorch.Core
             /// </summary>
             public byte[] ExceptedFileHash { get; }
 
+            /// <summary>
+            /// <see cref="ValidateFailedCallbackEventArgs"/> 的建構子
+            /// </summary>
+            /// <param name="filename">觸發事件的檔案路徑</param>
+            /// <param name="actualFileHash">實際的檔案雜湊</param>
+            /// <param name="exceptedFileHash">預期的檔案雜湊</param>
             public ValidateFailedCallbackEventArgs(string filename, byte[] actualFileHash, byte[] exceptedFileHash)
             {
                 Filename = filename;

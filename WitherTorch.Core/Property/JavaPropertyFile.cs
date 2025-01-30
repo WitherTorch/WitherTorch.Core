@@ -14,10 +14,20 @@ namespace WitherTorch.Core.Property
         private readonly Dictionary<string, string> _propertyDict = new Dictionary<string, string>();
         private readonly Dictionary<int, string> _descriptionDict = new Dictionary<int, string>();
 
+        /// <summary>
+        /// 以指定的設定檔路徑，建立新的 <see cref="JavaPropertyFile"/> 物件
+        /// </summary>
+        /// <param name="path">設定檔的路徑</param>
         public JavaPropertyFile(string path) : base(path) { }
 
+        /// <summary>
+        /// 以指定的設定檔路徑，建立新的 <see cref="JavaPropertyFile"/> 物件，並決定是否持續監測 <paramref name="path"/> 所對應的檔案狀態
+        /// </summary>
+        /// <param name="path">設定檔的路徑</param>
+        /// <param name="useFileWatcher">是否持續監測 <paramref name="path"/> 所對應的檔案狀態</param>
         public JavaPropertyFile(string path, bool useFileWatcher) : base(path, useFileWatcher) { }
 
+        /// <inheritdoc/>
         protected override void LoadCore(Stream? stream)
         {
             Dictionary<string, string> propertyDict = _propertyDict;
@@ -52,12 +62,14 @@ namespace WitherTorch.Core.Property
             }
         }
 
+        /// <inheritdoc/>
         protected override void UnloadCore()
         {
             _propertyDict.Clear();
             _descriptionDict.Clear();
         }
 
+        /// <inheritdoc/>
         protected override void SaveCore(Stream stream)
         {
             using StreamWriter writer = new StreamWriter(stream, Encoding.UTF8, bufferSize: 4096, leaveOpen: true);
@@ -65,17 +77,20 @@ namespace WitherTorch.Core.Property
             writer.Flush();
         }
 
+        /// <inheritdoc/>
         protected override string? GetValueCore(string key)
         {
             return _propertyDict.TryGetValue(key, out string? result) ? result : null;
         }
 
+        /// <inheritdoc/>
         protected override bool SetValueCore(string key, string value)
         {
             _propertyDict[key] = value;
             return true;
         }
 
+        /// <inheritdoc/>
         protected override bool RemoveValueCore(string key)
         {
             return _propertyDict.Remove(key);

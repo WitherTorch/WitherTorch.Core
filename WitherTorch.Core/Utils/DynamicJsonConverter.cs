@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Dynamic;
-using System.Text;
-using System.Text.Json.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace WitherTorch.Core.Utils
 {
     // From https://gist.github.com/doggy8088/995a28b2655ec9529414c3df18aaa28e
-    public sealed class DynamicJsonConverter : JsonConverter<dynamic>
+    internal sealed class DynamicJsonConverter : JsonConverter<dynamic>
     {
         public override dynamic? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {

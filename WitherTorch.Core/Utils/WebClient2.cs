@@ -16,9 +16,13 @@ namespace WitherTorch.Core.Utils
         private CancellationTokenSource tokenSource = new CancellationTokenSource();
 
         #region Event Handlers
+        /// <inheritdoc cref="System.Net.DownloadProgressChangedEventHandler"/>
         public delegate void DownloadProgressChangedEventHandler(object? sender, DownloadProgressChangedEventArgs e);
+        /// <inheritdoc cref="System.Net.DownloadStringCompletedEventHandler"/>
         public delegate void DownloadStringCompletedEventHandler(object? sender, DownloadStringCompletedEventArgs e);
+        /// <inheritdoc cref="System.Net.DownloadDataCompletedEventHandler"/>
         public delegate void DownloadDataCompletedEventHandler(object? sender, DownloadDataCompletedEventArgs e);
+        /// <inheritdoc cref="System.Net.OpenReadCompletedEventHandler"/>
         public delegate void OpenReadCompletedEventHandler(object? sender, OpenReadCompletedEventArgs e);
         #endregion
 
@@ -416,6 +420,7 @@ namespace WitherTorch.Core.Utils
         }
         #endregion
 
+        /// <inheritdoc/>
         protected override void Dispose(bool disposing)
         {
             CancellationTokenSource tokenSource = this.tokenSource;
@@ -454,6 +459,9 @@ namespace WitherTorch.Core.Utils
             /// <inheritdoc cref="System.Net.DownloadProgressChangedEventArgs.TotalBytesToReceive"/>
             public long TotalBytesToReceive => m_TotalBytesToReceive;
 
+            /// <summary>
+            /// <see cref="DownloadProgressChangedEventArgs"/> 的建構子
+            /// </summary>
             public DownloadProgressChangedEventArgs(int progressPercentage, object? userToken, long bytesReceived, long totalBytesToReceive)
                 : base(progressPercentage, userToken)
             {
@@ -477,6 +485,9 @@ namespace WitherTorch.Core.Utils
                 }
             }
 
+            /// <summary>
+            /// <see cref="DownloadStringCompletedEventArgs"/> 的建構子
+            /// </summary>
             public DownloadStringCompletedEventArgs(string? result, Exception? exception, bool cancelled, object? userToken)
                 : base(exception, cancelled, userToken)
             {
@@ -521,6 +532,9 @@ namespace WitherTorch.Core.Utils
                 }
             }
 
+            /// <summary>
+            /// <see cref="OpenReadCompletedEventArgs"/> 的建構子
+            /// </summary>
             public OpenReadCompletedEventArgs(Stream? result, Exception? exception, bool cancelled, object? userToken)
                 : base(exception, cancelled, userToken)
             {

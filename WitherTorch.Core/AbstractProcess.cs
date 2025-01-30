@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 namespace WitherTorch.Core
 {
     /// <summary>
-    /// 表示一個處理序，這是一個抽象類別
+    /// 伺服器處理序的基底抽象類別
     /// </summary>
     public abstract class AbstractProcess
     {
@@ -23,6 +23,11 @@ namespace WitherTorch.Core
         /// </summary>
         public abstract DateTime StartTime { get; }
 
+        /// <summary>
+        /// <see cref="MessageReceived"/> 事件專用的訊息委派
+        /// </summary>
+        /// <param name="sender">事件的傳送者 (可能為 <see langword="null"/>)</param>
+        /// <param name="e">事件的額外資訊</param>
         public delegate void MessageReceivedEventHandler(object sender, MessageReceivedEventArgs e);
 
         /// <summary>
@@ -75,6 +80,10 @@ namespace WitherTorch.Core
         /// <param name="command">命令內容</param>
         public abstract void InputCommand(string command);
     }
+
+    /// <summary>
+    /// 提供 <see cref="AbstractProcess.MessageReceived"/> 事件的額外資訊
+    /// </summary>
     public class MessageReceivedEventArgs : EventArgs
     {
         /// <summary>
@@ -86,6 +95,11 @@ namespace WitherTorch.Core
         /// </summary>
         public string Message { get; private set; }
 
+        /// <summary>
+        /// <see cref="MessageReceivedEventArgs"/> 的建構子
+        /// </summary>
+        /// <param name="isError">標記此訊息是否為錯誤訊息</param>
+        /// <param name="msg">此事件的訊息內容</param>
         public MessageReceivedEventArgs(bool isError, string msg)
         {
             IsError = isError;
@@ -101,6 +115,7 @@ namespace WitherTorch.Core
         bool isAlive = false;
         DateTime start;
 
+        /// <inheritdoc/>
         public override int Id { get; }
 
         /// <summary>
@@ -122,6 +137,7 @@ namespace WitherTorch.Core
             }
         }
 
+        /// <inheritdoc/>
         public override DateTime StartTime => start;
 
         /// <inheritdoc/>

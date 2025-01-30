@@ -21,10 +21,20 @@ namespace WitherTorch.Core.Property
             WriteIndented = true
         };
 
+        /// <summary>
+        /// 以指定的設定檔路徑，建立新的 <see cref="YamlPropertyFile"/> 物件
+        /// </summary>
+        /// <param name="path">設定檔的路徑</param>
         public YamlPropertyFile(string path) : base(path) { }
 
+        /// <summary>
+        /// 以指定的設定檔路徑，建立新的 <see cref="YamlPropertyFile"/> 物件，並決定是否持續監測 <paramref name="path"/> 所對應的檔案狀態
+        /// </summary>
+        /// <param name="path">設定檔的路徑</param>
+        /// <param name="useFileWatcher">是否持續監測 <paramref name="path"/> 所對應的檔案狀態</param>
         public YamlPropertyFile(string path, bool useFileWatcher) : base(path, useFileWatcher) { }
 
+        /// <inheritdoc/>
         protected override void LoadCore(Stream? stream)
         {
             if (stream is null)
@@ -37,6 +47,7 @@ namespace WitherTorch.Core.Property
             LoadCore(JsonNode.Parse(GlobalSerializers.JsonSerializer.Serialize(graph)) as JsonObject);
         }
 
+        /// <inheritdoc/>
         protected override void SaveCore(Stream stream, JsonObject obj)
         {
             dynamic? graph = JsonSerializer.Deserialize<dynamic>(obj, _serializerOptions);
