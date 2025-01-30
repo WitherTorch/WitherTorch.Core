@@ -14,7 +14,7 @@ namespace WitherTorch.Core.Software
         /// <summary>
         /// <see cref="SoftwareContextBase{T}"/> 的建構子
         /// </summary>
-        /// <param name="softwareId"></param>
+        /// <param name="softwareId">軟體的唯一辨識符 (ID)</param>
         protected SoftwareContextBase(string softwareId)
         {
             _softwareId = softwareId;
