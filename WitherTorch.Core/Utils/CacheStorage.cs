@@ -135,7 +135,7 @@ namespace WitherTorch.Core.Utils
                 if (data.ExpiredTime == default)
                     data = GenerateStorageData();
                 else
-                    data.ResetExpiredTime();
+                    data = data.ResetExpiredTime();
                 File.WriteAllText(data.FileFullName, result, Encoding.UTF8);
                 lock (dict)
                 {
