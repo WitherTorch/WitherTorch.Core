@@ -13,19 +13,19 @@ namespace WitherTorch.Core.Property
     public abstract class PropertyFileBase<TValue> : IPropertyFile
     {
         private readonly string _path;
-        private readonly FileWatcher? _watcher;
+        private readonly FileModifyWatcher? _watcher;
 
         private IPropertyFileDescriptor? _descriptor;
 
-        private bool _loaded, _dirty;
+        private bool _loaded, _dirty, _disposed;
 
         /// <inheritdoc/>
         public string FilePath => _path;
 
         /// <summary>
-        /// 取得該設定檔案所繫結的 <see cref="FileWatcher"/> 物件
+        /// 取得該設定檔案所繫結的 <see cref="FileModifyWatcher"/> 物件
         /// </summary>
-        public FileWatcher? Watcher => _watcher;
+        public FileModifyWatcher? Watcher => _watcher;
 
         /// <inheritdoc/>
         public IPropertyFileDescriptor? Descriptor { get => _descriptor; set => _descriptor = value; }
@@ -44,11 +44,12 @@ namespace WitherTorch.Core.Property
         public PropertyFileBase(string path, bool useFileWatcher)
         {
             _path = path;
-            FileWatcher? watcher;
+            FileModifyWatcher? watcher;
             if (useFileWatcher)
             {
-                watcher = new FileWatcher(path);
+                watcher = new FileModifyWatcher(path);
                 watcher.Changed += FileWatcher_Changed;
+                watcher.Active();
             }
             else
             {
@@ -154,7 +155,7 @@ namespace WitherTorch.Core.Property
         {
             if (!_loaded || (!force && !_dirty))
                 return;
-            FileWatcher? watcher = _watcher;
+            FileModifyWatcher? watcher = _watcher;
             if (watcher is null)
             {
                 Stream stream = new FileStream(_path, FileMode.Create, FileAccess.Write, FileShare.Read);
@@ -164,10 +165,12 @@ namespace WitherTorch.Core.Property
             else
             {
                 watcher.Changed -= FileWatcher_Changed;
+                watcher.Deactive();
                 Stream stream = new FileStream(_path, FileMode.Create, FileAccess.Write, FileShare.Read);
                 SaveCore(stream);
                 stream.Dispose();
                 watcher.Changed += FileWatcher_Changed;
+                watcher.Active();
             }
             Unload();
         }
@@ -211,7 +214,7 @@ namespace WitherTorch.Core.Property
         /// <returns>是否成功移除設定</returns>
         protected abstract bool RemoveValueCore(string key);
 
-        private void FileWatcher_Changed(object sender, FileSystemEventArgs e)
+        private void FileWatcher_Changed(object? sender, EventArgs e)
         {
             if (!_loaded || _dirty)
                 return;
@@ -224,10 +227,24 @@ namespace WitherTorch.Core.Property
             Load(force: true);
         }
 
+        private void DisposeCore()
+        {
+            if (_disposed) 
+                return;
+            _disposed = true;
+            _watcher?.Deactive();
+        }
+
+        /// <inheritdoc cref="object.Finalize()"/>
+        ~PropertyFileBase()
+        {
+            DisposeCore();
+        }
+
         /// <inheritdoc/>
         public void Dispose()
         {
-            _watcher?.Dispose();
+            DisposeCore();
             GC.SuppressFinalize(this);
         }
     }
