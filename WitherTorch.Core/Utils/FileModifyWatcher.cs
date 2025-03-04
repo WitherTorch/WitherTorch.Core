@@ -115,7 +115,6 @@ namespace WitherTorch.Core.Utils
                     int count = watchers.Count;
                     if (count <= 0)
                     {
-                        trigger.Reset();
                         Monitor.Exit(watchers);
                         trigger.WaitOne();
                         continue;
