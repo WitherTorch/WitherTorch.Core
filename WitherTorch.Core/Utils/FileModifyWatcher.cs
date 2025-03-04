@@ -52,29 +52,29 @@ namespace WitherTorch.Core.Utils
         /// <summary>
         /// 啟動此 <see cref="FileModifyWatcher"/> 物件，並開始監聽對應的檔案
         /// </summary>
-        public void Active() => WatchingThread.Instance.Add(this);
+        public void Active() => WatchingThreadLoop.Instance.Add(this);
 
         /// <summary>
         /// 停止此 <see cref="FileModifyWatcher"/> 物件對特定檔案的監聽
         /// </summary>
-        public void Deactive() => WatchingThread.Instance.Remove(this);
+        public void Deactive() => WatchingThreadLoop.Instance.Remove(this);
 
-        private sealed class WatchingThread : CriticalFinalizerObject, IDisposable
+        private sealed class WatchingThreadLoop : CriticalFinalizerObject, IDisposable
         {
-            private static readonly WatchingThread _instance = new WatchingThread();
+            private static readonly WatchingThreadLoop _instance = new WatchingThreadLoop();
 
             private readonly HashSet<FileModifyWatcher> _watchers;
             private readonly AutoResetEvent _trigger;
 
             private long _disposed;
 
-            public static WatchingThread Instance => _instance;
+            public static WatchingThreadLoop Instance => _instance;
 
-            private WatchingThread()
+            private WatchingThreadLoop()
             {
                 _watchers = new HashSet<FileModifyWatcher>();
                 _trigger = new AutoResetEvent(initialState: false);
-                new Thread(DoLoop).Start();
+                new Thread(DoLoop) { IsBackground = true, Name = nameof(FileModifyWatcher) + " ThreadLoop" }.Start();
             }
 
             public void Add(FileModifyWatcher watcher)
@@ -149,7 +149,7 @@ namespace WitherTorch.Core.Utils
                 _trigger.Set();
             }
 
-            ~WatchingThread()
+            ~WatchingThreadLoop()
             {
                 Dispose(disposing: false);
             }
