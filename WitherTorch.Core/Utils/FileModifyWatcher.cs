@@ -145,7 +145,13 @@ namespace WitherTorch.Core.Utils
                     return;
                 if (disposing)
                     _watchers.Clear();
-                _trigger.Set();
+                try
+                {
+                    _trigger.Set();
+                }
+                catch (Exception)
+                {
+                }
             }
 
             ~WatchingThreadLoop()
