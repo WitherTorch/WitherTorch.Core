@@ -59,7 +59,7 @@ namespace WitherTorch.Core.Utils
         /// </summary>
         public void Deactive() => WatchingThreadLoop.Instance.Remove(this);
 
-        private sealed class WatchingThreadLoop : CriticalFinalizerObject, IDisposable
+        private sealed class WatchingThreadLoop : IDisposable
         {
             private static readonly WatchingThreadLoop _instance = new WatchingThreadLoop();
 
