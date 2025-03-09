@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<GlobalUsings>false</GlobalUsings>
-		<TargetFrameworks>netstandard2.0;net6</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;netstandard2.1;net8</TargetFrameworks>
 		<Platforms>AnyCPU;x64</Platforms>
 		<Configurations>Debug;Release</Configurations>
 		<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
@@ -15,7 +15,10 @@
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
 		<PackageProjectUrl>https://github.com/WitherTorch/WitherTorch.Core</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/WitherTorch/WitherTorch.Core</RepositoryUrl>
+		<Version>1.8.3</Version>
+		<!-- 
 		<Version>1.8.3-CI-18</Version>
+		-->
 		<PackageIcon>withertorch_core_128.png</PackageIcon>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>minecraft;minecraft-server</PackageTags>
@@ -25,7 +28,7 @@
 		<SignAssembly>True</SignAssembly>
 		<AssemblyOriginatorKeyFile>keypair.snk</AssemblyOriginatorKeyFile>
 		<Nullable>enable</Nullable>
-		<LangVersion>9.0</LangVersion>
+		<LangVersion>latest</LangVersion>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 	</PropertyGroup>
 
@@ -33,16 +36,11 @@
 		<Optimize>True</Optimize>
 		<DebugType>none</DebugType>
 	</PropertyGroup>
-	
-	<ItemGroup>
-		<Compile Include="..\GlobalAssemblyInfo.cs" Link="GlobalAssemblyInfo.cs" />
-	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-		<PackageReference Include="System.IO.Compression" Version="4.3.0" Condition="'$(TargetFramework)' == 'net6'" />
-		<PackageReference Include="System.Text.Json" Version="8.0.5" />
-		<PackageReference Include="YamlDotNet" Version="16.2.1" />
+		<PackageReference Include="System.Text.Json" Version="9.0.2" />
+		<PackageReference Include="YamlDotNet" Version="16.3.0" />
 	</ItemGroup>
 
 	<ItemGroup>
