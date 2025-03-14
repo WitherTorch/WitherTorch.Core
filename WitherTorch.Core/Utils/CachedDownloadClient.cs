@@ -1,15 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
-using WitherTorch.Core.Utils;
-
-#if NET5_0_OR_GREATER
-using System.Threading;
-#endif
-
-namespace WitherTorch.Core
+namespace WitherTorch.Core.Utils
 {
     /// <summary>
     /// 具有快取特性的下載用類別，此類別無法建立實例
@@ -45,67 +40,56 @@ namespace WitherTorch.Core
         /// </summary>
         /// <param name="address">要下載的網址</param>
         /// <returns></returns>
-        public string? DownloadString(Uri address)
-        {
-            return _storage.GetStorageDataOrTryRenew(address, () =>
-            {
-                HttpClient client = _client;
-                TimeSpan timeout = WTCore.CDCDownloadTimeout;
+        public string? DownloadString(Uri address) => DownloadStringAsync(address).Result;
 
-#if NET5_0_OR_GREATER
-                using CancellationTokenSource tokenSource = new CancellationTokenSource();
-                using Task<string> task = client.GetStringAsync(address, tokenSource.Token);
+        /// <summary>
+        /// 從指定的 <see cref="Uri"/> 中下載並傳回字串
+        /// </summary>
+        /// <param name="address">要下載的網址</param>
+        /// <returns></returns>
+        public string? DownloadString(string address) => DownloadStringAsync(address).Result;
 
-                if (!task.Wait(timeout))
-                {
-                    tokenSource.Cancel();
-                    return null;
-                }
-
-                return task.IsCompletedSuccessfully ? task.Result : null;
-#else
-                using Task<string> task = client.GetStringAsync(address);
-
-                if (!task.Wait(timeout))
-                    return null;
-
-                return task.IsCompleted ? task.Result : null;
-#endif
-            });
-        }
+        /// <summary>
+        /// 從指定的 <see cref="Uri"/> 中下載並傳回字串
+        /// </summary>
+        /// <param name="address">要下載的網址</param>
+        /// <returns></returns>
+        public Task<string?> DownloadStringAsync(Uri address) => DownloadStringAsync(address.AbsoluteUri);
 
         /// <summary>
         /// 從指定的 <see langword="string"/> 中下載並傳回字串
         /// </summary>
         /// <param name="address">要下載的網址</param>
         /// <returns></returns>
-        public string? DownloadString(string address)
+        public async Task<string?> DownloadStringAsync(string address)
         {
-            return _storage.GetStorageDataOrTryRenew(address, () =>
+            TimeSpan timeout = WTCore.CDCDownloadTimeout;
+            if (timeout == Timeout.InfiniteTimeSpan)
+                return await _storage.GetStorageDataOrTryRenewAsync(address, GetStringCoreAsync);
+            using CancellationTokenSource tokenSource = new CancellationTokenSource();
+            Task<string?> workerTask = _storage.GetStorageDataOrTryRenewAsync(address, GetStringCoreAsync);
+            Task<string?> timeoutTask = TaskHelper.DelayWithResult<string?>(timeout);
+            Task<string?> finishedTask = await Task.WhenAny(workerTask, timeoutTask);
+            if (ReferenceEquals(finishedTask, timeoutTask))
             {
-                HttpClient client = _client;
-                TimeSpan timeout = WTCore.CDCDownloadTimeout;
-
-#if NET5_0_OR_GREATER
-                using CancellationTokenSource tokenSource = new CancellationTokenSource();
-                using Task<string> task = client.GetStringAsync(address, tokenSource.Token);
-
-                if (!task.Wait(timeout))
+                try
                 {
                     tokenSource.Cancel();
-                    return null;
                 }
+                catch (Exception)
+                {
+                }
+            }
+            return finishedTask.Result;
+        }
 
-                return task.IsCompletedSuccessfully ? task.Result : null;
+        private async Task<string?> GetStringCoreAsync(string address, CancellationToken token)
+        {
+#if NETSTANDARD2_0_OR_GREATER
+            return await _client.GetStringAsync(address);
 #else
-                using Task<string> task = client.GetStringAsync(address);
-
-                if (!task.Wait(timeout))
-                    return null;
-
-                return (task.IsCompleted && task.Exception is null) ? task.Result : null;
+            return await _client.GetStringAsync(address, token);
 #endif
-            });
         }
     }
 }

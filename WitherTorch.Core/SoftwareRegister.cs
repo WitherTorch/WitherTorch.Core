@@ -31,6 +31,13 @@ namespace WitherTorch.Core
         /// </summary>
         /// <param name="software">與特定伺服器軟體相關聯的物件</param>
         public static bool TryRegisterServerSoftware(ISoftwareContext software)
+            => TryRegisterServerSoftwareAsync(software).Result;
+
+        /// <summary>
+        /// 註冊伺服器軟體
+        /// </summary>
+        /// <param name="software">與特定伺服器軟體相關聯的物件</param>
+        public static async Task<bool> TryRegisterServerSoftwareAsync(ISoftwareContext software)
         {
             Type serverType = software.GetServerType();
             if (serverType.IsAbstract || !typeof(Server).IsAssignableFrom(serverType))
@@ -44,9 +51,9 @@ namespace WitherTorch.Core
             bool result;
 
             if (timeout == Timeout.InfiniteTimeSpan)
-                result = TryRegisterServerSoftwareCore_NoTimeout(software);
+                result = await TryRegisterServerSoftwareCoreAsync_NoTimeout(software);
             else
-                result = TryRegisterServerSoftwareCore_WithTimeout(software, timeout);
+                result = await TryRegisterServerSoftwareCoreAsync_WithTimeout(software, timeout);
 
             if (!result)
                 return false;
@@ -55,73 +62,62 @@ namespace WitherTorch.Core
             Dictionary<string, ISoftwareContext> softwareIdDict = _softwareIdDict;
             lock (serverTypeDict)
             {
-#if NET5_0_OR_GREATER
                 if (!serverTypeDict.TryAdd(serverType, software))
                     return false;
-#else
-                if (serverTypeDict.ContainsKey(serverType))
-                    return false;
-                serverTypeDict.Add(serverType, software);
-#endif
             }
             lock (softwareIdDict)
             {
-#if NET5_0_OR_GREATER
                 if (!softwareIdDict.TryAdd(softwareId, software))
                     return false;
-#else
-                if (softwareIdDict.ContainsKey(softwareId))
-                    return false;
-                softwareIdDict.Add(softwareId, software);
-#endif
             }
 
             return true;
         }
 
-        private static bool TryRegisterServerSoftwareCore_NoTimeout(ISoftwareContext factory)
+        private static async Task<bool> TryRegisterServerSoftwareCoreAsync_NoTimeout(ISoftwareContext factory)
         {
-            using Task<bool> task = Task.Run(factory.TryInitialize);
             try
             {
-                task.Wait();
+                return await Task.Run(factory.TryInitialize);
             }
             catch (Exception)
             {
                 return false;
             }
-            if (task.Exception is null)
-                return task.Result;
-            return false;
         }
 
-        private static bool TryRegisterServerSoftwareCore_WithTimeout(ISoftwareContext factory, TimeSpan timeout)
+        private static async Task<bool> TryRegisterServerSoftwareCoreAsync_WithTimeout(ISoftwareContext factory, TimeSpan timeout)
         {
             using CancellationTokenSource tokenSource = new CancellationTokenSource();
-            using Task<bool> task = Task.Run(factory.TryInitialize, tokenSource.Token);
-            bool result;
+            Task<bool> workerTask = Task.Run(factory.TryInitialize, tokenSource.Token);
+            Task<bool> delayTask = TaskHelper.DelayWithResult<bool>(timeout);
+            Task<bool> finishedTask;
             try
             {
-                result = task.Wait(timeout);
+                finishedTask = await Task.WhenAny(workerTask, delayTask);
             }
             catch (Exception)
             {
                 return false;
             }
-            if (!result)
+            if (ReferenceEquals(finishedTask, delayTask))
             {
                 try
                 {
-                    tokenSource.Cancel(throwOnFirstException: true);
+                    tokenSource.Cancel();
                 }
                 catch (Exception)
                 {
                 }
+            }
+            try
+            {
+                return finishedTask.Result;
+            }
+            catch (Exception)
+            {
                 return false;
             }
-            if (task.Exception is null)
-                return task.Result;
-            return false;
         }
 
         /// <summary>

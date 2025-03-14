@@ -97,10 +97,11 @@ namespace WitherTorch.Core.Utils
             _dict = dict;
         }
 
-        public string? GetStorageDataOrTryRenew(Uri key, Func<string?> renewFactory)
-            => GetStorageDataOrTryRenew(key.AbsoluteUri, renewFactory);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Task<string?> GetStorageDataOrTryRenewAsync(string key, Func<string, CancellationToken, Task<string?>> renewFactory)
+            => GetStorageDataOrTryRenewAsync(key, renewFactory, CancellationToken.None);
 
-        public string? GetStorageDataOrTryRenew(string key, Func<string?> renewFactory)
+        public async Task<string?> GetStorageDataOrTryRenewAsync(string key, Func<string, CancellationToken, Task<string?>> renewFactory, CancellationToken cancellationToken)
         {
             Dictionary<string, CacheStorageData> dict = _dict;
 
@@ -117,13 +118,13 @@ namespace WitherTorch.Core.Utils
             string? result;
             if (data.ExpiredTime != default)
             {
-                if (TryGetStorageData(data, checkExpired: true, out result) && result is not null)
+                if ((result = GetStorageDataOrNull(data, checkExpired: true)) is not null)
                     return result;
             }
 
             try
             {
-                result = renewFactory.Invoke();
+                result = await renewFactory.Invoke(key, cancellationToken);
             }
             catch (Exception)
             {
@@ -136,7 +137,11 @@ namespace WitherTorch.Core.Utils
                     data = GenerateStorageData();
                 else
                     data = data.ResetExpiredTime();
+#if NETSTANDARD2_0
                 File.WriteAllText(data.FileFullName, result, Encoding.UTF8);
+#else
+                await File.WriteAllTextAsync(data.FileFullName, result, Encoding.UTF8, cancellationToken);
+#endif
                 lock (dict)
                 {
                     dict[key] = data;
@@ -145,7 +150,7 @@ namespace WitherTorch.Core.Utils
                 return result;
             }
 
-            return TryGetStorageData(data, checkExpired: false, out result) ? result : null;
+            return GetStorageDataOrNull(data, checkExpired: false);
         }
 
         public void Save(bool debounce)
@@ -201,25 +206,18 @@ namespace WitherTorch.Core.Utils
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool TryGetStorageData(in CacheStorageData data, bool checkExpired, out string? result)
+        private static string? GetStorageDataOrNull(in CacheStorageData data, bool checkExpired)
         {
             if (checkExpired)
             {
                 DateTimeOffset now = DateTimeOffset.UtcNow;
                 if (data.ExpiredTime < now)
-                {
-                    result = null;
-                    return false;
-                }
+                    return null;
             }
             string path = data.FileFullName;
             if (!File.Exists(path))
-            {
-                result = null;
-                return false;
-            }
-            result = File.ReadAllText(path, Encoding.UTF8);
-            return true;
+                return null;
+            return File.ReadAllText(path, Encoding.UTF8);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

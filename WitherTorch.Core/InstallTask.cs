@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 using WitherTorch.Core.Utils;
@@ -8,8 +10,23 @@ namespace WitherTorch.Core
     /// <summary>
     /// 表示一個安裝工作
     /// </summary>
-    public class InstallTask
+    public partial class InstallTask : IDisposable
     {
+        /// <summary>
+        /// 表示在 <see cref="InstallTask"/> 內所執行的伺服器安裝方法
+        /// </summary>
+        /// <param name="task">執行此委派的 <see cref="InstallTask"/> 物件</param>
+        /// <param name="token">偵測安裝工作是否被要求停止的令牌</param>
+        public delegate void InstallTaskStart(InstallTask task, CancellationToken token);
+
+        /// <summary>
+        /// 表示在 <see cref="InstallTask"/> 內所執行的伺服器安裝方法
+        /// </summary>
+        /// <param name="task">執行此委派的 <see cref="InstallTask"/> 物件</param>
+        /// <param name="token">偵測安裝工作是否被要求停止的令牌</param>
+        /// <param name="state">安裝方法在執行時將傳入的自定義物件</param>
+        public delegate void ParameterizedInstallTaskStart(InstallTask task, CancellationToken token, object? state);
+
         /// <summary>
         /// <see cref="ValidateFailed"/> 事件專用的委派方法
         /// </summary>
@@ -74,31 +91,40 @@ namespace WitherTorch.Core
         /// <summary>
         /// 取得目前的安裝總進度百分比
         /// </summary>
-        public double InstallPercentage { get; private set; }
+        public double InstallPercentage => _percentage;
 
         /// <summary>
         /// 取得目前的安裝狀態物件，此屬性有可能是 <see langword="null"/>
         /// </summary>
-        public AbstractInstallStatus? Status { get; private set; }
+        public AbstractInstallStatus Status => _status;
 
-        private readonly EitherStruct<Action<InstallTask>, Action<InstallTask, object?>> _installAction;
-        private readonly object? _installActionState;
+        private readonly TaskCreationOptions _creationOptions;
+        private readonly EitherStruct<InstallTaskStart, ParameterizedInstallTaskStart> _installTaskStart;
+        private readonly object? _installTaskStartState;
+        private readonly CancellationTokenSource _tokenSource;
 
-        private bool _isStopped;
+        private bool _stopped;
+        private bool _disposed;
+        private double _percentage;
+        private AbstractInstallStatus _status;
 
         /// <summary>
         /// <see cref="InstallTask"/> 的建構子
         /// </summary>
         /// <param name="owner">此安裝工作的擁有者</param>
         /// <param name="version">此安裝工作的所要安裝的版本</param>
-        /// <param name="installAction">在觸發 <see cref="Start"/> 時所要執行的安裝動作</param>
-        public InstallTask(Server owner, string version, Action<InstallTask> installAction)
+        /// <param name="installTaskStart">在觸發 <see cref="Start"/> 時所要執行的安裝委派</param>
+        /// <param name="creationOptions">在啟動 <paramref name="installTaskStart"/> 時所要附加的行程執行選項</param>
+        public InstallTask(Server owner, string version,
+            InstallTaskStart installTaskStart, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
             Owner = owner;
             Version = version;
-            Status = PreparingInstallStatus.Instance;
-            _installAction = Either.Left<Action<InstallTask>, Action<InstallTask, object?>>(installAction);
-            _installActionState = null;
+            _status = PreparingInstallStatus.Instance;
+            _installTaskStart = Either.Left<InstallTaskStart, ParameterizedInstallTaskStart>(installTaskStart);
+            _installTaskStartState = null;
+            _tokenSource = new CancellationTokenSource();
+            _creationOptions = creationOptions;
         }
 
         /// <summary>
@@ -106,15 +132,19 @@ namespace WitherTorch.Core
         /// </summary>
         /// <param name="owner">此安裝工作的擁有者</param>
         /// <param name="version">此安裝工作的所要安裝的版本</param>
-        /// <param name="state">此安裝工作的額外資訊，會在觸發 <see cref="Start"/> 時傳入至 <paramref name="installAction"/></param>
-        /// <param name="installAction">在觸發 <see cref="Start"/> 時所要執行的安裝動作</param>
-        public InstallTask(Server owner, string version, object? state, Action<InstallTask, object?> installAction)
+        /// <param name="state">此安裝工作的額外資訊，會在觸發 <see cref="Start"/> 時傳入至 <paramref name="installTaskStart"/></param>
+        /// <param name="installTaskStart">在觸發 <see cref="Start"/> 時所要執行的安裝委派</param>
+        /// <param name="creationOptions">在啟動 <paramref name="installTaskStart"/> 時所要附加的行程執行選項</param>
+        public InstallTask(Server owner, string version, object? state,
+            ParameterizedInstallTaskStart installTaskStart, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
             Owner = owner;
             Version = version;
-            Status = PreparingInstallStatus.Instance;
-            _installAction = Either.Right<Action<InstallTask>, Action<InstallTask, object?>>(installAction);
-            _installActionState = state;
+            _status = PreparingInstallStatus.Instance;
+            _installTaskStart = Either.Right<InstallTaskStart, ParameterizedInstallTaskStart>(installTaskStart);
+            _installTaskStartState = state;
+            _tokenSource = new CancellationTokenSource();
+            _creationOptions = creationOptions;
         }
 
         /// <summary>
@@ -123,12 +153,15 @@ namespace WitherTorch.Core
         /// <param name="percentage"></param>
         public void ChangePercentage(double percentage)
         {
+#if NETSTANDARD2_0
             double value = percentage < 0 ? 0 : (percentage > 100 ? 100 : percentage);
-            if (InstallPercentage != value)
-            {
-                InstallPercentage = value;
-                PercentageChanged?.Invoke(this, EventArgs.Empty);
-            }
+#else
+            double value = Math.Clamp(percentage, 0.0, 100.0);
+#endif
+            if (_percentage == value)
+                return;
+            _percentage = value;
+            PercentageChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -137,9 +170,9 @@ namespace WitherTorch.Core
         /// <param name="status">要替換的安裝狀態物件</param>
         public void ChangeStatus(AbstractInstallStatus status)
         {
-            if (Status == status)
+            if (_status == status)
                 return;
-            Status = status;
+            _status = status;
             StatusChanged?.Invoke(this, EventArgs.Empty);
         }
 
@@ -165,7 +198,7 @@ namespace WitherTorch.Core
         /// <remarks>(安裝過程為非同步執行，伺服器軟體會呼叫 <see cref="InstallTask"/> 內的各項事件以更新目前的安裝狀態)</remarks>
         public void Start()
         {
-            var installAction = _installAction;
+            var installAction = _installTaskStart;
             if (installAction.IsLeft)
             {
                 StartCore(installAction.Left);
@@ -173,7 +206,7 @@ namespace WitherTorch.Core
             }
             if (installAction.IsRight)
             {
-                StartCore(installAction.Right, _installActionState);
+                StartCore(installAction.Right, _installTaskStartState);
                 return;
             }
         }
@@ -181,48 +214,52 @@ namespace WitherTorch.Core
         /// <summary>
         /// 若需覆寫，請將此方法覆寫為觸發 <see cref="Start"/> 後會執行的程式碼
         /// </summary>
-        /// <param name="installAction"><see cref="InstallTask(Server, string, Action{InstallTask})"/> 所傳入的安裝工作</param>
-        protected virtual void StartCore(Action<InstallTask> installAction)
-            => Task.Factory.StartNew(delegate ()
+        /// <param name="installTaskStart"><see cref="InstallTask(Server, string, InstallTaskStart, TaskCreationOptions)"/> 所傳入的安裝工作</param>
+        protected virtual void StartCore(InstallTaskStart installTaskStart)
+        {
+            Task.Factory.StartNew(delegate ()
             {
                 try
                 {
-                    installAction.Invoke(this);
+                    installTaskStart.Invoke(this, _tokenSource.Token);
                 }
                 catch (Exception)
                 {
                     OnInstallFailed();
                 }
-            }, TaskCreationOptions.LongRunning | TaskCreationOptions.DenyChildAttach);
+            }, _tokenSource.Token, _creationOptions, TaskScheduler.Current);
+        }
 
         /// <summary>
         /// 若需覆寫，請將此方法覆寫為觸發 <see cref="Start"/> 後會執行的程式碼
         /// </summary>
-        /// <param name="installAction"><see cref="InstallTask(Server, string, object?, Action{InstallTask, object?})"/> 所傳入的安裝工作</param>
-        /// <param name="state">呼叫 <paramref name="installAction"/> 時需傳入的額外安裝資訊</param>
-        protected virtual void StartCore(Action<InstallTask, object?> installAction, object? state)
-            => Task.Factory.StartNew(delegate (object? state)
+        /// <param name="installTaskStart"><see cref="InstallTask(Server, string, object?, ParameterizedInstallTaskStart, TaskCreationOptions)"/> 所傳入的安裝工作</param>
+        /// <param name="state">呼叫 <paramref name="installTaskStart"/> 時需傳入的額外安裝資訊</param>
+        protected virtual void StartCore(ParameterizedInstallTaskStart installTaskStart, object? state)
+        {
+            Task.Factory.StartNew(delegate (object? _state)
             {
                 try
                 {
-                    installAction.Invoke(this, state);
+                    installTaskStart.Invoke(this, _tokenSource.Token, _state);
                 }
                 catch (Exception)
                 {
                     OnInstallFailed();
                 }
-            }, state, TaskCreationOptions.LongRunning | TaskCreationOptions.DenyChildAttach);
+            }, state, _tokenSource.Token, _creationOptions, TaskScheduler.Current);
+        }
 
         /// <summary>
         /// 要求停止安裝流程
         /// </summary>
         public void Stop()
         {
-            if (!_isStopped)
-            {
-                _isStopped = true;
-                StopRequested?.Invoke(this, EventArgs.Empty);
-            }
+            if (_stopped)
+                return;
+            _stopped = true;
+            _tokenSource.Cancel();
+            StopRequested?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -250,70 +287,48 @@ namespace WitherTorch.Core
             return callback.GetState();
         }
 
-        /// <summary>
-        /// 提供 <see cref="ValidateFailed"/> 事件的資料和回呼方法
-        /// </summary>
-        public class ValidateFailedCallbackEventArgs : EventArgs
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Dispose(bool disposing)
         {
-            private ValidateFailedState state = ValidateFailedState.Cancel;
+            if (_disposed)
+                return;
+            _disposed = true;
+            DisposeCore(disposing);
+        }
 
-            /// <summary>
-            /// 取得驗證失敗的檔案路徑
-            /// </summary>
-            public string Filename { get; }
-
-            /// <summary>
-            /// 取得實際的檔案雜湊
-            /// </summary>
-            public byte[] ActualFileHash { get; }
-
-            /// <summary>
-            /// 取得預期的檔案雜湊
-            /// </summary>
-            public byte[] ExceptedFileHash { get; }
-
-            /// <summary>
-            /// <see cref="ValidateFailedCallbackEventArgs"/> 的建構子
-            /// </summary>
-            /// <param name="filename">觸發事件的檔案路徑</param>
-            /// <param name="actualFileHash">實際的檔案雜湊</param>
-            /// <param name="exceptedFileHash">預期的檔案雜湊</param>
-            public ValidateFailedCallbackEventArgs(string filename, byte[] actualFileHash, byte[] exceptedFileHash)
+        /// <inheritdoc cref="Dispose()"/>
+        /// <param name="disposing">
+        /// Return <see langword="true"/> if the method is called by <see cref="Dispose()"/>, otherwises <see langword="false"/>.
+        /// </param>
+        protected virtual void DisposeCore(bool disposing)
+        {
+            if (!disposing)
+                return;
+            CancellationTokenSource tokenSource = _tokenSource;
+            try
             {
-                Filename = filename;
-                ActualFileHash = actualFileHash;
-                ExceptedFileHash = exceptedFileHash;
+                tokenSource.Cancel();
             }
-
-            /// <summary>
-            /// 取消下載
-            /// </summary>
-            public void Cancel()
+            catch (Exception)
             {
-                state = ValidateFailedState.Cancel;
             }
-
-            /// <summary>
-            /// 忽略驗證錯誤並繼續
-            /// </summary>
-            public void Ignore()
+            finally
             {
-                state = ValidateFailedState.Ignore;
+                tokenSource.Dispose();
             }
+        }
 
-            /// <summary>
-            /// 重新下載
-            /// </summary>
-            public void Retry()
-            {
-                state = ValidateFailedState.Retry;
-            }
+        /// <inheritdoc cref="object.Finalize()"/>
+        ~InstallTask()
+        {
+            Dispose(disposing: false);
+        }
 
-            /// <summary>
-            /// 取得驗證失敗後的操作狀態
-            /// </summary>
-            /// <returns></returns>
-            public ValidateFailedState GetState() => state;
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

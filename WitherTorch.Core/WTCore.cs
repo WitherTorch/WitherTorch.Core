@@ -1,5 +1,7 @@
 ﻿using System;
 
+using WitherTorch.Core.Utils;
+
 namespace WitherTorch.Core
 {
     /// <summary>

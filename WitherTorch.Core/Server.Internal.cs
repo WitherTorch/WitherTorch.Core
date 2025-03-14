@@ -101,7 +101,7 @@ namespace WitherTorch.Core
 
         private static string GetDefaultServerNameCore(string serverDirectory)
         {
-#if NET5_0_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET8_0_OR_GREATER
             ReadOnlySpan<char> span = serverDirectory.AsSpan().TrimEnd(Path.DirectorySeparatorChar);
             if (span.Length > 3)
                 return Path.GetFileName(span).ToString();
