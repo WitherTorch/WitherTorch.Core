@@ -86,9 +86,9 @@ namespace WitherTorch.Core.Utils
         private async Task<string?> GetStringCoreAsync(string address, CancellationToken token)
         {
 #if NETSTANDARD2_0_OR_GREATER
-            return await _client.GetStringAsync(address);
+            return await _client.GetStringAsync(Uri.UnescapeDataString(address));
 #else
-            return await _client.GetStringAsync(address, token);
+            return await _client.GetStringAsync(Uri.UnescapeDataString(address), token);
 #endif
         }
     }
