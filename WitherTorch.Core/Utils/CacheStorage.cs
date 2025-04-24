@@ -70,8 +70,22 @@ namespace WitherTorch.Core.Utils
                 _dirName = dirName;
                 return;
             }
-            using FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
-            JsonNode? node = JsonNode.Parse(stream);
+            JsonNode? node;
+            {
+                FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+                try
+                {
+                    node = JsonNode.Parse(stream);
+                }
+                catch (Exception)
+                {
+                    node = null;
+                }
+                finally
+                {
+                    stream.Dispose();
+                }
+            }
             if (node is not JsonObject rootNode)
             {
                 _dict = new Dictionary<string, CacheStorageData>();
