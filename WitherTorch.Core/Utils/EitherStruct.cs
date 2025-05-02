@@ -130,5 +130,87 @@ namespace WitherTorch.Core.Utils
                 return default;
             return new EitherStruct<TLeft, T>(left);
         }
+
+        /// <summary>
+        /// 根據此 <see cref="EitherStruct{TLeft, TRight}"/> 的資料位置，執行指定的委派
+        /// </summary>
+        /// <param name="leftAction">資料位於左側時所要執行的委派</param>
+        /// <param name="rightAction">資料位於右側時所要執行的委派</param>
+        public void Invoke(Action<TLeft> leftAction, Action<TRight> rightAction)
+        {
+            TLeft? left = _left;
+            if (left is not null)
+            {
+                leftAction.Invoke(left);
+                return;
+            }
+            TRight? right = _right;
+            if (right is not null)
+            {
+                rightAction.Invoke(right);
+                return;
+            }
+        }
+
+        /// <summary>
+        /// 根據此 <see cref="EitherStruct{TLeft, TRight}"/> 的資料位置，執行指定的委派
+        /// </summary>
+        /// <typeparam name="TArg">委派內參數的類型</typeparam>
+        /// <param name="leftAction">資料位於左側時所要執行的委派</param>
+        /// <param name="rightAction">資料位於右側時所要執行的委派</param>
+        /// <param name="state">要輸入至委派的參數</param>
+        public void Invoke<TArg>(Action<TLeft, TArg> leftAction, Action<TRight, TArg> rightAction, TArg state)
+        {
+            TLeft? left = _left;
+            if (left is not null)
+            {
+                leftAction.Invoke(left, state);
+                return;
+            }
+            TRight? right = _right;
+            if (right is not null)
+            {
+                rightAction.Invoke(right, state);
+                return;
+            }
+        }
+
+        /// <summary>
+        /// 根據此 <see cref="EitherStruct{TLeft, TRight}"/> 的資料位置，執行指定的委派
+        /// </summary>
+        /// <typeparam name="TResult">執行結果的類型</typeparam>
+        /// <param name="leftFunc">資料位於左側時所要執行的委派</param>
+        /// <param name="rightFunc">資料位於右側時所要執行的委派</param>
+        /// <returns>執行結果。若此結構本身為空，則傳回 <see langword="default"/></returns>
+        public TResult? Invoke<TResult>(Func<TLeft, TResult> leftFunc, Func<TRight, TResult> rightFunc)
+        {
+            TLeft? left = _left;
+            if (left is not null)
+                return leftFunc.Invoke(left);
+            TRight? right = _right;
+            if (right is not null)
+                return rightFunc.Invoke(right);
+            return default;
+        }
+
+        /// <summary>
+        /// 根據此 <see cref="EitherStruct{TLeft, TRight}"/> 的資料位置，執行指定的委派
+        /// </summary>
+        /// <typeparam name="TArg">委派內參數的類型</typeparam>
+        /// <typeparam name="TResult">執行結果的類型</typeparam>
+        /// <param name="leftFunc">資料位於左側時所要執行的委派</param>
+        /// <param name="rightFunc">資料位於右側時所要執行的委派</param>
+        /// <param name="state">要輸入至委派的參數</param>
+        /// <returns>執行結果。若此結構本身為空，則傳回 <see langword="default"/></returns>
+        public TResult? Invoke<TArg, TResult>(Func<TLeft, TArg, TResult> leftFunc, Func<TRight, TArg, TResult> rightFunc, TArg state)
+        {
+            TLeft? left = _left;
+            if (left is not null)
+                return leftFunc.Invoke(left, state);
+            TRight? right = _right;
+            if (right is not null)
+                return rightFunc.Invoke(right, state);
+            return default;
+        }
     }
 }

@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 
 using WitherTorch.Core.Property;
+using WitherTorch.Core.Runtime;
 using WitherTorch.Core.Software;
 
 namespace WitherTorch.Core
@@ -118,7 +119,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 取得當前的處理序物件
         /// </summary>
-        public abstract AbstractProcess GetProcess();
+        public abstract IProcess GetProcess();
 
         /// <summary>
         /// 以 <see cref="GetRuntimeEnvironment"/> 內的執行環境來啟動伺服器

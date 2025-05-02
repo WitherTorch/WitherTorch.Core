@@ -1,4 +1,4 @@
-﻿namespace WitherTorch.Core
+﻿namespace WitherTorch.Core.Runtime
 {
     /// <summary>
     /// 定義一個 Java 執行環境

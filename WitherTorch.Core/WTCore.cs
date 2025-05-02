@@ -1,5 +1,6 @@
 ﻿using System;
 
+using WitherTorch.Core.Runtime;
 using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core
@@ -31,7 +32,7 @@ namespace WitherTorch.Core
         public static TimeSpan CDCDownloadTimeout { get; set; } = new TimeSpan(0, 0, 15);
 
         /// <summary>
-        /// 是否重新導向 <see cref="SystemProcess"/> 內處理序的訊息流 (預設為是)
+        /// 是否重新導向 <see cref="LocalProcess"/> 內處理序的訊息流 (預設為是)
         /// </summary>
         public static bool RedirectSystemProcessStream { get; set; } = true;
 
