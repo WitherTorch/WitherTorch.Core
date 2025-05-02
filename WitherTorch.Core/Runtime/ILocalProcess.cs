@@ -15,7 +15,7 @@
         /// </summary>
         /// <param name="startInfo">處理序的啟動資料</param>
         /// <returns>是否成功啟動處理序</returns>
-        bool Start(System.Diagnostics.ProcessStartInfo startInfo);
+        bool Start(in LocalProcessStartInfo startInfo);
 
         /// <summary>
         /// 終止此處理序

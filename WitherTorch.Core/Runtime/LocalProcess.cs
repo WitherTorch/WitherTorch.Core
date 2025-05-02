@@ -142,28 +142,60 @@ namespace WitherTorch.Core.Runtime
         public System.Diagnostics.Process? AsCLRProcess() => _process;
 
         /// <inheritdoc />
-        public bool Start(System.Diagnostics.ProcessStartInfo startInfo)
+        public bool Start(in LocalProcessStartInfo startInfo)
         {
+            System.Diagnostics.ProcessStartInfo processStartInfo = startInfo.ToProcessStartInfo();
             if (WTCore.RedirectSystemProcessStream)
             {
-                startInfo.StandardOutputEncoding = Encoding.UTF8;
-                startInfo.StandardErrorEncoding = Encoding.UTF8;
-                startInfo.RedirectStandardError = true;
-                startInfo.RedirectStandardOutput = true;
-                startInfo.RedirectStandardInput = true;
+                processStartInfo.StandardOutputEncoding = Encoding.UTF8;
+                processStartInfo.StandardErrorEncoding = Encoding.UTF8;
+                processStartInfo.RedirectStandardError = true;
+                processStartInfo.RedirectStandardOutput = true;
+                processStartInfo.RedirectStandardInput = true;
             }
-            System.Diagnostics.Process? process = System.Diagnostics.Process.Start(startInfo);
+            System.Diagnostics.Process? process = System.Diagnostics.Process.Start(processStartInfo);
             if (process is null || process.HasExited)
                 return false;
-            if (Interlocked.CompareExchange(ref _process, process, null) is null)
+
+            System.Diagnostics.Process? oldProcess;
+            if ((oldProcess = Interlocked.CompareExchange(ref _process, process, null)) is not null)
             {
-                StartCore(process);
-                return true;
+                try
+                {
+                    if (!oldProcess.HasExited)
+                    {
+                        process.Kill();
+                        process.Dispose();
+                        return false;
+                    }
+                }
+                catch (Exception)
+                {
+                }
+                System.Diagnostics.Process? secondCheckOldProcess;
+                while (!ReferenceEquals(secondCheckOldProcess = Interlocked.CompareExchange(ref _process, process, oldProcess), oldProcess))
+                {
+                    oldProcess.Dispose();
+                    try
+                    {
+                        if (!secondCheckOldProcess.HasExited)
+                        {
+                            process.Kill();
+                            process.Dispose();
+                            return false;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                    }
+                    oldProcess = secondCheckOldProcess;
+                    break;
+                }
             }
 
-            process.Kill();
-            process.Dispose();
-            return false;
+            StartCore(process);
+            ProcessStarted?.Invoke(this, EventArgs.Empty);
+            return true;
         }
 
         /// <summary>
