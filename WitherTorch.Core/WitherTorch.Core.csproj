@@ -15,10 +15,10 @@
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
 		<PackageProjectUrl>https://github.com/WitherTorch/WitherTorch.Core</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/WitherTorch/WitherTorch.Core</RepositoryUrl>
-		<Version>1.8.3</Version>
 		<!-- 
-		<Version>1.8.3-CI-18</Version>
+		<Version>1.8.4</Version>
 		-->
+		<Version>1.8.4-CI-20</Version>
 		<PackageIcon>withertorch_core_128.png</PackageIcon>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>minecraft;minecraft-server</PackageTags>
