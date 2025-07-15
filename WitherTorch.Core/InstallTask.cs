@@ -116,7 +116,7 @@ namespace WitherTorch.Core
         /// <param name="installTaskStart">在觸發 <see cref="Start"/> 時所要執行的安裝委派</param>
         /// <param name="creationOptions">在啟動 <paramref name="installTaskStart"/> 時所要附加的行程執行選項</param>
         public InstallTask(Server owner, string version,
-            InstallTaskStart installTaskStart, TaskCreationOptions creationOptions = TaskCreationOptions.None)
+            InstallTaskStart installTaskStart, TaskCreationOptions creationOptions = TaskCreationOptions.RunContinuationsAsynchronously)
         {
             Owner = owner;
             Version = version;
@@ -136,7 +136,7 @@ namespace WitherTorch.Core
         /// <param name="installTaskStart">在觸發 <see cref="Start"/> 時所要執行的安裝委派</param>
         /// <param name="creationOptions">在啟動 <paramref name="installTaskStart"/> 時所要附加的行程執行選項</param>
         public InstallTask(Server owner, string version, object? state,
-            ParameterizedInstallTaskStart installTaskStart, TaskCreationOptions creationOptions = TaskCreationOptions.None)
+            ParameterizedInstallTaskStart installTaskStart, TaskCreationOptions creationOptions = TaskCreationOptions.RunContinuationsAsynchronously)
         {
             Owner = owner;
             Version = version;

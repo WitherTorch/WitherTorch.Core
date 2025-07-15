@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace WitherTorch.Core.Software
 {
@@ -34,7 +36,7 @@ namespace WitherTorch.Core.Software
         public abstract T? CreateServerInstance(string serverDirectory);
 
         /// <inheritdoc/>
-        public abstract bool TryInitialize();
+        public abstract Task<bool> TryInitializeAsync(CancellationToken cancellationToken);
 
         Server? ISoftwareContext.CreateServerInstance(string serverDirectory)
             => CreateServerInstance(serverDirectory);

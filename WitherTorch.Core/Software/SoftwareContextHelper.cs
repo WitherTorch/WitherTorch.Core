@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace WitherTorch.Core.Software
 {
@@ -17,7 +18,7 @@ namespace WitherTorch.Core.Software
         /// <param name="initializer">註冊該 <see cref="ISoftwareContext"/> 物件時所要執行的動作</param>
         /// <returns></returns>
         public static ISoftwareContext CreateSoftwareContext(string softwareId, Type serverType, string[]? versions, 
-            Func<string, Server?> createServerFactory, Func<bool>? initializer = null)
+            Func<string, Server?> createServerFactory, Func<Task<bool>>? initializer = null)
         { 
             if (string.IsNullOrWhiteSpace(softwareId))
                 throw new ArgumentException(nameof(softwareId) + " cannot be empty or full-whitespaced!");
@@ -38,7 +39,7 @@ namespace WitherTorch.Core.Software
         /// <param name="initializer">註冊該 <see cref="ISoftwareContext"/> 物件時所要執行的動作</param>
         /// <returns></returns>
         public static ISoftwareContext CreateSoftwareContext(string softwareId, Type serverType, Func<string[]?> versionsFactory, 
-            Func<string, Server?> createServerFactory, Func<bool>? initializer = null)
+            Func<string, Server?> createServerFactory, Func<Task<bool>>? initializer = null)
         { 
             if (string.IsNullOrWhiteSpace(softwareId))
                 throw new ArgumentException(nameof(softwareId) + " cannot be empty or full-whitespaced!");
@@ -59,7 +60,7 @@ namespace WitherTorch.Core.Software
         /// <param name="initializer">註冊該 <see cref="ISoftwareContext"/> 物件時所要執行的動作</param>
         /// <returns></returns>
         public static ISoftwareContext CreateSoftwareContext<T>(string softwareId, string[]? versions,
-            Func<string, T?> createServerFactory, Func<bool>? initializer = null) where T : Server
+            Func<string, T?> createServerFactory, Func<Task<bool>>? initializer = null) where T : Server
         {
             if (string.IsNullOrWhiteSpace(softwareId))
                 throw new ArgumentException(nameof(softwareId) + " cannot be empty or full-whitespaced!");
@@ -78,7 +79,7 @@ namespace WitherTorch.Core.Software
         /// <param name="initializer">註冊該 <see cref="ISoftwareContext"/> 物件時所要執行的動作</param>
         /// <returns></returns>
         public static ISoftwareContext CreateSoftwareContext<T>(string softwareId, Func<string[]?> versionsFactory,
-            Func<string, T?> createServerFactory, Func<bool>? initializer = null) where T : Server
+            Func<string, T?> createServerFactory, Func<Task<bool>>? initializer = null) where T : Server
         { 
             if (string.IsNullOrWhiteSpace(softwareId))
                 throw new ArgumentException(nameof(softwareId) + " cannot be empty or full-whitespaced!");

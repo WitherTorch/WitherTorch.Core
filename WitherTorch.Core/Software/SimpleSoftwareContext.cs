@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Threading.Tasks;
+using System.Threading;
 
 using WitherTorch.Core.Utils;
-
-using YamlDotNet.Core;
 
 namespace WitherTorch.Core.Software
 {
@@ -12,9 +12,9 @@ namespace WitherTorch.Core.Software
         private readonly EitherStruct<string[], Func<string[]?>> _versionsOrFactory;
         private readonly Type _serverType;
         private readonly Func<string, Server?> _createServerFactory;
-        private readonly Func<bool>? _initializer;
+        private readonly Func<Task<bool>>? _initializer;
 
-        public SimpleSoftwareContext(string softwareId, Type serverType, string[] versions, Func<string, Server?> createServerFactory, Func<bool>? initializer)
+        public SimpleSoftwareContext(string softwareId, Type serverType, string[] versions, Func<string, Server?> createServerFactory, Func<Task<bool>>? initializer)
         {
             _softwareId = softwareId;
             _serverType = serverType;
@@ -23,7 +23,7 @@ namespace WitherTorch.Core.Software
             _initializer = initializer;
         }
 
-        public SimpleSoftwareContext(string softwareId, Type serverType, Func<string[]?> versionsFactory, Func<string, Server?> createServerFactory, Func<bool>? initializer)
+        public SimpleSoftwareContext(string softwareId, Type serverType, Func<string[]?> versionsFactory, Func<string, Server?> createServerFactory, Func<Task<bool>>? initializer)
         {
             _softwareId = softwareId;
             _serverType = serverType;
@@ -48,6 +48,14 @@ namespace WitherTorch.Core.Software
 
         public Server? CreateServerInstance(string serverDirectory) => _createServerFactory.Invoke(serverDirectory);
 
-        public bool TryInitialize() => _initializer?.Invoke() ?? true;
+        public async Task<bool> TryInitializeAsync(CancellationToken token)
+        {
+            if (token.IsCancellationRequested)
+                return false;
+            Func<Task<bool>>? initializer = _initializer;
+            if (initializer is null)
+                return true;
+            return await initializer.Invoke();
+        }
     }
 }

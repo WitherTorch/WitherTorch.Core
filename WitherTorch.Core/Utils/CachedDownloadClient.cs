@@ -40,14 +40,21 @@ namespace WitherTorch.Core.Utils
         /// </summary>
         /// <param name="address">要下載的網址</param>
         /// <returns></returns>
-        public string? DownloadString(Uri address) => DownloadStringAsync(address).Result;
+        public string? DownloadString(Uri address) => DownloadString(address.AbsoluteUri);
 
         /// <summary>
         /// 從指定的 <see cref="Uri"/> 中下載並傳回字串
         /// </summary>
         /// <param name="address">要下載的網址</param>
         /// <returns></returns>
-        public string? DownloadString(string address) => DownloadStringAsync(address).Result;
+        public string? DownloadString(string address)
+        {
+            TimeSpan timeout = WTCore.CDCDownloadTimeout;
+            Task<string?> workingTask = _storage.GetStorageDataOrTryRenewAsync(address, GetStringCoreAsync);
+            if (workingTask.Wait(timeout))
+                return workingTask.Result;
+            return null;
+        }
 
         /// <summary>
         /// 從指定的 <see cref="Uri"/> 中下載並傳回字串
@@ -61,34 +68,25 @@ namespace WitherTorch.Core.Utils
         /// </summary>
         /// <param name="address">要下載的網址</param>
         /// <returns></returns>
-        public async Task<string?> DownloadStringAsync(string address)
+        public Task<string?> DownloadStringAsync(string address)
         {
             TimeSpan timeout = WTCore.CDCDownloadTimeout;
             if (timeout == Timeout.InfiniteTimeSpan)
-                return await _storage.GetStorageDataOrTryRenewAsync(address, GetStringCoreAsync);
-            using CancellationTokenSource tokenSource = new CancellationTokenSource();
-            Task<string?> workerTask = _storage.GetStorageDataOrTryRenewAsync(address, GetStringCoreAsync);
-            Task<string?> timeoutTask = TaskHelper.DelayWithResult<string?>(timeout);
-            Task<string?> finishedTask = await Task.WhenAny(workerTask, timeoutTask);
-            if (ReferenceEquals(finishedTask, timeoutTask))
-            {
-                try
-                {
-                    tokenSource.Cancel();
-                }
-                catch (Exception)
-                {
-                }
-            }
-            return finishedTask.Result;
+                return _storage.GetStorageDataOrTryRenewAsync(address, GetStringCoreAsync);
+            return TaskHelper.WaitForResultAsync(
+                factoryFunc: (token) => _storage.GetStorageDataOrTryRenewAsync(address, GetStringCoreAsync, token),
+                delay: timeout);
         }
 
         private async Task<string?> GetStringCoreAsync(string address, CancellationToken token)
         {
-#if NETSTANDARD2_0_OR_GREATER
-            return await _client.GetStringAsync(Uri.UnescapeDataString(address));
+            using HttpResponseMessage message = await _client.GetAsync(Uri.UnescapeDataString(address), HttpCompletionOption.ResponseContentRead, token);
+            if (!message.IsSuccessStatusCode || token.IsCancellationRequested)
+                return null;
+#if NET8_0_OR_GREATER
+            return await message.Content.ReadAsStringAsync(token);
 #else
-            return await _client.GetStringAsync(Uri.UnescapeDataString(address), token);
+            return await message.Content.ReadAsStringAsync();
 #endif
         }
     }

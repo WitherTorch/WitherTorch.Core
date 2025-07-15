@@ -37,6 +37,7 @@ namespace WitherTorch.Core
         /// 註冊伺服器軟體
         /// </summary>
         /// <param name="software">與特定伺服器軟體相關聯的物件</param>
+        /// <remarks>備註: 此方法可能會因為伺服器軟體的初始化出現異常而拋出相對應之異常</remarks>
         public static async Task<bool> TryRegisterServerSoftwareAsync(ISoftwareContext software)
         {
             Type serverType = software.GetServerType();
@@ -74,51 +75,11 @@ namespace WitherTorch.Core
             return true;
         }
 
-        private static async Task<bool> TryRegisterServerSoftwareCoreAsync_NoTimeout(ISoftwareContext factory)
-        {
-            try
-            {
-                return await Task.Run(factory.TryInitialize);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
+        private static Task<bool> TryRegisterServerSoftwareCoreAsync_NoTimeout(ISoftwareContext factory)
+            => factory.TryInitializeAsync(CancellationToken.None);
 
-        private static async Task<bool> TryRegisterServerSoftwareCoreAsync_WithTimeout(ISoftwareContext factory, TimeSpan timeout)
-        {
-            using CancellationTokenSource tokenSource = new CancellationTokenSource();
-            Task<bool> workerTask = Task.Run(factory.TryInitialize, tokenSource.Token);
-            Task<bool> delayTask = TaskHelper.DelayWithResult<bool>(timeout);
-            Task<bool> finishedTask;
-            try
-            {
-                finishedTask = await Task.WhenAny(workerTask, delayTask);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            if (ReferenceEquals(finishedTask, delayTask))
-            {
-                try
-                {
-                    tokenSource.Cancel();
-                }
-                catch (Exception)
-                {
-                }
-            }
-            try
-            {
-                return finishedTask.Result;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
+        private static Task<bool> TryRegisterServerSoftwareCoreAsync_WithTimeout(ISoftwareContext factory, TimeSpan timeout)
+            => TaskHelper.WaitForResultAsync(factory.TryInitializeAsync, timeout);
 
         /// <summary>
         /// 取得與伺服器軟體 ID 對應的伺服器物件類型

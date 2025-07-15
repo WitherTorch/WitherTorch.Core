@@ -34,7 +34,7 @@
 
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<Optimize>True</Optimize>
-		<DebugType>none</DebugType>
+		<DebugType>full</DebugType>
 	</PropertyGroup>
 
 	<ItemGroup>
