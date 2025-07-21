@@ -12,6 +12,7 @@ WitherTorch 是一個 Minecraft 伺服器的開服軟體
 <br/>
 相依的套件有:
 <ul>
-  <li><a href="https://learn.microsoft.com/en-us/dotnet/api/system.text.json">System.Text.Json</a></li>
+  <li><a href="https://github.com/dotnet/runtime">System.Text.Json</a></li>
+  <li><a href="https://github.com/dotnet/corefx">Microsoft.CSharp</a></li>
   <li><a href="https://github.com/aaubry/YamlDotNet">YamlDotNet</a></li>
 </ul>
