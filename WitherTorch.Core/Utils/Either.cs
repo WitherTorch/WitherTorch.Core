@@ -66,7 +66,7 @@ namespace WitherTorch.Core.Utils
     /// </summary>
     /// <typeparam name="TLeft"><see cref="Either{TLeft, TRight}.Left"/> 的類型</typeparam>
     /// <typeparam name="TRight"><see cref="Either{TLeft, TRight}.Right"/> 的類型</typeparam>
-    [StructLayout(LayoutKind.Explicit, Pack = sizeof(uint))]
+    [StructLayout(LayoutKind.Sequential, Pack = sizeof(uint))]
     public readonly struct Either<TLeft, TRight>
     {
         /// <summary>
@@ -74,11 +74,8 @@ namespace WitherTorch.Core.Utils
         /// </summary>
         public static readonly Either<TLeft, TRight> Empty = default;
 
-        [FieldOffset(0)]
         private readonly EitherSide _side;
-        [FieldOffset(sizeof(uint))]
         private readonly TLeft _left;
-        [FieldOffset(sizeof(uint))]
         private readonly TRight _right;
 
         /// <summary>
