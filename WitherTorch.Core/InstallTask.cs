@@ -8,51 +8,51 @@ using WitherTorch.Core.Utils;
 namespace WitherTorch.Core
 {
     /// <summary>
+    /// 表示在 <see cref="InstallTask"/> 內所執行的伺服器安裝方法
+    /// </summary>
+    /// <param name="task">執行此委派的 <see cref="InstallTask"/> 物件</param>
+    /// <param name="token">偵測安裝工作是否被要求停止的令牌</param>
+    public delegate void InstallTaskStart(InstallTask task, CancellationToken token);
+
+    /// <summary>
+    /// 表示在 <see cref="InstallTask"/> 內所執行的伺服器安裝方法
+    /// </summary>
+    /// <param name="task">執行此委派的 <see cref="InstallTask"/> 物件</param>
+    /// <param name="token">偵測安裝工作是否被要求停止的令牌</param>
+    /// <param name="state">安裝方法在執行時將傳入的自定義物件</param>
+    public delegate void ParameterizedInstallTaskStart(InstallTask task, CancellationToken token, object? state);
+
+    /// <summary>
+    /// <see cref="InstallTask.ValidateFailed"/> 事件專用的委派方法
+    /// </summary>
+    /// <param name="sender">事件的發送者 (可能為 <see langword="null"/>)</param>
+    /// <param name="e">事件的回呼物件</param>
+    public delegate void ValidateFailedEventHandler(object? sender, ValidateFailedCallbackEventArgs e);
+
+    /// <summary>
+    /// 驗證失敗後的操作狀態
+    /// </summary>
+    public enum ValidateFailedState
+    {
+        /// <summary>
+        /// 取消下載
+        /// </summary>
+        Cancel = 0,
+        /// <summary>
+        /// 忽略並繼續
+        /// </summary>
+        Ignore = 1,
+        /// <summary>
+        /// 重新下載
+        /// </summary>
+        Retry = 2
+    }
+
+    /// <summary>
     /// 表示一個安裝工作
     /// </summary>
     public partial class InstallTask : IDisposable
     {
-        /// <summary>
-        /// 表示在 <see cref="InstallTask"/> 內所執行的伺服器安裝方法
-        /// </summary>
-        /// <param name="task">執行此委派的 <see cref="InstallTask"/> 物件</param>
-        /// <param name="token">偵測安裝工作是否被要求停止的令牌</param>
-        public delegate void InstallTaskStart(InstallTask task, CancellationToken token);
-
-        /// <summary>
-        /// 表示在 <see cref="InstallTask"/> 內所執行的伺服器安裝方法
-        /// </summary>
-        /// <param name="task">執行此委派的 <see cref="InstallTask"/> 物件</param>
-        /// <param name="token">偵測安裝工作是否被要求停止的令牌</param>
-        /// <param name="state">安裝方法在執行時將傳入的自定義物件</param>
-        public delegate void ParameterizedInstallTaskStart(InstallTask task, CancellationToken token, object? state);
-
-        /// <summary>
-        /// <see cref="ValidateFailed"/> 事件專用的委派方法
-        /// </summary>
-        /// <param name="sender">事件的發送者 (可能為 <see langword="null"/>)</param>
-        /// <param name="e">事件的回呼物件</param>
-        public delegate void ValidateFailedEventHandler(object? sender, ValidateFailedCallbackEventArgs e);
-
-        /// <summary>
-        /// 驗證失敗後的操作狀態
-        /// </summary>
-        public enum ValidateFailedState
-        {
-            /// <summary>
-            /// 取消下載
-            /// </summary>
-            Cancel = 0,
-            /// <summary>
-            /// 忽略並繼續
-            /// </summary>
-            Ignore = 1,
-            /// <summary>
-            /// 重新下載
-            /// </summary>
-            Retry = 2
-        }
-
         /// <summary>
         /// 安裝完成時將觸發此事件
         /// </summary>
@@ -99,7 +99,7 @@ namespace WitherTorch.Core
         public AbstractInstallStatus Status => _status;
 
         private readonly TaskCreationOptions _creationOptions;
-        private readonly EitherStruct<InstallTaskStart, ParameterizedInstallTaskStart> _installTaskStart;
+        private readonly Either<InstallTaskStart, ParameterizedInstallTaskStart> _installTaskStart;
         private readonly object? _installTaskStartState;
         private readonly CancellationTokenSource _tokenSource;
 

@@ -9,7 +9,7 @@ namespace WitherTorch.Core.Software
     internal sealed class SimpleSoftwareContext : ISoftwareContext
     {
         private readonly string _softwareId;
-        private readonly EitherStruct<string[], Func<string[]?>> _versionsOrFactory;
+        private readonly Either<string[], Func<string[]?>> _versionsOrFactory;
         private readonly Type _serverType;
         private readonly Func<string, Server?> _createServerFactory;
         private readonly Func<Task<bool>>? _initializer;
@@ -38,7 +38,7 @@ namespace WitherTorch.Core.Software
 
         public string[] GetSoftwareVersions()
         {
-            EitherStruct<string[], Func<string[]?>> versionsOrFactory = _versionsOrFactory;
+            Either<string[], Func<string[]?>> versionsOrFactory = _versionsOrFactory;
             if (versionsOrFactory.IsLeft)
                 return versionsOrFactory.Left;
             if (versionsOrFactory.IsRight)

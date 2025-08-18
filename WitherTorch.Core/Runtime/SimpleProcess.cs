@@ -11,8 +11,8 @@ namespace WitherTorch.Core.Runtime
     public sealed class SimpleProcess : IProcess
     {
         private static int _idCounter = 0;
-        private readonly EitherStruct<Action, Action<object?>> _startFunc, _stopFunc;
-        private readonly EitherStruct<Action<string>, Action<string, object?>> _commandSendFunc;
+        private readonly Either<Action, Action<object?>> _startFunc, _stopFunc;
+        private readonly Either<Action<string>, Action<string, object?>> _commandSendFunc;
         private readonly object? _state;
 
         private DateTime _startTime;

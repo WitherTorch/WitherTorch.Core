@@ -8,7 +8,7 @@ namespace WitherTorch.Core.Software
 {
     internal sealed class GenericSimpleSoftwareContext<T> : SoftwareContextBase<T> where T : Server
     {
-        private readonly EitherStruct<string[], Func<string[]?>> _versionsOrFactory;
+        private readonly Either<string[], Func<string[]?>> _versionsOrFactory;
         private readonly Func<string, T?> _createServerFactory;
         private readonly Func<Task<bool>>? _initializer;
 
@@ -28,7 +28,7 @@ namespace WitherTorch.Core.Software
 
         public override string[] GetSoftwareVersions()
         {
-            EitherStruct<string[], Func<string[]?>> versionsOrFactory = _versionsOrFactory;
+            Either<string[], Func<string[]?>> versionsOrFactory = _versionsOrFactory;
             if (versionsOrFactory.IsLeft)
                 return versionsOrFactory.Left;
             if (versionsOrFactory.IsRight)

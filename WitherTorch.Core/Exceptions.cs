@@ -9,7 +9,7 @@ namespace WitherTorch.Core
     /// </summary>
     public sealed class ServerSoftwareIsNotRegisteredException : Exception
     {
-        private EitherStruct<Type, string> _software;
+        private Either<Type, string> _software;
 
         /// <summary>
         /// 觸發此例外狀況的伺服器類型 (可能為 <see langword="null"/>)
@@ -44,7 +44,7 @@ namespace WitherTorch.Core
         {
             get
             {
-                EitherStruct<Type, string> software = _software;
+                Either<Type, string> software = _software;
                 if (software.IsLeft)
                     return $"{software.Left.FullName} is not a valid server type registered in {nameof(SoftwareRegister)} !";
                 return $"{software.Right} is not registered in {nameof(SoftwareRegister)} !";

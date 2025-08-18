@@ -74,7 +74,7 @@ namespace WitherTorch.Core.Utils
             return array[index]; //Use forward index
         }
 
-        private static JsonNode? DecodeSubPathAndCreateOrSet(ReadOnlySpan<char> pathSpan, JsonNode? node, EitherStruct<Func<JsonNode>, JsonNode> newNode)
+        private static JsonNode? DecodeSubPathAndCreateOrSet(ReadOnlySpan<char> pathSpan, JsonNode? node, Either<Func<JsonNode>, JsonNode> newNode)
         {
             if (node is not JsonObject obj)
                 return null;
