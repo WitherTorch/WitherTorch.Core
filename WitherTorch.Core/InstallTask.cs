@@ -12,7 +12,7 @@ namespace WitherTorch.Core
     /// </summary>
     /// <param name="task">執行此委派的 <see cref="InstallTask"/> 物件</param>
     /// <param name="token">偵測安裝工作是否被要求停止的令牌</param>
-    public delegate void InstallTaskStart(InstallTask task, CancellationToken token);
+    public delegate ValueTask<bool> InstallTaskStart(InstallTask task, CancellationToken token);
 
     /// <summary>
     /// 表示在 <see cref="InstallTask"/> 內所執行的伺服器安裝方法
@@ -20,7 +20,7 @@ namespace WitherTorch.Core
     /// <param name="task">執行此委派的 <see cref="InstallTask"/> 物件</param>
     /// <param name="token">偵測安裝工作是否被要求停止的令牌</param>
     /// <param name="state">安裝方法在執行時將傳入的自定義物件</param>
-    public delegate void ParameterizedInstallTaskStart(InstallTask task, CancellationToken token, object? state);
+    public delegate ValueTask<bool> ParameterizedInstallTaskStart(InstallTask task, object? state, CancellationToken token);
 
     /// <summary>
     /// <see cref="InstallTask.ValidateFailed"/> 事件專用的委派方法
@@ -98,7 +98,6 @@ namespace WitherTorch.Core
         /// </summary>
         public AbstractInstallStatus Status => _status;
 
-        private readonly TaskCreationOptions _creationOptions;
         private readonly Either<InstallTaskStart, ParameterizedInstallTaskStart> _installTaskStart;
         private readonly object? _installTaskStartState;
         private readonly CancellationTokenSource _tokenSource;
@@ -113,10 +112,8 @@ namespace WitherTorch.Core
         /// </summary>
         /// <param name="owner">此安裝工作的擁有者</param>
         /// <param name="version">此安裝工作的所要安裝的版本</param>
-        /// <param name="installTaskStart">在觸發 <see cref="Start"/> 時所要執行的安裝委派</param>
-        /// <param name="creationOptions">在啟動 <paramref name="installTaskStart"/> 時所要附加的行程執行選項</param>
-        public InstallTask(Server owner, string version,
-            InstallTaskStart installTaskStart, TaskCreationOptions creationOptions = TaskCreationOptions.RunContinuationsAsynchronously)
+        /// <param name="installTaskStart">在觸發 <see cref="StartAsync"/> 時所要執行的安裝委派</param>
+        public InstallTask(Server owner, string version, InstallTaskStart installTaskStart)
         {
             Owner = owner;
             Version = version;
@@ -124,7 +121,6 @@ namespace WitherTorch.Core
             _installTaskStart = Either.Left<InstallTaskStart, ParameterizedInstallTaskStart>(installTaskStart);
             _installTaskStartState = null;
             _tokenSource = new CancellationTokenSource();
-            _creationOptions = creationOptions;
         }
 
         /// <summary>
@@ -132,11 +128,9 @@ namespace WitherTorch.Core
         /// </summary>
         /// <param name="owner">此安裝工作的擁有者</param>
         /// <param name="version">此安裝工作的所要安裝的版本</param>
-        /// <param name="state">此安裝工作的額外資訊，會在觸發 <see cref="Start"/> 時傳入至 <paramref name="installTaskStart"/></param>
-        /// <param name="installTaskStart">在觸發 <see cref="Start"/> 時所要執行的安裝委派</param>
-        /// <param name="creationOptions">在啟動 <paramref name="installTaskStart"/> 時所要附加的行程執行選項</param>
-        public InstallTask(Server owner, string version, object? state,
-            ParameterizedInstallTaskStart installTaskStart, TaskCreationOptions creationOptions = TaskCreationOptions.RunContinuationsAsynchronously)
+        /// <param name="state">此安裝工作的額外資訊，會在觸發 <see cref="StartAsync"/> 時傳入至 <paramref name="installTaskStart"/></param>
+        /// <param name="installTaskStart">在觸發 <see cref="StartAsync"/> 時所要執行的安裝委派</param>
+        public InstallTask(Server owner, string version, object? state, ParameterizedInstallTaskStart installTaskStart)
         {
             Owner = owner;
             Version = version;
@@ -144,7 +138,6 @@ namespace WitherTorch.Core
             _installTaskStart = Either.Right<InstallTaskStart, ParameterizedInstallTaskStart>(installTaskStart);
             _installTaskStartState = state;
             _tokenSource = new CancellationTokenSource();
-            _creationOptions = creationOptions;
         }
 
         /// <summary>
@@ -195,60 +188,76 @@ namespace WitherTorch.Core
         /// <summary>
         /// 要求開始安裝流程
         /// </summary>
-        /// <remarks>(安裝過程為非同步執行，伺服器軟體會呼叫 <see cref="InstallTask"/> 內的各項事件以更新目前的安裝狀態)</remarks>
-        public void Start()
+        /// <param name="throwException">是否將安裝流程進行時所產生的 <see cref="Exception"/> 傳回至呼叫端</param>
+        /// <remarks>(安裝過程中會呼叫 <see cref="InstallTask"/> 內的各項事件以更新目前的安裝狀態)</remarks>
+        /// <returns>安裝流程所對應的 <see cref="Task"/> 物件</returns>
+        public async Task<bool> StartAsync(bool throwException = false)
         {
-            var installAction = _installTaskStart;
-            if (installAction.IsLeft)
+#pragma warning disable CA2012
+            Either<InstallTaskStart, ParameterizedInstallTaskStart> installTaskStart = _installTaskStart;
+            ValueTask<bool> task;
+            if (installTaskStart.IsLeft)
             {
-                StartCore(installAction.Left);
-                return;
+                CancellationToken token = _tokenSource.Token;
+                if (token.IsCancellationRequested)
+                    goto Failed;
+                task = StartAsyncCore(installTaskStart.Left, token);
             }
-            if (installAction.IsRight)
+            else if (installTaskStart.IsRight)
             {
-                StartCore(installAction.Right, _installTaskStartState);
-                return;
+                CancellationToken token = _tokenSource.Token;
+                if (token.IsCancellationRequested)
+                    goto Failed;
+                task = StartAsyncCore(installTaskStart.Right, _installTaskStartState, token);
+            }
+            else
+                goto Finished;
+
+            if (!throwException)
+                task = WrapExceptionForTask(task);
+
+            if (await task.ConfigureAwait(continueOnCapturedContext: false))
+                goto Finished;
+            goto Failed;
+
+        Finished:
+            OnInstallFinished();
+            return true;
+
+        Failed:
+            OnInstallFailed();
+            return false;
+#pragma warning restore CA2012
+        }
+
+        private static async ValueTask<bool> WrapExceptionForTask(ValueTask<bool> task)
+        {
+            try
+            {
+                return await task;
+            }
+            catch (Exception)
+            {
+                return false;
             }
         }
 
         /// <summary>
-        /// 若需覆寫，請將此方法覆寫為觸發 <see cref="Start"/> 後會執行的程式碼
+        /// 若需覆寫，請將此方法覆寫為觸發 <see cref="StartAsync"/> 後會執行的程式碼
         /// </summary>
-        /// <param name="installTaskStart"><see cref="InstallTask(Server, string, InstallTaskStart, TaskCreationOptions)"/> 所傳入的安裝工作</param>
-        protected virtual void StartCore(InstallTaskStart installTaskStart)
-        {
-            Task.Factory.StartNew(delegate ()
-            {
-                try
-                {
-                    installTaskStart.Invoke(this, _tokenSource.Token);
-                }
-                catch (Exception)
-                {
-                    OnInstallFailed();
-                }
-            }, _tokenSource.Token, _creationOptions, TaskScheduler.Current);
-        }
+        /// <param name="installTaskStart"><see cref="InstallTask(Server, string, InstallTaskStart)"/> 所傳入的安裝工作</param>
+        /// <param name="token">偵測安裝工作是否被要求停止的令牌</param>
+        protected virtual async ValueTask<bool> StartAsyncCore(InstallTaskStart installTaskStart, CancellationToken token)
+            => await installTaskStart.Invoke(this, token);
 
         /// <summary>
-        /// 若需覆寫，請將此方法覆寫為觸發 <see cref="Start"/> 後會執行的程式碼
+        /// 若需覆寫，請將此方法覆寫為觸發 <see cref="StartAsync"/> 後會執行的程式碼
         /// </summary>
-        /// <param name="installTaskStart"><see cref="InstallTask(Server, string, object?, ParameterizedInstallTaskStart, TaskCreationOptions)"/> 所傳入的安裝工作</param>
+        /// <param name="installTaskStart"><see cref="InstallTask(Server, string, object?, ParameterizedInstallTaskStart)"/> 所傳入的安裝工作</param>
+        /// <param name="token">偵測安裝工作是否被要求停止的令牌</param>
         /// <param name="state">呼叫 <paramref name="installTaskStart"/> 時需傳入的額外安裝資訊</param>
-        protected virtual void StartCore(ParameterizedInstallTaskStart installTaskStart, object? state)
-        {
-            Task.Factory.StartNew(delegate (object? _state)
-            {
-                try
-                {
-                    installTaskStart.Invoke(this, _tokenSource.Token, _state);
-                }
-                catch (Exception)
-                {
-                    OnInstallFailed();
-                }
-            }, state, _tokenSource.Token, _creationOptions, TaskScheduler.Current);
-        }
+        protected virtual async ValueTask<bool> StartAsyncCore(ParameterizedInstallTaskStart installTaskStart, object? state, CancellationToken token)
+            => await installTaskStart.Invoke(this, state, token);
 
         /// <summary>
         /// 要求停止安裝流程

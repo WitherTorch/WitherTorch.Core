@@ -1,9 +1,11 @@
-﻿namespace WitherTorch.Core.Runtime
+﻿using System;
+
+namespace WitherTorch.Core.Runtime
 {
     /// <summary>
     /// 本機伺服器處理序的基底介面
     /// </summary>
-    public interface ILocalProcess : IProcess
+    public interface ILocalProcess : IProcess, IDisposable
     {
         /// <summary>
         /// 取得當前處理序的工作目錄

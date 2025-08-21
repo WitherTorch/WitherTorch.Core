@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,7 +31,7 @@ namespace WitherTorch.Core.Software
         public Type GetServerType() => _serverType;
 
         /// <inheritdoc/>
-        public abstract string[] GetSoftwareVersions();
+        public abstract Task<IReadOnlyList<string>> GetSoftwareVersionsAsync();
 
         /// <inheritdoc cref="ISoftwareContext.CreateServerInstance(string)"/>
         public abstract T? CreateServerInstance(string serverDirectory);

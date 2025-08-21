@@ -7,7 +7,7 @@ namespace WitherTorch.Core.Runtime
     /// <summary>
     /// 可重覆使用的本機系統處理序類別
     /// </summary>
-    public class LocalProcess : ILocalProcess, IDisposable
+    public class LocalProcess : ILocalProcess
     {
         private System.Diagnostics.Process? _process;
         private bool _disposed;
@@ -102,7 +102,6 @@ namespace WitherTorch.Core.Runtime
             if ((process = Interlocked.Exchange(ref _process, null)) is null)
                 return;
             StopCore(process);
-            ProcessEnded?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -122,6 +121,7 @@ namespace WitherTorch.Core.Runtime
             process.ErrorDataReceived -= Process_ErrorDataReceived;
             process.OutputDataReceived -= Process_OutputDataReceived;
             process.Exited -= Process_Exited;
+            ProcessEnded?.Invoke(this, EventArgs.Empty);
             try
             {
                 process.Dispose();

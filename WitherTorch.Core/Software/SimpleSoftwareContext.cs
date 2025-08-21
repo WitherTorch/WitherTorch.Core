@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Threading.Tasks;
+using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 
 using WitherTorch.Core.Utils;
 
@@ -36,14 +37,15 @@ namespace WitherTorch.Core.Software
 
         public Type GetServerType() => _serverType;
 
-        public string[] GetSoftwareVersions()
+        public Task<IReadOnlyList<string>> GetSoftwareVersionsAsync()
         {
             Either<string[], Func<string[]?>> versionsOrFactory = _versionsOrFactory;
             if (versionsOrFactory.IsLeft)
-                return versionsOrFactory.Left;
+                return Task.FromResult((IReadOnlyList<string>)versionsOrFactory.Left);
             if (versionsOrFactory.IsRight)
-                return versionsOrFactory.Right.Invoke() ?? Array.Empty<string>();
-            return Array.Empty<string>();
+                return Task.Factory.StartNew(() => (IReadOnlyList<string>)(versionsOrFactory.Right.Invoke() ?? Array.Empty<string>()), CancellationToken.None,
+                    TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+            return Task.FromResult((IReadOnlyList<string>)Array.Empty<string>());
         }
 
         public Server? CreateServerInstance(string serverDirectory) => _createServerFactory.Invoke(serverDirectory);

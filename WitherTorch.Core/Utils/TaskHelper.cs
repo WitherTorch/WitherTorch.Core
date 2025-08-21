@@ -46,7 +46,7 @@ namespace WitherTorch.Core.Utils
         {
             CancellationToken cancellationToken = cancellationTokenSource.Token;
             Task<TResult?> workingTask = factoryFunc.Invoke(cancellationToken);
-            Task resultTask = await Task.WhenAny(workingTask, Task.Delay(delay, cancellationToken));
+            Task resultTask = await Task.WhenAny(workingTask, Task.Delay(delay, cancellationToken)).ConfigureAwait(continueOnCapturedContext: false);
             if (!leaveOpen)
                 cancellationTokenSource.Dispose();
             if (ReferenceEquals(resultTask, workingTask))

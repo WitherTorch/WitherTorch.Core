@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,7 +26,7 @@ namespace WitherTorch.Core.Software
         /// 取得伺服器軟體所支援的版本列表
         /// </summary>
         /// <returns></returns>
-        string[] GetSoftwareVersions();
+        Task<IReadOnlyList<string>> GetSoftwareVersionsAsync();
 
         /// <summary>
         /// 建立一個新的伺服器物件，或是傳回 <see langword="null"/> 表示建立失敗

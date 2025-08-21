@@ -1,5 +1,6 @@
 ﻿using System;
-using System.Diagnostics;
+
+using WitherTorch.Core.Runtime;
 
 namespace WitherTorch.Core
 {
@@ -30,7 +31,7 @@ namespace WitherTorch.Core
         /// <summary>
         /// 當接收到子處理序傳回的輸出訊息時觸發
         /// </summary>
-        public event DataReceivedEventHandler? ProcessMessageReceived;
+        public event MessageReceivedEventHandler? ProcessMessageReceived;
 
         private double _percentage;
 
@@ -60,11 +61,11 @@ namespace WitherTorch.Core
         }
 
         /// <summary>
-        /// 
+        /// 觸發 <see cref="ProcessMessageReceived"/> 事件
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        public virtual void OnProcessMessageReceived(object sender, DataReceivedEventArgs e)
+        /// <param name="sender">事件的傳送者 (可能為 <see langword="null"/>)</param>
+        /// <param name="e">事件的額外資訊</param>
+        public virtual void OnProcessMessageReceived(object? sender, MessageReceivedEventArgs e)
         {
             ProcessMessageReceived?.Invoke(sender, e);
         }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -26,14 +27,15 @@ namespace WitherTorch.Core.Software
             _initializer = initializer;
         }
 
-        public override string[] GetSoftwareVersions()
+        public override Task<IReadOnlyList<string>> GetSoftwareVersionsAsync()
         {
             Either<string[], Func<string[]?>> versionsOrFactory = _versionsOrFactory;
             if (versionsOrFactory.IsLeft)
-                return versionsOrFactory.Left;
+                return Task.FromResult((IReadOnlyList<string>)versionsOrFactory.Left);
             if (versionsOrFactory.IsRight)
-                return versionsOrFactory.Right.Invoke() ?? Array.Empty<string>();
-            return Array.Empty<string>();
+                return Task.Factory.StartNew(() => (IReadOnlyList<string>)(versionsOrFactory.Right.Invoke() ?? Array.Empty<string>()), CancellationToken.None,
+                    TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+            return Task.FromResult((IReadOnlyList<string>)Array.Empty<string>());
         }
 
         public override T? CreateServerInstance(string serverDirectory) => _createServerFactory.Invoke(serverDirectory);
