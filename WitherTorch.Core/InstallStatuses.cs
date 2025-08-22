@@ -114,7 +114,7 @@ namespace WitherTorch.Core
     /// <summary>
     /// 解壓縮檔案的狀態類別
     /// </summary>
-    public class DecompessionStatus : AbstractInstallStatus
+    public class DecompressionStatus : AbstractInstallStatus
     {
         private double _percentage;
 
@@ -135,10 +135,10 @@ namespace WitherTorch.Core
         }
 
         /// <summary>
-        /// <see cref="DecompessionStatus"/> 的建構子
+        /// <see cref="DecompressionStatus"/> 的建構子
         /// </summary>
         /// <param name="percentage">檔案的初始解壓縮進度</param>
-        public DecompessionStatus(double percentage = 0.0)
+        public DecompressionStatus(double percentage = 0.0)
         {
             Percentage = percentage;
         }

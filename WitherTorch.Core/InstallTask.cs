@@ -267,8 +267,8 @@ namespace WitherTorch.Core
             if (_stopped)
                 return;
             _stopped = true;
-            _tokenSource.Cancel();
             StopRequested?.Invoke(this, EventArgs.Empty);
+            _tokenSource.Cancel();
         }
 
         /// <summary>
