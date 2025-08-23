@@ -161,10 +161,14 @@ namespace WitherTorch.Core.Utils
         /// <typeparam name="T">要更換的左側類型</typeparam>
         /// <returns>更換類型後的新結構</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Either<T, TRight> CastLeft<T>() where T : class
+        public unsafe Either<T, TRight> CastLeft<T>() where T : class
         {
             if (_side != EitherSide.Right)
                 return Either<T, TRight>.Empty;
+#pragma warning disable CS8500
+            if (sizeof(TLeft) == sizeof(T))
+                return UnsafeHelper.BitCast<Either<TLeft, TRight>, Either<T, TRight>>(this);
+#pragma warning restore CS8500
             return new Either<T, TRight>(EitherSide.Right, right: _right);
         }
 
@@ -174,10 +178,14 @@ namespace WitherTorch.Core.Utils
         /// <typeparam name="T">要更換的右側類型</typeparam>
         /// <returns>更換類型後的新結構</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Either<TLeft, T> CastRight<T>() where T : class
+        public unsafe Either<TLeft, T> CastRight<T>() where T : class
         {
             if (_side != EitherSide.Left)
                 return Either<TLeft, T>.Empty;
+#pragma warning disable CS8500
+            if (sizeof(TRight) == sizeof(T))
+                return UnsafeHelper.BitCast<Either<TLeft, TRight>, Either<TLeft, T>>(this);
+#pragma warning restore CS8500
             return new Either<TLeft, T>(EitherSide.Left, left: _left);
         }
 

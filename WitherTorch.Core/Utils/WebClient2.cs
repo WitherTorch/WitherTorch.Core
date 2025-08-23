@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Buffers;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+
+using WitherTorch.Core.Runtime;
 
 namespace WitherTorch.Core.Utils
 {
@@ -227,9 +228,17 @@ namespace WitherTorch.Core.Utils
         /// <exception cref="HttpRequestException"/>
         public void DownloadFile(string address, string fileName) => DownloadFileTaskAsync(new Uri(address), fileName, _tokenSource.Token).Wait();
 
+        /// <inheritdoc cref="WebClient.DownloadFile(string, string)"/>
+        /// <exception cref="HttpRequestException"/>
+        public void DownloadFile(string address, ITempFileInfo tempFile) => DownloadFileTaskAsync(new Uri(address), tempFile, _tokenSource.Token).Wait();
+
         /// <inheritdoc cref="WebClient.DownloadFile(Uri, string)"/>
         /// <exception cref="HttpRequestException"/>
         public void DownloadFile(Uri address, string fileName) => DownloadFileTaskAsync(address, fileName, _tokenSource.Token).Wait();
+
+        /// <inheritdoc cref="WebClient.DownloadFile(Uri, string)"/>
+        /// <exception cref="HttpRequestException"/>
+        public void DownloadFile(Uri address, ITempFileInfo tempFile) => DownloadFileTaskAsync(address, tempFile, _tokenSource.Token).Wait();
 
         /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(string, string)"/>
         /// <exception cref="HttpRequestException"/>
@@ -237,7 +246,15 @@ namespace WitherTorch.Core.Utils
 
         /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
         /// <exception cref="HttpRequestException"/>
+        public Task DownloadFileTaskAsync(string address, ITempFileInfo tempFile) => DownloadFileTaskAsync(new Uri(address), tempFile, _tokenSource.Token);
+
+        /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
+        /// <exception cref="HttpRequestException"/>
         public Task DownloadFileTaskAsync(Uri address, string fileName) => DownloadFileTaskAsync(address, fileName, _tokenSource.Token);
+
+        /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
+        /// <exception cref="HttpRequestException"/>
+        public Task DownloadFileTaskAsync(Uri address, ITempFileInfo tempFile) => DownloadFileTaskAsync(address, tempFile, _tokenSource.Token);
 
         /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
         /// <exception cref="HttpRequestException"/>
@@ -252,6 +269,22 @@ namespace WitherTorch.Core.Utils
             if (token.IsCancellationRequested)
                 return;
             using FileStream fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.Read, DefaultFileStreamBufferSize, true);
+            await CopyToBetweenStreamAsync(contentStream, fileStream, token);
+        }
+
+        /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
+        /// <exception cref="HttpRequestException"/>
+        public async Task DownloadFileTaskAsync(Uri address, ITempFileInfo tempFile, CancellationToken token)
+        {
+            using Stream contentStream
+#if NET8_0_OR_GREATER
+                = await GetStreamAsync(address, token);
+#else
+                = await GetStreamAsync(address);
+#endif
+            if (token.IsCancellationRequested)
+                return;
+            using Stream fileStream = tempFile.Open(FileAccess.Write, DefaultFileStreamBufferSize, true);
             await CopyToBetweenStreamAsync(contentStream, fileStream, token);
         }
 
@@ -273,7 +306,42 @@ namespace WitherTorch.Core.Utils
                     using HttpContent content = response.Content;
                     cancellationToken.ThrowIfCancellationRequested();
                     using Stream contentStream = content.ReadAsStreamAsync().Result;
-                    using FileStream fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.Read, DefaultFileStreamBufferSize, true);
+                    using FileStream fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite, DefaultFileStreamBufferSize, true);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    fileStream.Position = 0;
+                    long length = content.Headers.ContentLength ?? -1;
+                    await DownloadBits(contentStream, fileStream, length, userToken, cancellationToken);
+                    contentStream.Close();
+                    fileStream.Close();
+                }
+                eventArgs = new AsyncCompletedEventArgs(null, false, userToken);
+            }
+            catch (OperationCanceledException ex)
+            {
+                eventArgs = new AsyncCompletedEventArgs(ex, true, userToken);
+            }
+            catch (Exception ex)
+            {
+                eventArgs = new AsyncCompletedEventArgs(ex, false, userToken);
+            }
+            OnDownloadFileCompleted(eventArgs);
+        }
+
+        /// <inheritdoc cref="WebClient.DownloadFileAsync(Uri, string, object)"/>
+        /// <exception cref="HttpRequestException"/>
+        public async void DownloadFileAsync(Uri address, ITempFileInfo tempFile, object? userToken)
+        {
+            CancellationToken cancellationToken = _tokenSource.Token;
+            AsyncCompletedEventArgs eventArgs;
+            try
+            {
+                using HttpResponseMessage response = await GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                if (response.IsSuccessStatusCode)
+                {
+                    using HttpContent content = response.Content;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    using Stream contentStream = content.ReadAsStreamAsync().Result;
+                    using Stream fileStream = tempFile.Open(FileAccess.Write, DefaultFileStreamBufferSize, true);
                     cancellationToken.ThrowIfCancellationRequested();
                     fileStream.Position = 0;
                     long length = content.Headers.ContentLength ?? -1;
