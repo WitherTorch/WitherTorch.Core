@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
@@ -66,7 +66,7 @@ namespace WitherTorch.Core
             if (!File.Exists(path))
                 return null;
             JsonPropertyFile serverInformation = new JsonPropertyFile(path, useFileWatcher: false);
-            ISoftwareContext? software = SoftwareRegister.GetSoftwareContext(serverInformation["software"]?.GetValue<string>(), throwExceptionIfNotRegistered: true);
+            ISoftwareContext? software = SoftwareRegister.GetSoftwareContext(serverInformation[ServerSoftwareNode]?.GetValue<string>(), throwExceptionIfNotRegistered: true);
             if (software is null)
                 return null;
             return LoadServerCore(software, serverDirectory, serverInformation);

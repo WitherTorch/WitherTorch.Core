@@ -1,13 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using WitherTorch.Core.Software;
 using WitherTorch.Core.Utils;
 
-namespace WitherTorch.Core
+namespace WitherTorch.Core.Software
 {
     /// <summary>
     /// 伺服器軟體的註冊工具，此類別是靜態類別
@@ -87,7 +86,7 @@ namespace WitherTorch.Core
         /// <param name="softwareId">伺服器軟體 ID</param>
         /// <returns>對應的伺服器類型，或是 <see langword="null"/></returns>
         public static Type? GetServerTypeFromSoftwareId(string? softwareId)
-            => GetSoftwareContext(softwareId, throwExceptionIfNotRegistered: false)?.GetType();
+            => GetSoftwareContext(softwareId, throwExceptionIfNotRegistered: false)?.GetServerType();
 
         /// <summary>
         /// 取得與該伺服器物件類型相對應的伺服器軟體 ID

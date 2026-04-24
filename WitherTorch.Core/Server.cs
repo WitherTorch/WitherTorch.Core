@@ -1,11 +1,14 @@
-﻿using System;
+using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 
 using WitherTorch.Core.Property;
 using WitherTorch.Core.Runtime;
-using WitherTorch.Core.Software;
+using WitherTorch.Core.Tagging;
 
 namespace WitherTorch.Core
 {
@@ -15,6 +18,8 @@ namespace WitherTorch.Core
     public abstract partial class Server
     {
         private readonly string _serverDirectory;
+        private readonly List<IPersistentTag> _tagList = new();
+
         private string _name = string.Empty;
 
         /// <summary>
@@ -28,7 +33,7 @@ namespace WitherTorch.Core
         public event EventHandler? ServerVersionChanged;
 
         /// <summary>
-        /// 在 <see cref="RunServer()"/> 或 <see cref="RunServer(RuntimeEnvironment?)"/> 被呼叫且準備啟動伺服器時觸發
+        /// 在 <see cref="RunServer(IRuntimeEnvironment)"/> 被呼叫且準備啟動伺服器時觸發
         /// </summary>
         public event EventHandler? BeforeRunServer;
 
@@ -78,18 +83,6 @@ namespace WitherTorch.Core
         public JsonPropertyFile? ServerInfoJson { get; private set; }
 
         /// <summary>
-        /// 取得伺服器的執行環境資訊
-        /// </summary>
-        /// <returns>若無特殊的執行環境資訊，應回傳 <see langword="null"/> 來指示伺服器軟體執行者以預設環境執行</returns>
-        public abstract RuntimeEnvironment? GetRuntimeEnvironment();
-
-        /// <summary>
-        /// 設定伺服器的執行環境資訊
-        /// </summary>
-        /// <returns></returns>
-        public abstract void SetRuntimeEnvironment(RuntimeEnvironment? environment);
-
-        /// <summary>
         /// <see cref="Server"/> 的建構子
         /// </summary>
         /// <param name="serverDirectory">伺服器資料夾路徑</param>
@@ -122,17 +115,11 @@ namespace WitherTorch.Core
         public abstract IProcess GetProcess();
 
         /// <summary>
-        /// 以 <see cref="GetRuntimeEnvironment"/> 內的執行環境來啟動伺服器
-        /// </summary>
-        /// <returns>伺服器是否已啟動</returns>
-        public bool RunServer() => RunServer(GetRuntimeEnvironment());
-
-        /// <summary>
         /// 以 <paramref name="environment"/> 所指定的執行環境來啟動伺服器
         /// </summary>
-        /// <param name="environment">啟動伺服器時所要使用的執行環境，或是傳入 <see langword="null"/> 來指示其使用預設的執行環境</param>
+        /// <param name="environment">啟動伺服器時所要使用的執行環境</param>
         /// <returns>伺服器是否已啟動</returns>
-        public abstract bool RunServer(RuntimeEnvironment? environment);
+        public abstract bool RunServer(IRuntimeEnvironment environment);
 
         /// <summary>
         /// 停止伺服器
@@ -194,10 +181,13 @@ namespace WitherTorch.Core
                 serverInfoJson = new JsonPropertyFile(Path.Combine(ServerDirectory, "./server_info.json"), useFileWatcher: false);
                 ServerInfoJson = serverInfoJson;
             }
-            serverInfoJson["name"] = JsonValue.Create(ServerName);
-            serverInfoJson["software"] = JsonValue.Create(GetSoftwareId());
+            serverInfoJson[ServerNameNode] = JsonValue.Create(ServerName);
+            serverInfoJson[ServerSoftwareNode] = JsonValue.Create(GetSoftwareId());
             if (SaveServerCore(serverInfoJson))
+            {
+                SavePersistentTags(this, serverInfoJson);
                 serverInfoJson.Save(false);
+            }
             IPropertyFile[] properties = GetServerPropertyFiles();
             if (properties is null)
                 return;
@@ -208,9 +198,358 @@ namespace WitherTorch.Core
         }
 
         /// <summary>
-        /// 伺服器物件的標籤，可供操作者儲存額外的伺服器資訊<br/>
-        /// 伺服器軟體本身不應使用該屬性。
+        /// 為伺服器物件附加 <paramref name="tag"/> 所指向的持久化標籤
         /// </summary>
+        /// <param name="tag">要附加的持久化標籤 (如果傳入 <see langword="null"/> 則不會執行任何動作)</param>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public void AddPersistentTag(IPersistentTag? tag)
+        {
+            if (tag is null)
+                return;
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+                list.Add(tag);
+        }
+
+        /// <summary>
+        /// 為伺服器物件附加 <paramref name="tags"/> 所指向的持久化標籤陣列
+        /// </summary>
+        /// <param name="tags">要附加的持久化標籤陣列 (如果傳入 <see langword="null"/> 則不會執行任何動作)</param>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public void AddPersistentTags(IPersistentTag?[]? tags)
+        {
+            if (tags is null)
+                return;
+            int length = tags.Length;
+            if (length <= 0)
+                return;
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+            {
+                foreach (IPersistentTag? tag in tags)
+                {
+                    if (tag is not null)
+                        list.Add(tag);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 為伺服器物件附加 <paramref name="tags"/> 所指向的持久化標籤集合
+        /// </summary>
+        /// <param name="tags">要附加的持久化標籤集合 (如果傳入 <see langword="null"/> 則不會執行任何動作)</param>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public void AddPersistentTags(IEnumerable<IPersistentTag?>? tags)
+        {
+            if (tags is null)
+                return;
+            using IEnumerator<IPersistentTag?> enumerator = tags.GetEnumerator();
+            if (!enumerator.MoveNext())
+                return;
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+            {
+                do
+                {
+                    IPersistentTag? tag = enumerator.Current;
+                    if (tag is not null)
+                        list.Add(tag);
+                } while (enumerator.MoveNext());
+            }
+        }
+
+        /// <summary>
+        /// 嘗試取得附加於伺服器物件且符合類型的持久化標籤
+        /// </summary>
+        /// <typeparam name="T">持久化標籤的類型</typeparam>
+        /// <param name="result">成功取得的持久化標籤，或是 <see langword="null"/></param>
+        /// <returns>是否成功取得指定的物件</returns>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public bool TryGetPersistentTag<T>([NotNullWhen(true)] out T? result) where T : IPersistentTag
+        {
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+            {
+                foreach (IPersistentTag tag in list)
+                {
+                    if (tag is T castedTag)
+                    {
+                        result = castedTag;
+                        return true;
+                    }
+                }
+            }
+            result = default;
+            return false;
+        }
+
+        /// <summary>
+        /// 嘗試取得附加於伺服器物件且符合條件的持久化標籤
+        /// </summary>
+        /// <param name="predicate">要篩選的條件</param>
+        /// <param name="result">成功取得的持久化標籤，或是 <see langword="null"/></param>
+        /// <returns>是否成功取得指定的物件</returns>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public bool TryGetPersistentTag(Predicate<IPersistentTag> predicate, [NotNullWhen(true)] out IPersistentTag? result)
+        {
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+            {
+                foreach (IPersistentTag tag in list)
+                {
+                    if (predicate.Invoke(tag))
+                    {
+                        result = tag;
+                        return true;
+                    }
+                }
+            }
+            result = default;
+            return false;
+        }
+
+        /// <summary>
+        /// 嘗試取得附加於伺服器物件且符合條件的持久化標籤
+        /// </summary>
+        /// <param name="predicate">要篩選的條件</param>
+        /// <param name="state">傳入 <paramref name="predicate"/> 的狀態物件</param>
+        /// <param name="result">成功取得的持久化標籤，或是 <see langword="null"/></param>
+        /// <returns>是否成功取得指定的物件</returns>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public bool TryGetPersistentTag<TState>(Func<IPersistentTag, TState, bool> predicate, TState state, [NotNullWhen(true)] out IPersistentTag? result)
+        {
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+            {
+                foreach (IPersistentTag tag in list)
+                {
+                    if (predicate.Invoke(tag, state))
+                    {
+                        result = tag;
+                        return true;
+                    }
+                }
+            }
+            result = default;
+            return false;
+        }
+
+        /// <summary>
+        /// 取得所有附加於伺服器物件的持久化標籤
+        /// </summary>
+        /// <returns>成功取得的持久化標籤陣列</returns>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public IPersistentTag[] GetPersistentTags()
+        {
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+            {
+                int count = 0;
+                if (count <= 0)
+                    return Array.Empty<IPersistentTag>();
+                return list.ToArray();
+            }
+        }
+
+        /// <summary>
+        /// 取得所有附加於伺服器物件且符合條件的持久化標籤
+        /// </summary>
+        /// <param name="predicate">要篩選的條件</param>
+        /// <returns>成功取得的持久化標籤陣列</returns>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public IPersistentTag[] GetPersistentTags(Func<IPersistentTag, bool> predicate)
+        {
+            ArrayPool<IPersistentTag> pool = ArrayPool<IPersistentTag>.Shared;
+            List<IPersistentTag> list = _tagList;
+            IPersistentTag[] buffer;
+            int resultCount = 0;
+            lock (list)
+            {
+                int count = 0;
+                if (count <= 0)
+                    return Array.Empty<IPersistentTag>();
+                buffer = pool.Rent(count);
+                try
+                {
+                    foreach (IPersistentTag tag in list)
+                    {
+                        if (!predicate.Invoke(tag))
+                            continue;
+                        buffer[resultCount++] = tag;
+                    }
+                }
+                catch (Exception)
+                {
+                    pool.Return(buffer, clearArray: true);
+                    throw;
+                }
+            }
+            try
+            {
+                if (resultCount <= 0)
+                    return Array.Empty<IPersistentTag>();
+                IPersistentTag[] result = new IPersistentTag[resultCount];
+                Array.Copy(buffer, result, resultCount);
+                return result;
+            }
+            finally
+            {
+                pool.Return(buffer, clearArray: true);
+            }
+        }
+
+        /// <summary>
+        /// 取得所有附加於伺服器物件且符合條件的持久化標籤
+        /// </summary>
+        /// <param name="predicate">要篩選的條件</param>
+        /// <param name="state">傳入 <paramref name="predicate"/> 的狀態物件</param>
+        /// <returns>成功取得的持久化標籤陣列</returns>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public IPersistentTag[] GetPersistentTags<TState>(Func<IPersistentTag, TState, bool> predicate, TState state)
+        {
+            ArrayPool<IPersistentTag> pool = ArrayPool<IPersistentTag>.Shared;
+            List<IPersistentTag> list = _tagList;
+            IPersistentTag[] buffer;
+            int resultCount = 0;
+            lock (list)
+            {
+                int count = 0;
+                if (count <= 0)
+                    return Array.Empty<IPersistentTag>();
+                buffer = pool.Rent(count);
+                try
+                {
+                    foreach (IPersistentTag tag in list)
+                    {
+                        if (!predicate.Invoke(tag, state))
+                            continue;
+                        buffer[resultCount++] = tag;
+                    }
+                }
+                catch (Exception)
+                {
+                    pool.Return(buffer, clearArray: true);
+                    throw;
+                }
+            }
+            try
+            {
+                if (resultCount <= 0)
+                    return Array.Empty<IPersistentTag>();
+                IPersistentTag[] result = new IPersistentTag[resultCount];
+                Array.Copy(buffer, result, resultCount);
+                return result;
+            }
+            finally
+            {
+                pool.Return(buffer, clearArray: true);
+            }
+        }
+
+        /// <summary>
+        /// 清除所有附加在伺服器物件的持久化標籤
+        /// </summary>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public void ClearPersistentTags()
+        {
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+                list.Clear();
+        }
+
+        /// <summary>
+        /// 為伺服器物件移除 <paramref name="tag"/> 所指向的持久化標籤
+        /// </summary>
+        /// <param name="tag">要移除的持久化標籤 (如果傳入 <see langword="null"/> 則不會執行任何動作)</param>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public void RemovePersistentTag(IPersistentTag? tag)
+        {
+            if (tag is null)
+                return;
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+                list.Remove(tag);
+        }
+
+        /// <summary>
+        /// 為伺服器物件移除所有指定類型的持久化標籤
+        /// </summary>
+        /// <typeparam name="T">持久化標籤的類型</typeparam>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public void RemovePersistentTags<T>() where T : IPersistentTag
+        {
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+                RemovePersistentTags(static val => val is T);
+        }
+
+        /// <summary>
+        /// 為伺服器物件移除所有符合條件的持久化標籤
+        /// </summary>
+        /// <param name="predicate">要篩選的條件</param>
+        /// <remarks>
+        /// 備註: 由於持久化標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public void RemovePersistentTags(Predicate<IPersistentTag> predicate)
+        {
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+                list.RemoveAll(predicate);
+        }
+
+        /// <summary>
+        /// 為伺服器物件移除所有符合條件的持久化標籤
+        /// </summary>
+        /// <param name="predicate">要篩選的條件</param>
+        /// <param name="state">傳入 <paramref name="predicate"/> 的狀態物件</param>
+        /// <remarks>
+        /// 備註: 由於標籤物件列表可被使用者更動，故伺服器軟體本身若使用此處進行持久狀態存儲時需考慮被移除之可能性。
+        /// </remarks>
+        public void RemoveTags<TState>(Func<IPersistentTag, TState, bool> predicate, TState state)
+        {
+            List<IPersistentTag> list = _tagList;
+            lock (list)
+            {
+                int count = list.Count;
+                for (int i = count - 1; i >= 0; i--)
+                {
+                    IPersistentTag tag = list[i];
+                    if (predicate.Invoke(tag, state))
+                        list.RemoveAt(i);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 伺服器物件的非持久化標籤，可供使用者儲存額外的伺服器資訊
+        /// </summary>
+        /// <remarks>
+        /// 伺服器軟體本身不應使用該屬性。
+        /// </remarks>
         public object? Tag { get; set; }
     }
 }

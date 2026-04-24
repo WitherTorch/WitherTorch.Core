@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
