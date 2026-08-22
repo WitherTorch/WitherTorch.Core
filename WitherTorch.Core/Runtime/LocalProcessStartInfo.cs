@@ -1,5 +1,3 @@
-﻿using System;
-
 namespace WitherTorch.Core.Runtime
 {
     /// <summary>
