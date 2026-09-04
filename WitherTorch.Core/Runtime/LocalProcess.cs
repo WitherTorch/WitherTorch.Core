@@ -24,7 +24,7 @@ namespace WitherTorch.Core.Runtime
         {
             get
             {
-                System.Diagnostics.Process? process = _process;
+                System.Diagnostics.Process? process = AsCLRProcess();
                 if (process is null)
                     return default;
                 try
@@ -43,7 +43,7 @@ namespace WitherTorch.Core.Runtime
         {
             get
             {
-                System.Diagnostics.Process? process = _process;
+                System.Diagnostics.Process? process = AsCLRProcess();
                 if (process is null)
                     return default;
                 try
@@ -62,7 +62,7 @@ namespace WitherTorch.Core.Runtime
         {
             get
             {
-                System.Diagnostics.Process? process = _process;
+                System.Diagnostics.Process? process = AsCLRProcess();
                 if (process is null)
                     return false;
                 try
@@ -81,7 +81,7 @@ namespace WitherTorch.Core.Runtime
         {
             get
             {
-                System.Diagnostics.Process? process = _process;
+                System.Diagnostics.Process? process = AsCLRProcess();
                 if (process is null)
                     return null;
                 try
@@ -132,56 +132,56 @@ namespace WitherTorch.Core.Runtime
         }
 
         /// <inheritdoc/>
-        public void InputCommand(string command)
-        {
-            if (!string.IsNullOrWhiteSpace(command))
-                _process?.StandardInput.WriteLine(command);
-        }
+        public void InputCommand(string command) 
+            => AsCLRProcess()?.StandardInput.WriteLine(command);
 
         /// <inheritdoc />
-        public System.Diagnostics.Process? AsCLRProcess() => _process;
+        public System.Diagnostics.Process? AsCLRProcess() => Volatile.Read(ref _process);
 
         /// <inheritdoc />
         public bool Start(in LocalProcessStartInfo startInfo)
         {
-            System.Diagnostics.Process? process = _process;
-            try
+            lock (this)
             {
-                if (process is not null)
+                System.Diagnostics.Process? process = _process;
+                try
                 {
-                    if (!process.HasExited)
-                        return false;
-                    process.Dispose();
+                    if (process is not null)
+                    {
+                        if (!process.HasExited)
+                            return false;
+                        process.Dispose();
+                    }
                 }
-            }
-            catch (Exception)
-            {
-            }
+                catch (Exception)
+                {
+                }
 
-            System.Diagnostics.ProcessStartInfo processStartInfo = startInfo.ToProcessStartInfo();
-            if (WTCore.RedirectSystemProcessStream)
-            {
-                processStartInfo.StandardOutputEncoding = Encoding.UTF8;
-                processStartInfo.StandardErrorEncoding = Encoding.UTF8;
-                processStartInfo.RedirectStandardError = true;
-                processStartInfo.RedirectStandardOutput = true;
-                processStartInfo.RedirectStandardInput = true;
-            }
-            process = System.Diagnostics.Process.Start(processStartInfo);
-            try
-            {
-                if (process is null || process.HasExited)
+                System.Diagnostics.ProcessStartInfo processStartInfo = startInfo.ToProcessStartInfo();
+                if (WTCore.RedirectSystemProcessStream)
+                {
+                    processStartInfo.StandardOutputEncoding = Encoding.UTF8;
+                    processStartInfo.StandardErrorEncoding = Encoding.UTF8;
+                    processStartInfo.RedirectStandardError = true;
+                    processStartInfo.RedirectStandardOutput = true;
+                    processStartInfo.RedirectStandardInput = true;
+                }
+                process = System.Diagnostics.Process.Start(processStartInfo);
+                try
+                {
+                    if (process is null || process.HasExited)
+                        return false;
+                }
+                catch (Exception)
+                {
                     return false;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+                }
 
-            _process = process;
-            StartCore(process);
-            ProcessStarted?.Invoke(this, EventArgs.Empty);
-            return true;
+                _process = process;
+                StartCore(process);
+                ProcessStarted?.Invoke(this, EventArgs.Empty);
+                return true;
+            }
         }
 
         /// <summary>
