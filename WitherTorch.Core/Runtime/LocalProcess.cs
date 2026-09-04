@@ -8,10 +8,15 @@ using CLRProcessStartInfo = System.Diagnostics.ProcessStartInfo;
 namespace WitherTorch.Core.Runtime;
 
 /// <summary>
-/// 可重覆使用的本機系統處理序類別
+/// 可重覆使用的本機系統處理程序類別
 /// </summary>
 public class LocalProcess : ILocalProcess
 {
+    /// <summary>
+    /// 啟動本機系統處理程序時所使用的編碼
+    /// </summary>
+    public static readonly Encoding Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
+
     private readonly object _syncLock = new object();
     private MessageReceivedEventHandler? _receivedHandler;
     private CLRProcess? _process;
@@ -201,8 +206,8 @@ public class LocalProcess : ILocalProcess
             CLRProcessStartInfo processStartInfo = startInfo.ToProcessStartInfo();
             if (WTCore.RedirectSystemProcessStream)
             {
-                processStartInfo.StandardOutputEncoding = Encoding.UTF8;
-                processStartInfo.StandardErrorEncoding = Encoding.UTF8;
+                processStartInfo.StandardOutputEncoding = Encoding;
+                processStartInfo.StandardErrorEncoding = Encoding;
                 processStartInfo.RedirectStandardError = true;
                 processStartInfo.RedirectStandardOutput = true;
                 processStartInfo.RedirectStandardInput = true;
@@ -264,18 +269,34 @@ public class LocalProcess : ILocalProcess
     /// <param name="process">已啟動的本機系統處理序</param>
     protected virtual void OnMessageReceivedEventSubscribed(CLRProcess process)
     {
+        CLRProcessStartInfo startInfo;
         try
         {
-            process.BeginOutputReadLine();
-            process.OutputDataReceived += Process_OutputDataReceived;
+            startInfo = process.StartInfo;
+        }
+        catch (Exception)
+        {
+            return;
+        }
+
+        try
+        {
+            if (startInfo.RedirectStandardOutput)
+            {
+                process.BeginOutputReadLine();
+                process.OutputDataReceived += Process_OutputDataReceived;
+            }
         }
         catch (Exception)
         {
         }
         try
         {
-            process.BeginErrorReadLine();
-            process.ErrorDataReceived += Process_ErrorDataReceived;
+            if (startInfo.RedirectStandardError)
+            {
+                process.BeginErrorReadLine();
+                process.ErrorDataReceived += Process_ErrorDataReceived;
+            }
         }
         catch (Exception)
         {
