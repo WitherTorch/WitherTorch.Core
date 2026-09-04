@@ -65,7 +65,7 @@ public class ProcessStatus : AbstractInstallStatus
     /// </summary>
     /// <param name="sender">事件的傳送者 (可能為 <see langword="null"/>)</param>
     /// <param name="e">事件的額外資訊</param>
-    public virtual void OnProcessMessageReceived(object? sender, MessageReceivedEventArgs e)
+    public virtual void OnProcessMessageReceived(object? sender, in MessageReceivedEventArgs e)
     {
         ProcessMessageReceived?.Invoke(sender, e);
     }
