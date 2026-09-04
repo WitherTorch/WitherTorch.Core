@@ -178,6 +178,9 @@ namespace WitherTorch.Core.Runtime
                 }
 
                 _process = process;
+                process.EnableRaisingEvents = true;
+                process.Exited += Process_Exited;
+
                 StartCore(process);
                 ProcessStarted?.Invoke(this, EventArgs.Empty);
                 return true;
@@ -190,15 +193,17 @@ namespace WitherTorch.Core.Runtime
         /// <param name="process">已啟動的本機系統處理序</param>
         protected virtual void StartCore(System.Diagnostics.Process process)
         {
-            process.EnableRaisingEvents = true;
-            if (process.StartInfo.RedirectStandardInput)
+            System.Diagnostics.ProcessStartInfo startInfo = process.StartInfo;
+            if (startInfo.RedirectStandardOutput)
             {
-                process.BeginErrorReadLine();
                 process.BeginOutputReadLine();
-                process.ErrorDataReceived += Process_ErrorDataReceived;
                 process.OutputDataReceived += Process_OutputDataReceived;
             }
-            process.Exited += Process_Exited;
+            if (startInfo.RedirectStandardError)
+            {
+                process.BeginErrorReadLine();
+                process.ErrorDataReceived += Process_ErrorDataReceived;
+            }
         }
 
         private void Process_Exited(object? sender, EventArgs e)
