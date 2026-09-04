@@ -5,164 +5,163 @@ using System.Collections.Generic;
 using System.Buffers;
 using System.Diagnostics;
 
-namespace WitherTorch.Core.Utils
+namespace WitherTorch.Core.Utils;
+
+/// <summary>
+/// 提供持續監測檔案存在及修改狀態的服務
+/// </summary>
+public sealed class FileModifyWatcher
 {
     /// <summary>
-    /// 提供持續監測檔案存在及修改狀態的服務
+    /// 當檔案有所變化時，觸發此事件
     /// </summary>
-    public sealed class FileModifyWatcher
+    public event EventHandler? Changed;
+
+    private readonly string _path;
+
+    private long _modifiedTime;
+
+    /// <summary>
+    /// <see cref="FileModifyWatcher"/> 的建構子
+    /// </summary>
+    /// <param name="path">要監測的檔案路徑</param>
+    /// <exception cref="InvalidOperationException"></exception>
+    public FileModifyWatcher(string path)
     {
-        /// <summary>
-        /// 當檔案有所變化時，觸發此事件
-        /// </summary>
-        public event EventHandler? Changed;
+        _path = Path.GetFullPath(path);
+    }
 
-        private readonly string _path;
+    /// <summary>
+    /// 更新 <see cref="FileModifyWatcher"/> 的狀態，並視需要觸發 <see cref="Changed"/> 事件
+    /// </summary>
+    public void UpdateState()
+    {
+        long newModifiedTime;
+        string path = _path;
+        if (File.Exists(path))
+            newModifiedTime = File.GetLastWriteTimeUtc(path).Ticks;
+        else
+            newModifiedTime = 0L;
+        if (_modifiedTime == newModifiedTime)
+            return;
+        _modifiedTime = newModifiedTime;
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
 
-        private long _modifiedTime;
+    /// <summary>
+    /// 啟動此 <see cref="FileModifyWatcher"/> 物件，並開始監聽對應的檔案
+    /// </summary>
+    public void Active() => WatchingThreadLoop.Instance.Add(this);
 
-        /// <summary>
-        /// <see cref="FileModifyWatcher"/> 的建構子
-        /// </summary>
-        /// <param name="path">要監測的檔案路徑</param>
-        /// <exception cref="InvalidOperationException"></exception>
-        public FileModifyWatcher(string path)
+    /// <summary>
+    /// 停止此 <see cref="FileModifyWatcher"/> 物件對特定檔案的監聽
+    /// </summary>
+    public void Deactive() => WatchingThreadLoop.Instance.Remove(this);
+
+    private sealed class WatchingThreadLoop : IDisposable
+    {
+        private static readonly WatchingThreadLoop _instance = new WatchingThreadLoop();
+
+        private readonly HashSet<FileModifyWatcher> _watchers;
+        private readonly AutoResetEvent _trigger;
+
+        private long _disposed;
+
+        public static WatchingThreadLoop Instance => _instance;
+
+        private WatchingThreadLoop()
         {
-            _path = Path.GetFullPath(path);
+            _watchers = new HashSet<FileModifyWatcher>();
+            _trigger = new AutoResetEvent(initialState: false);
+            new Thread(DoLoop) { IsBackground = true, Name = nameof(FileModifyWatcher) + " ThreadLoop" }.Start();
         }
 
-        /// <summary>
-        /// 更新 <see cref="FileModifyWatcher"/> 的狀態，並視需要觸發 <see cref="Changed"/> 事件
-        /// </summary>
-        public void UpdateState()
+        public void Add(FileModifyWatcher watcher)
         {
-            long newModifiedTime;
-            string path = _path;
-            if (File.Exists(path))
-                newModifiedTime = File.GetLastWriteTimeUtc(path).Ticks;
-            else
-                newModifiedTime = 0L;
-            if (_modifiedTime == newModifiedTime)
+            if (watcher is null)
                 return;
-            _modifiedTime = newModifiedTime;
-            Changed?.Invoke(this, EventArgs.Empty);
+            HashSet<FileModifyWatcher> watchers = _watchers;
+            Monitor.Enter(watchers);
+            watchers.Add(watcher);
+            Monitor.Exit(watchers);
+            _trigger.Set();
         }
 
-        /// <summary>
-        /// 啟動此 <see cref="FileModifyWatcher"/> 物件，並開始監聽對應的檔案
-        /// </summary>
-        public void Active() => WatchingThreadLoop.Instance.Add(this);
-
-        /// <summary>
-        /// 停止此 <see cref="FileModifyWatcher"/> 物件對特定檔案的監聽
-        /// </summary>
-        public void Deactive() => WatchingThreadLoop.Instance.Remove(this);
-
-        private sealed class WatchingThreadLoop : IDisposable
+        public void Remove(FileModifyWatcher watcher)
         {
-            private static readonly WatchingThreadLoop _instance = new WatchingThreadLoop();
+            if (watcher is null)
+                return;
+            HashSet<FileModifyWatcher> watchers = _watchers;
+            Monitor.Enter(watchers);
+            watchers.Remove(watcher);
+            Monitor.Exit(watchers);
+        }
 
-            private readonly HashSet<FileModifyWatcher> _watchers;
-            private readonly AutoResetEvent _trigger;
+        private void DoLoop(object? obj)
+        {
+            const long ThreadLoopInterval = 500;
 
-            private long _disposed;
+            ArrayPool<FileModifyWatcher> pool = ArrayPool<FileModifyWatcher>.Shared;
+            Stopwatch stopwatch = new Stopwatch();
 
-            public static WatchingThreadLoop Instance => _instance;
+            HashSet<FileModifyWatcher> watchers = _watchers;
+            AutoResetEvent trigger = _trigger;
 
-            private WatchingThreadLoop()
+            while (Interlocked.Read(ref _disposed) == 0L)
             {
-                _watchers = new HashSet<FileModifyWatcher>();
-                _trigger = new AutoResetEvent(initialState: false);
-                new Thread(DoLoop) { IsBackground = true, Name = nameof(FileModifyWatcher) + " ThreadLoop" }.Start();
-            }
-
-            public void Add(FileModifyWatcher watcher)
-            {
-                if (watcher is null)
-                    return;
-                HashSet<FileModifyWatcher> watchers = _watchers;
+                stopwatch.Restart();
                 Monitor.Enter(watchers);
-                watchers.Add(watcher);
+                int count = watchers.Count;
+                if (count <= 0)
+                {
+                    Monitor.Exit(watchers);
+                    trigger.WaitOne();
+                    continue;
+                }
+                FileModifyWatcher[] watcherArray = pool.Rent(count);
+                watchers.CopyTo(watcherArray, 0, count);
                 Monitor.Exit(watchers);
+                for (int i = 0; i < count; i++)
+                    watcherArray[i].UpdateState();
+                pool.Return(watcherArray, clearArray: true);
+                stopwatch.Stop();
+                long elapsedTime = stopwatch.ElapsedMilliseconds;
+                if (elapsedTime >= ThreadLoopInterval)
+                    continue;
+                if (elapsedTime <= 0)
+                {
+                    Thread.Sleep(unchecked((int)ThreadLoopInterval));
+                    continue;
+                }
+                Thread.Sleep(unchecked((int)(ThreadLoopInterval - elapsedTime)));
+            }
+            trigger.Dispose();
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (Interlocked.CompareExchange(ref _disposed, 1L, 0L) != 0L)
+                return;
+            if (disposing)
+                _watchers.Clear();
+            try
+            {
                 _trigger.Set();
             }
-
-            public void Remove(FileModifyWatcher watcher)
+            catch (Exception)
             {
-                if (watcher is null)
-                    return;
-                HashSet<FileModifyWatcher> watchers = _watchers;
-                Monitor.Enter(watchers);
-                watchers.Remove(watcher);
-                Monitor.Exit(watchers);
             }
+        }
 
-            private void DoLoop(object? obj)
-            {
-                const long ThreadLoopInterval = 500;
+        ~WatchingThreadLoop()
+        {
+            Dispose(disposing: false);
+        }
 
-                ArrayPool<FileModifyWatcher> pool = ArrayPool<FileModifyWatcher>.Shared;
-                Stopwatch stopwatch = new Stopwatch();
-
-                HashSet<FileModifyWatcher> watchers = _watchers;
-                AutoResetEvent trigger = _trigger;
-
-                while (Interlocked.Read(ref _disposed) == 0L)
-                {
-                    stopwatch.Restart();
-                    Monitor.Enter(watchers);
-                    int count = watchers.Count;
-                    if (count <= 0)
-                    {
-                        Monitor.Exit(watchers);
-                        trigger.WaitOne();
-                        continue;
-                    }
-                    FileModifyWatcher[] watcherArray = pool.Rent(count);
-                    watchers.CopyTo(watcherArray, 0, count);
-                    Monitor.Exit(watchers);
-                    for (int i = 0; i < count; i++)
-                        watcherArray[i].UpdateState();
-                    pool.Return(watcherArray, clearArray: true);
-                    stopwatch.Stop();
-                    long elapsedTime = stopwatch.ElapsedMilliseconds;
-                    if (elapsedTime >= ThreadLoopInterval)
-                        continue;
-                    if (elapsedTime <= 0)
-                    {
-                        Thread.Sleep(unchecked((int)ThreadLoopInterval));
-                        continue;
-                    }
-                    Thread.Sleep(unchecked((int)(ThreadLoopInterval - elapsedTime)));
-                }
-                trigger.Dispose();
-            }
-
-            private void Dispose(bool disposing)
-            {
-                if (Interlocked.CompareExchange(ref _disposed, 1L, 0L) != 0L)
-                    return;
-                if (disposing)
-                    _watchers.Clear();
-                try
-                {
-                    _trigger.Set();
-                }
-                catch (Exception)
-                {
-                }
-            }
-
-            ~WatchingThreadLoop()
-            {
-                Dispose(disposing: false);
-            }
-
-            public void Dispose()
-            {
-                Dispose(disposing: true);
-                GC.SuppressFinalize(this);
-            }
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

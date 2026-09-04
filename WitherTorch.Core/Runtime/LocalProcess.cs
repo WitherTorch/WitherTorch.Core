@@ -2,250 +2,325 @@ using System;
 using System.Text;
 using System.Threading;
 
-namespace WitherTorch.Core.Runtime
+using CLRProcess = System.Diagnostics.Process;
+using CLRProcessStartInfo = System.Diagnostics.ProcessStartInfo;
+
+namespace WitherTorch.Core.Runtime;
+
+/// <summary>
+/// 可重覆使用的本機系統處理序類別
+/// </summary>
+public class LocalProcess : ILocalProcess
 {
-    /// <summary>
-    /// 可重覆使用的本機系統處理序類別
-    /// </summary>
-    public class LocalProcess : ILocalProcess
+    private readonly object _syncLock = new object();
+    private MessageReceivedEventHandler? _receivedHandler;
+    private CLRProcess? _process;
+    private bool _disposed;
+
+    /// <inheritdoc/>
+    public event EventHandler? ProcessStarted;
+    /// <inheritdoc/>
+    public event EventHandler? ProcessEnded;
+    /// <inheritdoc/>
+    public event MessageReceivedEventHandler? MessageReceived
     {
-        private System.Diagnostics.Process? _process;
-        private bool _disposed;
-
-        /// <inheritdoc/>
-        public event EventHandler? ProcessStarted;
-        /// <inheritdoc/>
-        public event EventHandler? ProcessEnded;
-        /// <inheritdoc/>
-        public event MessageReceivedEventHandler? MessageReceived;
-
-        /// <inheritdoc/>
-        public int Id
+        add
         {
-            get
+            lock (_syncLock)
             {
-                System.Diagnostics.Process? process = AsCLRProcess();
+                MessageReceivedEventHandler? handler = _receivedHandler;
+                _receivedHandler = handler + value;
+                if (handler is not null)
+                    return;
+                CLRProcess? process = _process;
                 if (process is null)
-                    return default;
-                try
-                {
-                    return process.Id;
-                }
-                catch (InvalidOperationException)
-                {
-                    return default;
-                }
+                    return;
+                OnMessageReceivedEventSubscribed(process);
             }
         }
-
-        /// <inheritdoc/>
-        public DateTime StartTime
+        remove
         {
-            get
+            lock (_syncLock)
             {
-                System.Diagnostics.Process? process = AsCLRProcess();
+                MessageReceivedEventHandler? handler = _receivedHandler;
+                handler -= value;
+                _receivedHandler = handler;
+                if (handler is not null)
+                    return;
+                CLRProcess? process = _process;
                 if (process is null)
-                    return default;
-                try
-                {
-                    return process.StartTime;
-                }
-                catch (InvalidOperationException)
-                {
-                    return default;
-                }
+                    return;
+                OnMessageReceivedEventUnsubscribed(process);
             }
         }
+    }
 
-        /// <inheritdoc/>
-        public bool IsAlive
-        {
-            get
-            {
-                System.Diagnostics.Process? process = AsCLRProcess();
-                if (process is null)
-                    return false;
-                try
-                {
-                    return !process.HasExited;
-                }
-                catch (InvalidOperationException)
-                {
-                    return false;
-                }
-            }
-        }
+    /// <summary>
+    /// 取得用於同步存取的物件
+    /// </summary>
+    public object SyncRoot => _syncLock;
 
-        /// <inheritdoc />
-        public string? WorkingDirectory
+    /// <inheritdoc/>
+    public int Id
+    {
+        get
         {
-            get
-            {
-                System.Diagnostics.Process? process = AsCLRProcess();
-                if (process is null)
-                    return null;
-                try
-                {
-                    return process.StartInfo.WorkingDirectory;
-                }
-                catch (InvalidOperationException)
-                {
-                    return null;
-                }
-            }
-        }
-
-        /// <inheritdoc />
-        public void Stop()
-        {
-            System.Diagnostics.Process? process;
-            if ((process = Interlocked.Exchange(ref _process, null)) is null)
-                return;
-            StopCore(process);
-        }
-
-        /// <summary>
-        /// 終止指定的本機系統處理序
-        /// </summary>
-        /// <param name="process">要終止的本機系統處理序</param>
-        protected virtual void StopCore(System.Diagnostics.Process process)
-        {
+            CLRProcess? process = AsCLRProcess();
+            if (process is null)
+                return default;
             try
             {
-                if (!process.HasExited)
-                    process.Kill();
+                return process.Id;
             }
             catch (InvalidOperationException)
             {
+                return default;
             }
-            process.ErrorDataReceived -= Process_ErrorDataReceived;
-            process.OutputDataReceived -= Process_OutputDataReceived;
-            process.Exited -= Process_Exited;
-            ProcessEnded?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <inheritdoc/>
+    public DateTime StartTime
+    {
+        get
+        {
+            CLRProcess? process = AsCLRProcess();
+            if (process is null)
+                return default;
             try
             {
-                process.Dispose();
+                return process.StartTime;
             }
             catch (InvalidOperationException)
             {
+                return default;
             }
         }
+    }
 
-        /// <inheritdoc/>
-        public void InputCommand(string command) 
-            => AsCLRProcess()?.StandardInput.WriteLine(command);
-
-        /// <inheritdoc />
-        public System.Diagnostics.Process? AsCLRProcess() => Volatile.Read(ref _process);
-
-        /// <inheritdoc />
-        public bool Start(in LocalProcessStartInfo startInfo)
+    /// <inheritdoc/>
+    public bool IsAlive
+    {
+        get
         {
-            lock (this)
+            CLRProcess? process = AsCLRProcess();
+            if (process is null)
+                return false;
+            try
             {
-                System.Diagnostics.Process? process = _process;
-                try
-                {
-                    if (process is not null)
-                    {
-                        if (!process.HasExited)
-                            return false;
-                        process.Dispose();
-                    }
-                }
-                catch (Exception)
-                {
-                }
+                return !process.HasExited;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+        }
+    }
 
-                System.Diagnostics.ProcessStartInfo processStartInfo = startInfo.ToProcessStartInfo();
-                if (WTCore.RedirectSystemProcessStream)
+    /// <inheritdoc />
+    public string? WorkingDirectory
+    {
+        get
+        {
+            CLRProcess? process = AsCLRProcess();
+            if (process is null)
+                return null;
+            try
+            {
+                return process.StartInfo.WorkingDirectory;
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public void Stop()
+    {
+        CLRProcess? process;
+        if ((process = Interlocked.Exchange(ref _process, null)) is null)
+            return;
+        StopCore(process);
+    }
+
+    /// <summary>
+    /// 終止指定的本機系統處理序
+    /// </summary>
+    /// <param name="process">要終止的本機系統處理序</param>
+    protected virtual void StopCore(CLRProcess process)
+    {
+        try
+        {
+            if (!process.HasExited)
+                process.Kill();
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        process.ErrorDataReceived -= Process_ErrorDataReceived;
+        process.OutputDataReceived -= Process_OutputDataReceived;
+        process.Exited -= Process_Exited;
+        ProcessEnded?.Invoke(this, EventArgs.Empty);
+        try
+        {
+            process.Dispose();
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+
+    /// <inheritdoc/>
+    public void InputCommand(string command)
+        => AsCLRProcess()?.StandardInput.WriteLine(command);
+
+    /// <inheritdoc />
+    public CLRProcess? AsCLRProcess() => Volatile.Read(ref _process);
+
+    /// <inheritdoc />
+    public bool Start(in LocalProcessStartInfo startInfo)
+    {
+        lock (_syncLock)
+        {
+            CLRProcess? process = _process;
+            try
+            {
+                if (process is not null)
                 {
-                    processStartInfo.StandardOutputEncoding = Encoding.UTF8;
-                    processStartInfo.StandardErrorEncoding = Encoding.UTF8;
-                    processStartInfo.RedirectStandardError = true;
-                    processStartInfo.RedirectStandardOutput = true;
-                    processStartInfo.RedirectStandardInput = true;
-                }
-                process = System.Diagnostics.Process.Start(processStartInfo);
-                try
-                {
-                    if (process is null || process.HasExited)
+                    if (!process.HasExited)
                         return false;
+                    process.Dispose();
                 }
-                catch (Exception)
-                {
+            }
+            catch (Exception)
+            {
+            }
+
+            CLRProcessStartInfo processStartInfo = startInfo.ToProcessStartInfo();
+            if (WTCore.RedirectSystemProcessStream)
+            {
+                processStartInfo.StandardOutputEncoding = Encoding.UTF8;
+                processStartInfo.StandardErrorEncoding = Encoding.UTF8;
+                processStartInfo.RedirectStandardError = true;
+                processStartInfo.RedirectStandardOutput = true;
+                processStartInfo.RedirectStandardInput = true;
+            }
+            process = CLRProcess.Start(processStartInfo);
+            try
+            {
+                if (process is null || process.HasExited)
                     return false;
-                }
-
-                _process = process;
-                process.EnableRaisingEvents = true;
-                process.Exited += Process_Exited;
-
-                StartCore(process);
-                ProcessStarted?.Invoke(this, EventArgs.Empty);
-                return true;
             }
-        }
-
-        /// <summary>
-        /// 在指定的本機系統處理序啟動之後要執行的程式碼
-        /// </summary>
-        /// <param name="process">已啟動的本機系統處理序</param>
-        protected virtual void StartCore(System.Diagnostics.Process process)
-        {
-            System.Diagnostics.ProcessStartInfo startInfo = process.StartInfo;
-            if (startInfo.RedirectStandardOutput)
+            catch (Exception)
             {
-                process.BeginOutputReadLine();
-                process.OutputDataReceived += Process_OutputDataReceived;
+                return false;
             }
-            if (startInfo.RedirectStandardError)
-            {
-                process.BeginErrorReadLine();
-                process.ErrorDataReceived += Process_ErrorDataReceived;
-            }
-        }
 
-        private void Process_Exited(object? sender, EventArgs e)
-        {
-            if (sender is not System.Diagnostics.Process process ||
-                !ReferenceEquals(Interlocked.CompareExchange(ref _process, null, process), process))
-                return;
-            StopCore(process);
-        }
+            _process = process;
+            process.EnableRaisingEvents = true;
+            process.Exited += Process_Exited;
 
-        private void Process_ErrorDataReceived(object? sender, System.Diagnostics.DataReceivedEventArgs e)
-        {
-            MessageReceived?.Invoke(this, new MessageReceivedEventArgs(true, e.Data ?? string.Empty));
-        }
+            ProcessStarted?.Invoke(this, EventArgs.Empty);
+            StartCore(process);
 
-        private void Process_OutputDataReceived(object? sender, System.Diagnostics.DataReceivedEventArgs e)
-        {
-            MessageReceived?.Invoke(this, new MessageReceivedEventArgs(false, e.Data ?? string.Empty));
+            return true;
         }
+    }
 
-        /// <inheritdoc cref="Dispose()"/>
-        protected virtual void DisposeCore()
-        {
-            if (_disposed)
-                return;
-            _disposed = true;
-            Stop();
-        }
+    /// <summary>
+    /// 在指定的本機系統處理序啟動之後要執行的程式碼
+    /// </summary>
+    /// <param name="process">已啟動的本機系統處理序</param>
+    protected virtual void StartCore(CLRProcess process)
+    {
+        if (_receivedHandler is not null)
+            OnMessageReceivedEventSubscribed(process);
+    }
 
-        /// <summary>
-        /// <see cref="LocalProcess"/> 的解構子
-        /// </summary>
-        ~LocalProcess()
-        {
-            DisposeCore();
-        }
+    private void Process_Exited(object? sender, EventArgs e)
+    {
+        if (sender is not CLRProcess process ||
+            !ReferenceEquals(Interlocked.CompareExchange(ref _process, null, process), process))
+            return;
+        StopCore(process);
+    }
 
-        /// <inheritdoc/>
-        public void Dispose()
+    private void Process_ErrorDataReceived(object? sender, System.Diagnostics.DataReceivedEventArgs e)
+        => OnMessageReceived(new MessageReceivedEventArgs(true, e.Data ?? string.Empty));
+
+    private void Process_OutputDataReceived(object? sender, System.Diagnostics.DataReceivedEventArgs e)
+        => OnMessageReceived(new MessageReceivedEventArgs(false, e.Data ?? string.Empty));
+
+    /// <summary>
+    /// 呼叫 <see cref="MessageReceived"/> 事件
+    /// </summary>
+    protected virtual void OnMessageReceived(in MessageReceivedEventArgs e) => Volatile.Read(ref _receivedHandler)?.Invoke(this, e);
+
+    /// <summary>
+    /// 在 <see cref="MessageReceived"/> 事件被訂閱後要執行的方法
+    /// </summary>
+    /// <param name="process">已啟動的本機系統處理序</param>
+    protected virtual void OnMessageReceivedEventSubscribed(CLRProcess process)
+    {
+        try
         {
-            DisposeCore();
-            GC.SuppressFinalize(this);
+            process.BeginOutputReadLine();
+            process.OutputDataReceived += Process_OutputDataReceived;
         }
+        catch (Exception)
+        {
+        }
+        try
+        {
+            process.BeginErrorReadLine();
+            process.ErrorDataReceived += Process_ErrorDataReceived;
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    /// <summary>
+    /// 在 <see cref="MessageReceived"/> 事件被解除訂閱後要執行的方法
+    /// </summary>
+    /// <param name="process">已啟動的本機系統處理序</param>
+    protected virtual void OnMessageReceivedEventUnsubscribed(CLRProcess process)
+    {
+        try
+        {
+            process.CancelOutputRead();
+            process.CancelErrorRead();
+        }
+        finally
+        {
+            process.OutputDataReceived -= Process_OutputDataReceived;
+            process.ErrorDataReceived -= Process_ErrorDataReceived;
+        }
+    }
+
+    /// <inheritdoc cref="Dispose()"/>
+    protected virtual void DisposeCore()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+        Stop();
+    }
+
+    /// <summary>
+    /// <see cref="LocalProcess"/> 的解構子
+    /// </summary>
+    ~LocalProcess()
+    {
+        DisposeCore();
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        DisposeCore();
+        GC.SuppressFinalize(this);
     }
 }

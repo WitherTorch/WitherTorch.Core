@@ -1,16 +1,15 @@
-﻿using System;
+using System;
 using System.Runtime.CompilerServices;
 
-namespace WitherTorch.Core.Utils
+namespace WitherTorch.Core.Utils;
+
+internal static class ObjectUtils
 {
-    internal static class ObjectUtils
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
+    public static T ThrowIfNull<T>(T? obj, string? argName = null)
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]  
-        public static T ThrowIfNull<T>(T? obj, string? argName = null)
-        {
-            if (obj is null)
-                throw new ArgumentNullException(argName ?? nameof(obj));
-            return obj;
-        }
+        if (obj is null)
+            throw new ArgumentNullException(argName ?? nameof(obj));
+        return obj;
     }
 }

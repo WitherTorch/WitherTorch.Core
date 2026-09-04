@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers;
 using System.ComponentModel;
 using System.IO;
@@ -9,504 +9,70 @@ using System.Threading.Tasks;
 
 using WitherTorch.Core.Runtime;
 
-namespace WitherTorch.Core.Utils
+namespace WitherTorch.Core.Utils;
+
+/// <summary>
+/// 基於 <see cref="HttpClient"/> 的類 WebClient 實現
+/// </summary>
+public class WebClient2 : HttpClient
 {
+    private const int DefaultFileStreamBufferSize = 4096;
+    private const int DefaultPooledBufferSize = 131072; // 原始值是 81920，但因為 ArrayPool 只會取二的次方大小，所以選擇了 131072 作為實際大小
+
+    private CancellationTokenSource _tokenSource = new CancellationTokenSource();
+    private bool _disposed;
+
     /// <summary>
-    /// 基於 <see cref="HttpClient"/> 的類 WebClient 實現
+    /// 指示此物件是否已被處置
     /// </summary>
-    public class WebClient2 : HttpClient
+    public bool IsDisposed => _disposed;
+
+    #region Event Handlers
+    /// <inheritdoc cref="System.Net.DownloadProgressChangedEventHandler"/>
+    public delegate void DownloadProgressChangedEventHandler(object? sender, DownloadProgressChangedEventArgs e);
+    /// <inheritdoc cref="System.Net.DownloadStringCompletedEventHandler"/>
+    public delegate void DownloadStringCompletedEventHandler(object? sender, DownloadStringCompletedEventArgs e);
+    /// <inheritdoc cref="System.Net.DownloadDataCompletedEventHandler"/>
+    public delegate void DownloadDataCompletedEventHandler(object? sender, DownloadDataCompletedEventArgs e);
+    /// <inheritdoc cref="System.Net.OpenReadCompletedEventHandler"/>
+    public delegate void OpenReadCompletedEventHandler(object? sender, OpenReadCompletedEventArgs e);
+    #endregion
+
+    #region Events
+    /// <inheritdoc cref="WebClient.DownloadStringCompleted"/>
+    public event DownloadStringCompletedEventHandler? DownloadStringCompleted;
+
+    /// <inheritdoc cref="WebClient.DownloadDataCompleted"/>
+    public event DownloadDataCompletedEventHandler? DownloadDataCompleted;
+
+    /// <inheritdoc cref="WebClient.DownloadFileCompleted"/>
+    public event AsyncCompletedEventHandler? DownloadFileCompleted;
+
+    /// <inheritdoc cref="WebClient.OpenReadCompleted"/>
+    public event OpenReadCompletedEventHandler? OpenReadCompleted;
+
+    /// <inheritdoc cref="WebClient.DownloadProgressChanged"/>
+    public event DownloadProgressChangedEventHandler? DownloadProgressChanged;
+    #endregion
+
+    #region Constructors
+    /// <inheritdoc cref="HttpClient()"/>
+    public WebClient2() : base() { }
+
+    /// <inheritdoc cref="HttpClient(HttpMessageHandler)"/>
+    public WebClient2(HttpMessageHandler handler) : base(handler) { }
+
+    /// <inheritdoc cref="HttpClient(HttpMessageHandler, bool)"/>
+    public WebClient2(HttpMessageHandler handler, bool disposeHandler) : base(handler, disposeHandler) { }
+    #endregion
+
+    /// <inheritdoc cref="WebClient.CancelAsync()"/>
+    public void CancelAsync()
     {
-        private const int DefaultFileStreamBufferSize = 4096;
-        private const int DefaultPooledBufferSize = 131072; // 原始值是 81920，但因為 ArrayPool 只會取二的次方大小，所以選擇了 131072 作為實際大小
-
-        private CancellationTokenSource _tokenSource = new CancellationTokenSource();
-        private bool _disposed;
-
-        /// <summary>
-        /// 指示此物件是否已被處置
-        /// </summary>
-        public bool IsDisposed => _disposed;
-
-        #region Event Handlers
-        /// <inheritdoc cref="System.Net.DownloadProgressChangedEventHandler"/>
-        public delegate void DownloadProgressChangedEventHandler(object? sender, DownloadProgressChangedEventArgs e);
-        /// <inheritdoc cref="System.Net.DownloadStringCompletedEventHandler"/>
-        public delegate void DownloadStringCompletedEventHandler(object? sender, DownloadStringCompletedEventArgs e);
-        /// <inheritdoc cref="System.Net.DownloadDataCompletedEventHandler"/>
-        public delegate void DownloadDataCompletedEventHandler(object? sender, DownloadDataCompletedEventArgs e);
-        /// <inheritdoc cref="System.Net.OpenReadCompletedEventHandler"/>
-        public delegate void OpenReadCompletedEventHandler(object? sender, OpenReadCompletedEventArgs e);
-        #endregion
-
-        #region Events
-        /// <inheritdoc cref="WebClient.DownloadStringCompleted"/>
-        public event DownloadStringCompletedEventHandler? DownloadStringCompleted;
-
-        /// <inheritdoc cref="WebClient.DownloadDataCompleted"/>
-        public event DownloadDataCompletedEventHandler? DownloadDataCompleted;
-
-        /// <inheritdoc cref="WebClient.DownloadFileCompleted"/>
-        public event AsyncCompletedEventHandler? DownloadFileCompleted;
-
-        /// <inheritdoc cref="WebClient.OpenReadCompleted"/>
-        public event OpenReadCompletedEventHandler? OpenReadCompleted;
-
-        /// <inheritdoc cref="WebClient.DownloadProgressChanged"/>
-        public event DownloadProgressChangedEventHandler? DownloadProgressChanged;
-        #endregion
-
-        #region Constructors
-        /// <inheritdoc cref="HttpClient()"/>
-        public WebClient2() : base() { }
-
-        /// <inheritdoc cref="HttpClient(HttpMessageHandler)"/>
-        public WebClient2(HttpMessageHandler handler) : base(handler) { }
-
-        /// <inheritdoc cref="HttpClient(HttpMessageHandler, bool)"/>
-        public WebClient2(HttpMessageHandler handler, bool disposeHandler) : base(handler, disposeHandler) { }
-        #endregion
-
-        /// <inheritdoc cref="WebClient.CancelAsync()"/>
-        public void CancelAsync()
+        CancelPendingRequests();
+        CancellationTokenSource tokenSource = _tokenSource;
+        if (tokenSource is not null)
         {
-            CancelPendingRequests();
-            CancellationTokenSource tokenSource = _tokenSource;
-            if (tokenSource is not null)
-            {
-                bool disposed = false;
-                try
-                {
-                    tokenSource.Cancel(true);
-                }
-                catch (ObjectDisposedException)
-                {
-                    disposed = true;
-                }
-                catch (AggregateException)
-                {
-                    //Do nothing
-                }
-                if (!disposed)
-                    tokenSource.Dispose();
-            }
-            _tokenSource = new CancellationTokenSource();
-        }
-
-        #region Download String Functions
-        /// <inheritdoc cref="WebClient.DownloadString(string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public string DownloadString(string address) => GetStringAsync(address).Result;
-
-        /// <inheritdoc cref="WebClient.DownloadString(Uri)"/>
-        /// <exception cref="HttpRequestException"/>
-        public string DownloadString(Uri address) => GetStringAsync(address).Result;
-
-        /// <inheritdoc cref="WebClient.DownloadStringTaskAsync(string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Task<string> DownloadStringTaskAsync(string address) => GetStringAsync(address);
-
-        /// <inheritdoc cref="WebClient.DownloadStringTaskAsync(Uri)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Task<string> DownloadStringTaskAsync(Uri address) => GetStringAsync(address);
-
-        /// <inheritdoc cref="WebClient.DownloadStringAsync(Uri)"/>
-        /// <exception cref="HttpRequestException"/>
-        public void DownloadStringAsync(Uri address) => DownloadStringAsync(address, null);
-
-        /// <inheritdoc cref="WebClient.DownloadStringAsync(Uri, object)"/>
-        /// <exception cref="HttpRequestException"/>
-        public async void DownloadStringAsync(Uri address, object? userToken)
-        {
-            CancellationToken cancellationToken = _tokenSource.Token;
-            DownloadStringCompletedEventArgs eventArgs;
-            try
-            {
-                using HttpResponseMessage response = await GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                if (response.IsSuccessStatusCode)
-                {
-                    using HttpContent content = response.Content;
-                    cancellationToken.ThrowIfCancellationRequested();
-                    using Stream contentStream = content.ReadAsStreamAsync().Result;
-                    cancellationToken.ThrowIfCancellationRequested();
-                    MemoryStream memoryStream;
-                    long length = content.Headers.ContentLength ?? -1;
-                    if (length < 0)
-                        memoryStream = new MemoryStream();
-                    else
-                        memoryStream = new MemoryStream(length <= int.MaxValue ? (int)length : int.MaxValue);
-                    using (memoryStream)
-                    {
-                        await DownloadBits(contentStream, memoryStream, length, userToken, cancellationToken);
-                        contentStream.Close();
-                        memoryStream.Position = 0;
-                        using StreamReader reader = new StreamReader(memoryStream);
-                        eventArgs = new DownloadStringCompletedEventArgs(reader.ReadToEnd(), null, false, userToken);
-                    }
-                }
-                else
-                    eventArgs = new DownloadStringCompletedEventArgs(string.Empty, null, false, userToken);
-            }
-            catch (OperationCanceledException ex)
-            {
-                eventArgs = new DownloadStringCompletedEventArgs(null, ex, true, userToken);
-            }
-            catch (Exception ex)
-            {
-                eventArgs = new DownloadStringCompletedEventArgs(null, ex, false, userToken);
-            }
-            OnDownloadStringCompleted(eventArgs);
-        }
-        #endregion
-
-        #region Download Data Functions
-        /// <inheritdoc cref="WebClient.DownloadData(string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public byte[] DownloadData(string address) => GetByteArrayAsync(address).Result;
-
-        /// <inheritdoc cref="WebClient.DownloadData(Uri)"/>
-        /// <exception cref="HttpRequestException"/>
-        public byte[] DownloadData(Uri address) => GetByteArrayAsync(address).Result;
-
-        /// <inheritdoc cref="WebClient.DownloadDataTaskAsync(string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Task<byte[]> DownloadDataTaskAsync(string address) => GetByteArrayAsync(address);
-
-        /// <inheritdoc cref="WebClient.DownloadDataTaskAsync(Uri)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Task<byte[]> DownloadDataTaskAsync(Uri address) => GetByteArrayAsync(address);
-
-        /// <inheritdoc cref="WebClient.DownloadDataAsync(Uri)"/>
-        /// <exception cref="HttpRequestException"/>
-        public void DownloadDataAsync(Uri address) => DownloadDataAsync(address, null);
-
-        /// <inheritdoc cref="WebClient.DownloadDataAsync(Uri, object)"/>
-        /// <exception cref="HttpRequestException"/>
-        public async void DownloadDataAsync(Uri address, object? userToken)
-        {
-            CancellationToken cancellationToken = _tokenSource.Token;
-            DownloadDataCompletedEventArgs eventArgs;
-            try
-            {
-                using HttpResponseMessage response = await GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                if (response.IsSuccessStatusCode)
-                {
-                    using HttpContent content = response.Content;
-                    cancellationToken.ThrowIfCancellationRequested();
-                    using Stream contentStream = content.ReadAsStreamAsync().Result;
-                    cancellationToken.ThrowIfCancellationRequested();
-                    MemoryStream memoryStream;
-                    long length = content.Headers.ContentLength ?? -1;
-                    if (length < 0)
-                        memoryStream = new MemoryStream();
-                    else
-                        memoryStream = new MemoryStream(length <= int.MaxValue ? (int)length : int.MaxValue);
-                    using (memoryStream)
-                    {
-                        await DownloadBits(contentStream, memoryStream, length, userToken, cancellationToken);
-                        contentStream.Close();
-                        memoryStream.Position = 0;
-                        eventArgs = new DownloadDataCompletedEventArgs(memoryStream.ToArray(), null, false, userToken);
-                    }
-                }
-                else
-                    eventArgs = new DownloadDataCompletedEventArgs(Array.Empty<byte>(), null, false, userToken);
-            }
-            catch (OperationCanceledException ex)
-            {
-                eventArgs = new DownloadDataCompletedEventArgs(null, ex, true, userToken);
-            }
-            catch (Exception ex)
-            {
-                eventArgs = new DownloadDataCompletedEventArgs(null, ex, false, userToken);
-            }
-            OnDownloadDataCompleted(eventArgs);
-        }
-        #endregion
-
-        #region Download File Functions
-        /// <inheritdoc cref="WebClient.DownloadFile(string, string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public void DownloadFile(string address, string fileName) => DownloadFileTaskAsync(new Uri(address), fileName, _tokenSource.Token).Wait();
-
-        /// <inheritdoc cref="WebClient.DownloadFile(string, string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public void DownloadFile(string address, ITempFileInfo tempFile) => DownloadFileTaskAsync(new Uri(address), tempFile, _tokenSource.Token).Wait();
-
-        /// <inheritdoc cref="WebClient.DownloadFile(Uri, string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public void DownloadFile(Uri address, string fileName) => DownloadFileTaskAsync(address, fileName, _tokenSource.Token).Wait();
-
-        /// <inheritdoc cref="WebClient.DownloadFile(Uri, string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public void DownloadFile(Uri address, ITempFileInfo tempFile) => DownloadFileTaskAsync(address, tempFile, _tokenSource.Token).Wait();
-
-        /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(string, string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Task DownloadFileTaskAsync(string address, string fileName) => DownloadFileTaskAsync(new Uri(address), fileName, _tokenSource.Token);
-
-        /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Task DownloadFileTaskAsync(string address, ITempFileInfo tempFile) => DownloadFileTaskAsync(new Uri(address), tempFile, _tokenSource.Token);
-
-        /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Task DownloadFileTaskAsync(Uri address, string fileName) => DownloadFileTaskAsync(address, fileName, _tokenSource.Token);
-
-        /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Task DownloadFileTaskAsync(Uri address, ITempFileInfo tempFile) => DownloadFileTaskAsync(address, tempFile, _tokenSource.Token);
-
-        /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public async Task DownloadFileTaskAsync(Uri address, string fileName, CancellationToken token)
-        {
-            using Stream contentStream
-#if NET8_0_OR_GREATER
-                = await GetStreamAsync(address, token);
-#else
-                = await GetStreamAsync(address);
-#endif
-            if (token.IsCancellationRequested)
-                return;
-            using FileStream fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.Read, DefaultFileStreamBufferSize, true);
-            await CopyToBetweenStreamAsync(contentStream, fileStream, token);
-        }
-
-        /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public async Task DownloadFileTaskAsync(Uri address, ITempFileInfo tempFile, CancellationToken token)
-        {
-            using Stream contentStream
-#if NET8_0_OR_GREATER
-                = await GetStreamAsync(address, token);
-#else
-                = await GetStreamAsync(address);
-#endif
-            if (token.IsCancellationRequested)
-                return;
-            using Stream fileStream = tempFile.Open(FileAccess.Write, DefaultFileStreamBufferSize, true);
-            await CopyToBetweenStreamAsync(contentStream, fileStream, token);
-        }
-
-        /// <inheritdoc cref="WebClient.DownloadFileAsync(Uri, string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public void DownloadFileAsync(Uri address, string fileName) => DownloadFileAsync(address, fileName, null);
-
-        /// <inheritdoc cref="WebClient.DownloadFileAsync(Uri, string, object)"/>
-        /// <exception cref="HttpRequestException"/>
-        public async void DownloadFileAsync(Uri address, string fileName, object? userToken)
-        {
-            CancellationToken cancellationToken = _tokenSource.Token;
-            AsyncCompletedEventArgs eventArgs;
-            try
-            {
-                using HttpResponseMessage response = await GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                if (response.IsSuccessStatusCode)
-                {
-                    using HttpContent content = response.Content;
-                    cancellationToken.ThrowIfCancellationRequested();
-                    using Stream contentStream = content.ReadAsStreamAsync().Result;
-                    using FileStream fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite, DefaultFileStreamBufferSize, true);
-                    cancellationToken.ThrowIfCancellationRequested();
-                    fileStream.Position = 0;
-                    long length = content.Headers.ContentLength ?? -1;
-                    await DownloadBits(contentStream, fileStream, length, userToken, cancellationToken);
-                    contentStream.Close();
-                    fileStream.Close();
-                }
-                eventArgs = new AsyncCompletedEventArgs(null, false, userToken);
-            }
-            catch (OperationCanceledException ex)
-            {
-                eventArgs = new AsyncCompletedEventArgs(ex, true, userToken);
-            }
-            catch (Exception ex)
-            {
-                eventArgs = new AsyncCompletedEventArgs(ex, false, userToken);
-            }
-            OnDownloadFileCompleted(eventArgs);
-        }
-
-        /// <inheritdoc cref="WebClient.DownloadFileAsync(Uri, string, object)"/>
-        /// <exception cref="HttpRequestException"/>
-        public async void DownloadFileAsync(Uri address, ITempFileInfo tempFile, object? userToken)
-        {
-            CancellationToken cancellationToken = _tokenSource.Token;
-            AsyncCompletedEventArgs eventArgs;
-            try
-            {
-                using HttpResponseMessage response = await GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                if (response.IsSuccessStatusCode)
-                {
-                    using HttpContent content = response.Content;
-                    cancellationToken.ThrowIfCancellationRequested();
-                    using Stream contentStream = content.ReadAsStreamAsync().Result;
-                    using Stream fileStream = tempFile.Open(FileAccess.Write, DefaultFileStreamBufferSize, true);
-                    cancellationToken.ThrowIfCancellationRequested();
-                    fileStream.Position = 0;
-                    long length = content.Headers.ContentLength ?? -1;
-                    await DownloadBits(contentStream, fileStream, length, userToken, cancellationToken);
-                    contentStream.Close();
-                    fileStream.Close();
-                }
-                eventArgs = new AsyncCompletedEventArgs(null, false, userToken);
-            }
-            catch (OperationCanceledException ex)
-            {
-                eventArgs = new AsyncCompletedEventArgs(ex, true, userToken);
-            }
-            catch (Exception ex)
-            {
-                eventArgs = new AsyncCompletedEventArgs(ex, false, userToken);
-            }
-            OnDownloadFileCompleted(eventArgs);
-        }
-        #endregion
-
-        #region Open Read Functions
-        /// <inheritdoc cref="WebClient.OpenRead(string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Stream OpenRead(string address) => GetStreamAsync(address).Result;
-
-        /// <inheritdoc cref="WebClient.OpenRead(Uri)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Stream OpenRead(Uri address) => GetStreamAsync(address).Result;
-
-        /// <inheritdoc cref="WebClient.OpenReadTaskAsync(string)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Task<Stream> OpenReadTaskAsync(string address) => GetStreamAsync(address);
-
-        /// <inheritdoc cref="WebClient.OpenReadTaskAsync(Uri)"/>
-        /// <exception cref="HttpRequestException"/>
-        public Task<Stream> OpenReadTaskAsync(Uri address) => GetStreamAsync(address);
-
-        /// <inheritdoc cref="WebClient.OpenReadAsync(Uri)"/>
-        /// <exception cref="HttpRequestException"/>
-        public void OpenReadAsync(Uri address) => OpenReadAsync(address, null);
-
-        /// <inheritdoc cref="WebClient.OpenReadAsync(Uri, object)"/>
-        /// <exception cref="HttpRequestException"/>
-        public void OpenReadAsync(Uri address, object? userToken)
-        {
-            Task.Factory.StartNew((token) =>
-            {
-                OpenReadCompletedEventArgs? eventArgs;
-                try
-                {
-                    using HttpResponseMessage response = GetAsync(address, HttpCompletionOption.ResponseHeadersRead, _tokenSource.Token).Result;
-                    if (response.IsSuccessStatusCode)
-                    {
-                        using HttpContent content = response.Content;
-                        try
-                        {
-                            using Stream contentStream = content.ReadAsStreamAsync().Result;
-                            OnOpenReadCompleted(new OpenReadCompletedEventArgs(contentStream, null, false, token));
-                            eventArgs = null;
-                        }
-                        catch (Exception)
-                        {
-                            eventArgs = null;
-                        }
-                    }
-                    else
-                        eventArgs = new OpenReadCompletedEventArgs(null, null, false, token);
-                }
-                catch (OperationCanceledException ex)
-                {
-                    eventArgs = new OpenReadCompletedEventArgs(null, ex, true, token);
-                }
-                catch (Exception ex)
-                {
-                    eventArgs = new OpenReadCompletedEventArgs(null, ex, false, token);
-                }
-                if (eventArgs is not null)
-                    OnOpenReadCompleted(eventArgs);
-            }, userToken, _tokenSource.Token);
-        }
-        #endregion
-
-        #region Event Triggers
-        /// <inheritdoc cref="WebClient.OnDownloadStringCompleted(System.Net.DownloadStringCompletedEventArgs)"/>
-        protected virtual void OnDownloadStringCompleted(DownloadStringCompletedEventArgs args)
-        {
-            DownloadStringCompleted?.Invoke(this, args);
-        }
-
-        /// <inheritdoc cref="WebClient.OnDownloadDataCompleted(System.Net.DownloadDataCompletedEventArgs)"/>
-        protected virtual void OnDownloadDataCompleted(DownloadDataCompletedEventArgs args)
-        {
-            DownloadDataCompleted?.Invoke(this, args);
-        }
-
-        /// <inheritdoc cref="WebClient.OnDownloadFileCompleted(AsyncCompletedEventArgs)"/>
-        protected virtual void OnDownloadFileCompleted(AsyncCompletedEventArgs args)
-        {
-            DownloadFileCompleted?.Invoke(this, args);
-        }
-
-        /// <inheritdoc cref="WebClient.OnOpenReadCompleted(System.Net.OpenReadCompletedEventArgs)"/>
-        protected virtual void OnOpenReadCompleted(OpenReadCompletedEventArgs args)
-        {
-            OpenReadCompleted?.Invoke(this, args);
-        }
-
-        /// <inheritdoc cref="WebClient.OnDownloadProgressChanged(System.Net.DownloadProgressChangedEventArgs)"/>
-        protected virtual void OnDownloadProgressChanged(DownloadProgressChangedEventArgs args)
-        {
-            DownloadProgressChanged?.Invoke(this, args);
-        }
-        #endregion
-
-        #region Download Helpers
-        private async ValueTask DownloadBits(Stream contentStream, Stream downloadStream, long contentStreamLength, object? token, CancellationToken cancellationToken)
-        {
-            ArrayPool<byte> pool = ArrayPool<byte>.Shared;
-            byte[] buffer = pool.Rent(DefaultPooledBufferSize);
-            try
-            {
-                long position = 0;
-                while (position < contentStreamLength || contentStreamLength < 0)
-                {
-                    int bytesRead = await contentStream.ReadAsync(buffer, 0, DefaultPooledBufferSize, cancellationToken);
-                    if (bytesRead <= 0 || cancellationToken.IsCancellationRequested)
-                        break;
-                    await downloadStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
-                    position += bytesRead;
-                    int percentage;
-                    if (contentStreamLength < 0) percentage = -1;
-                    else if (position > long.MaxValue << 7)
-                    {
-                        long miniLength = contentStreamLength / 100;
-                        if (miniLength > 0)
-                            percentage = (int)(position / miniLength);
-                        else
-                            percentage = (int)Math.Floor(position * 1.0 / miniLength * 100.0);
-                    }
-                    else
-                    {
-                        percentage = (int)(position * 100 / contentStreamLength);
-                    }
-                    DownloadProgressChangedEventArgs progressChangedEventArgs = new DownloadProgressChangedEventArgs(percentage, token, position, contentStreamLength);
-                    OnDownloadProgressChanged(progressChangedEventArgs);
-                }
-            }
-            finally
-            {
-                pool.Return(buffer);
-            }
-        }
-        #endregion
-
-        /// <inheritdoc/>
-        protected override void Dispose(bool disposing)
-        {
-            if (_disposed)
-                return;
-            _disposed = true;
-            base.Dispose(disposing);
-            CancellationTokenSource tokenSource = _tokenSource;
-            if (tokenSource is null)
-                return;
             bool disposed = false;
             try
             {
@@ -523,123 +89,556 @@ namespace WitherTorch.Core.Utils
             if (!disposed)
                 tokenSource.Dispose();
         }
+        _tokenSource = new CancellationTokenSource();
+    }
 
-        private static async ValueTask CopyToBetweenStreamAsync(Stream source, Stream destination, CancellationToken token)
+    #region Download String Functions
+    /// <inheritdoc cref="WebClient.DownloadString(string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public string DownloadString(string address) => GetStringAsync(address).Result;
+
+    /// <inheritdoc cref="WebClient.DownloadString(Uri)"/>
+    /// <exception cref="HttpRequestException"/>
+    public string DownloadString(Uri address) => GetStringAsync(address).Result;
+
+    /// <inheritdoc cref="WebClient.DownloadStringTaskAsync(string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Task<string> DownloadStringTaskAsync(string address) => GetStringAsync(address);
+
+    /// <inheritdoc cref="WebClient.DownloadStringTaskAsync(Uri)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Task<string> DownloadStringTaskAsync(Uri address) => GetStringAsync(address);
+
+    /// <inheritdoc cref="WebClient.DownloadStringAsync(Uri)"/>
+    /// <exception cref="HttpRequestException"/>
+    public void DownloadStringAsync(Uri address) => DownloadStringAsync(address, null);
+
+    /// <inheritdoc cref="WebClient.DownloadStringAsync(Uri, object)"/>
+    /// <exception cref="HttpRequestException"/>
+    public async void DownloadStringAsync(Uri address, object? userToken)
+    {
+        CancellationToken cancellationToken = _tokenSource.Token;
+        DownloadStringCompletedEventArgs eventArgs;
+        try
         {
-            ArrayPool<byte> pool = ArrayPool<byte>.Shared;
-            byte[] buffer = pool.Rent(DefaultPooledBufferSize);
+            using HttpResponseMessage response = await GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                using HttpContent content = response.Content;
+                cancellationToken.ThrowIfCancellationRequested();
+                using Stream contentStream = content.ReadAsStreamAsync().Result;
+                cancellationToken.ThrowIfCancellationRequested();
+                MemoryStream memoryStream;
+                long length = content.Headers.ContentLength ?? -1;
+                if (length < 0)
+                    memoryStream = new MemoryStream();
+                else
+                    memoryStream = new MemoryStream(length <= int.MaxValue ? (int)length : int.MaxValue);
+                using (memoryStream)
+                {
+                    await DownloadBits(contentStream, memoryStream, length, userToken, cancellationToken);
+                    contentStream.Close();
+                    memoryStream.Position = 0;
+                    using StreamReader reader = new StreamReader(memoryStream);
+                    eventArgs = new DownloadStringCompletedEventArgs(reader.ReadToEnd(), null, false, userToken);
+                }
+            }
+            else
+                eventArgs = new DownloadStringCompletedEventArgs(string.Empty, null, false, userToken);
+        }
+        catch (OperationCanceledException ex)
+        {
+            eventArgs = new DownloadStringCompletedEventArgs(null, ex, true, userToken);
+        }
+        catch (Exception ex)
+        {
+            eventArgs = new DownloadStringCompletedEventArgs(null, ex, false, userToken);
+        }
+        OnDownloadStringCompleted(eventArgs);
+    }
+    #endregion
+
+    #region Download Data Functions
+    /// <inheritdoc cref="WebClient.DownloadData(string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public byte[] DownloadData(string address) => GetByteArrayAsync(address).Result;
+
+    /// <inheritdoc cref="WebClient.DownloadData(Uri)"/>
+    /// <exception cref="HttpRequestException"/>
+    public byte[] DownloadData(Uri address) => GetByteArrayAsync(address).Result;
+
+    /// <inheritdoc cref="WebClient.DownloadDataTaskAsync(string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Task<byte[]> DownloadDataTaskAsync(string address) => GetByteArrayAsync(address);
+
+    /// <inheritdoc cref="WebClient.DownloadDataTaskAsync(Uri)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Task<byte[]> DownloadDataTaskAsync(Uri address) => GetByteArrayAsync(address);
+
+    /// <inheritdoc cref="WebClient.DownloadDataAsync(Uri)"/>
+    /// <exception cref="HttpRequestException"/>
+    public void DownloadDataAsync(Uri address) => DownloadDataAsync(address, null);
+
+    /// <inheritdoc cref="WebClient.DownloadDataAsync(Uri, object)"/>
+    /// <exception cref="HttpRequestException"/>
+    public async void DownloadDataAsync(Uri address, object? userToken)
+    {
+        CancellationToken cancellationToken = _tokenSource.Token;
+        DownloadDataCompletedEventArgs eventArgs;
+        try
+        {
+            using HttpResponseMessage response = await GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                using HttpContent content = response.Content;
+                cancellationToken.ThrowIfCancellationRequested();
+                using Stream contentStream = content.ReadAsStreamAsync().Result;
+                cancellationToken.ThrowIfCancellationRequested();
+                MemoryStream memoryStream;
+                long length = content.Headers.ContentLength ?? -1;
+                if (length < 0)
+                    memoryStream = new MemoryStream();
+                else
+                    memoryStream = new MemoryStream(length <= int.MaxValue ? (int)length : int.MaxValue);
+                using (memoryStream)
+                {
+                    await DownloadBits(contentStream, memoryStream, length, userToken, cancellationToken);
+                    contentStream.Close();
+                    memoryStream.Position = 0;
+                    eventArgs = new DownloadDataCompletedEventArgs(memoryStream.ToArray(), null, false, userToken);
+                }
+            }
+            else
+                eventArgs = new DownloadDataCompletedEventArgs(Array.Empty<byte>(), null, false, userToken);
+        }
+        catch (OperationCanceledException ex)
+        {
+            eventArgs = new DownloadDataCompletedEventArgs(null, ex, true, userToken);
+        }
+        catch (Exception ex)
+        {
+            eventArgs = new DownloadDataCompletedEventArgs(null, ex, false, userToken);
+        }
+        OnDownloadDataCompleted(eventArgs);
+    }
+    #endregion
+
+    #region Download File Functions
+    /// <inheritdoc cref="WebClient.DownloadFile(string, string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public void DownloadFile(string address, string fileName) => DownloadFileTaskAsync(new Uri(address), fileName, _tokenSource.Token).Wait();
+
+    /// <inheritdoc cref="WebClient.DownloadFile(string, string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public void DownloadFile(string address, ITempFileInfo tempFile) => DownloadFileTaskAsync(new Uri(address), tempFile, _tokenSource.Token).Wait();
+
+    /// <inheritdoc cref="WebClient.DownloadFile(Uri, string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public void DownloadFile(Uri address, string fileName) => DownloadFileTaskAsync(address, fileName, _tokenSource.Token).Wait();
+
+    /// <inheritdoc cref="WebClient.DownloadFile(Uri, string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public void DownloadFile(Uri address, ITempFileInfo tempFile) => DownloadFileTaskAsync(address, tempFile, _tokenSource.Token).Wait();
+
+    /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(string, string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Task DownloadFileTaskAsync(string address, string fileName) => DownloadFileTaskAsync(new Uri(address), fileName, _tokenSource.Token);
+
+    /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Task DownloadFileTaskAsync(string address, ITempFileInfo tempFile) => DownloadFileTaskAsync(new Uri(address), tempFile, _tokenSource.Token);
+
+    /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Task DownloadFileTaskAsync(Uri address, string fileName) => DownloadFileTaskAsync(address, fileName, _tokenSource.Token);
+
+    /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Task DownloadFileTaskAsync(Uri address, ITempFileInfo tempFile) => DownloadFileTaskAsync(address, tempFile, _tokenSource.Token);
+
+    /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public async Task DownloadFileTaskAsync(Uri address, string fileName, CancellationToken token)
+    {
+        using Stream contentStream
+#if NET8_0_OR_GREATER
+            = await GetStreamAsync(address, token);
+#else
+            = await GetStreamAsync(address);
+#endif
+        if (token.IsCancellationRequested)
+            return;
+        using FileStream fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.Read, DefaultFileStreamBufferSize, true);
+        await CopyToBetweenStreamAsync(contentStream, fileStream, token);
+    }
+
+    /// <inheritdoc cref="WebClient.DownloadFileTaskAsync(Uri, string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public async Task DownloadFileTaskAsync(Uri address, ITempFileInfo tempFile, CancellationToken token)
+    {
+        using Stream contentStream
+#if NET8_0_OR_GREATER
+            = await GetStreamAsync(address, token);
+#else
+            = await GetStreamAsync(address);
+#endif
+        if (token.IsCancellationRequested)
+            return;
+        using Stream fileStream = tempFile.Open(FileAccess.Write, DefaultFileStreamBufferSize, true);
+        await CopyToBetweenStreamAsync(contentStream, fileStream, token);
+    }
+
+    /// <inheritdoc cref="WebClient.DownloadFileAsync(Uri, string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public void DownloadFileAsync(Uri address, string fileName) => DownloadFileAsync(address, fileName, null);
+
+    /// <inheritdoc cref="WebClient.DownloadFileAsync(Uri, string, object)"/>
+    /// <exception cref="HttpRequestException"/>
+    public async void DownloadFileAsync(Uri address, string fileName, object? userToken)
+    {
+        CancellationToken cancellationToken = _tokenSource.Token;
+        AsyncCompletedEventArgs eventArgs;
+        try
+        {
+            using HttpResponseMessage response = await GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                using HttpContent content = response.Content;
+                cancellationToken.ThrowIfCancellationRequested();
+                using Stream contentStream = content.ReadAsStreamAsync().Result;
+                using FileStream fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite, DefaultFileStreamBufferSize, true);
+                cancellationToken.ThrowIfCancellationRequested();
+                fileStream.Position = 0;
+                long length = content.Headers.ContentLength ?? -1;
+                await DownloadBits(contentStream, fileStream, length, userToken, cancellationToken);
+                contentStream.Close();
+                fileStream.Close();
+            }
+            eventArgs = new AsyncCompletedEventArgs(null, false, userToken);
+        }
+        catch (OperationCanceledException ex)
+        {
+            eventArgs = new AsyncCompletedEventArgs(ex, true, userToken);
+        }
+        catch (Exception ex)
+        {
+            eventArgs = new AsyncCompletedEventArgs(ex, false, userToken);
+        }
+        OnDownloadFileCompleted(eventArgs);
+    }
+
+    /// <inheritdoc cref="WebClient.DownloadFileAsync(Uri, string, object)"/>
+    /// <exception cref="HttpRequestException"/>
+    public async void DownloadFileAsync(Uri address, ITempFileInfo tempFile, object? userToken)
+    {
+        CancellationToken cancellationToken = _tokenSource.Token;
+        AsyncCompletedEventArgs eventArgs;
+        try
+        {
+            using HttpResponseMessage response = await GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                using HttpContent content = response.Content;
+                cancellationToken.ThrowIfCancellationRequested();
+                using Stream contentStream = content.ReadAsStreamAsync().Result;
+                using Stream fileStream = tempFile.Open(FileAccess.Write, DefaultFileStreamBufferSize, true);
+                cancellationToken.ThrowIfCancellationRequested();
+                fileStream.Position = 0;
+                long length = content.Headers.ContentLength ?? -1;
+                await DownloadBits(contentStream, fileStream, length, userToken, cancellationToken);
+                contentStream.Close();
+                fileStream.Close();
+            }
+            eventArgs = new AsyncCompletedEventArgs(null, false, userToken);
+        }
+        catch (OperationCanceledException ex)
+        {
+            eventArgs = new AsyncCompletedEventArgs(ex, true, userToken);
+        }
+        catch (Exception ex)
+        {
+            eventArgs = new AsyncCompletedEventArgs(ex, false, userToken);
+        }
+        OnDownloadFileCompleted(eventArgs);
+    }
+    #endregion
+
+    #region Open Read Functions
+    /// <inheritdoc cref="WebClient.OpenRead(string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Stream OpenRead(string address) => GetStreamAsync(address).Result;
+
+    /// <inheritdoc cref="WebClient.OpenRead(Uri)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Stream OpenRead(Uri address) => GetStreamAsync(address).Result;
+
+    /// <inheritdoc cref="WebClient.OpenReadTaskAsync(string)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Task<Stream> OpenReadTaskAsync(string address) => GetStreamAsync(address);
+
+    /// <inheritdoc cref="WebClient.OpenReadTaskAsync(Uri)"/>
+    /// <exception cref="HttpRequestException"/>
+    public Task<Stream> OpenReadTaskAsync(Uri address) => GetStreamAsync(address);
+
+    /// <inheritdoc cref="WebClient.OpenReadAsync(Uri)"/>
+    /// <exception cref="HttpRequestException"/>
+    public void OpenReadAsync(Uri address) => OpenReadAsync(address, null);
+
+    /// <inheritdoc cref="WebClient.OpenReadAsync(Uri, object)"/>
+    /// <exception cref="HttpRequestException"/>
+    public void OpenReadAsync(Uri address, object? userToken)
+    {
+        Task.Factory.StartNew((token) =>
+        {
+            OpenReadCompletedEventArgs? eventArgs;
             try
             {
-                while (true)
+                using HttpResponseMessage response = GetAsync(address, HttpCompletionOption.ResponseHeadersRead, _tokenSource.Token).Result;
+                if (response.IsSuccessStatusCode)
                 {
-                    int bytesRead = await source.ReadAsync(buffer, 0, DefaultPooledBufferSize, token);
-                    if (bytesRead <= 0 || token.IsCancellationRequested)
-                        return;
-                    await destination.WriteAsync(buffer, 0, bytesRead, token);
+                    using HttpContent content = response.Content;
+                    try
+                    {
+                        using Stream contentStream = content.ReadAsStreamAsync().Result;
+                        OnOpenReadCompleted(new OpenReadCompletedEventArgs(contentStream, null, false, token));
+                        eventArgs = null;
+                    }
+                    catch (Exception)
+                    {
+                        eventArgs = null;
+                    }
                 }
+                else
+                    eventArgs = new OpenReadCompletedEventArgs(null, null, false, token);
             }
-            finally
+            catch (OperationCanceledException ex)
             {
-                pool.Return(buffer, clearArray: false);
+                eventArgs = new OpenReadCompletedEventArgs(null, ex, true, token);
             }
-        }
-
-        #region Alternate EventArgs
-        /// <inheritdoc cref="System.Net.DownloadProgressChangedEventArgs"/>
-        public class DownloadProgressChangedEventArgs : ProgressChangedEventArgs
-        {
-            private long m_BytesReceived;
-
-            private long m_TotalBytesToReceive;
-
-            /// <inheritdoc cref="System.Net.DownloadProgressChangedEventArgs.BytesReceived"/>
-            public long BytesReceived => m_BytesReceived;
-
-            /// <inheritdoc cref="System.Net.DownloadProgressChangedEventArgs.TotalBytesToReceive"/>
-            public long TotalBytesToReceive => m_TotalBytesToReceive;
-
-            /// <summary>
-            /// <see cref="DownloadProgressChangedEventArgs"/> 的建構子
-            /// </summary>
-            public DownloadProgressChangedEventArgs(int progressPercentage, object? userToken, long bytesReceived, long totalBytesToReceive)
-                : base(progressPercentage, userToken)
+            catch (Exception ex)
             {
-                m_BytesReceived = bytesReceived;
-                m_TotalBytesToReceive = totalBytesToReceive;
+                eventArgs = new OpenReadCompletedEventArgs(null, ex, false, token);
             }
-        }
-
-        /// <inheritdoc cref="System.Net.DownloadStringCompletedEventArgs"/>
-        public class DownloadStringCompletedEventArgs : AsyncCompletedEventArgs
-        {
-            private string? m_Result;
-
-            /// <inheritdoc cref="System.Net.DownloadStringCompletedEventArgs.Result"/>
-            public string? Result
-            {
-                get
-                {
-                    RaiseExceptionIfNecessary();
-                    return m_Result;
-                }
-            }
-
-            /// <summary>
-            /// <see cref="DownloadStringCompletedEventArgs"/> 的建構子
-            /// </summary>
-            public DownloadStringCompletedEventArgs(string? result, Exception? exception, bool cancelled, object? userToken)
-                : base(exception, cancelled, userToken)
-            {
-                m_Result = result;
-            }
-        }
-
-        /// <inheritdoc cref="System.Net.DownloadDataCompletedEventArgs"/>
-        public class DownloadDataCompletedEventArgs : AsyncCompletedEventArgs
-        {
-            private byte[]? m_Result;
-
-            /// <inheritdoc cref="System.Net.DownloadDataCompletedEventArgs.Result"/>
-            public byte[]? Result
-            {
-                get
-                {
-                    RaiseExceptionIfNecessary();
-                    return m_Result;
-                }
-            }
-
-            internal DownloadDataCompletedEventArgs(byte[]? result, Exception? exception, bool cancelled, object? userToken)
-                : base(exception, cancelled, userToken)
-            {
-                m_Result = result;
-            }
-        }
-
-        /// <inheritdoc cref="System.Net.OpenReadCompletedEventArgs"/>
-        public class OpenReadCompletedEventArgs : AsyncCompletedEventArgs
-        {
-            private Stream? m_Result;
-
-            /// <inheritdoc cref="System.Net.OpenReadCompletedEventArgs.Result"/>
-            public Stream? Result
-            {
-                get
-                {
-                    RaiseExceptionIfNecessary();
-                    return m_Result;
-                }
-            }
-
-            /// <summary>
-            /// <see cref="OpenReadCompletedEventArgs"/> 的建構子
-            /// </summary>
-            public OpenReadCompletedEventArgs(Stream? result, Exception? exception, bool cancelled, object? userToken)
-                : base(exception, cancelled, userToken)
-            {
-                m_Result = result;
-            }
-        }
-        #endregion
+            if (eventArgs is not null)
+                OnOpenReadCompleted(eventArgs);
+        }, userToken, _tokenSource.Token);
     }
+    #endregion
+
+    #region Event Triggers
+    /// <inheritdoc cref="WebClient.OnDownloadStringCompleted(System.Net.DownloadStringCompletedEventArgs)"/>
+    protected virtual void OnDownloadStringCompleted(DownloadStringCompletedEventArgs args)
+    {
+        DownloadStringCompleted?.Invoke(this, args);
+    }
+
+    /// <inheritdoc cref="WebClient.OnDownloadDataCompleted(System.Net.DownloadDataCompletedEventArgs)"/>
+    protected virtual void OnDownloadDataCompleted(DownloadDataCompletedEventArgs args)
+    {
+        DownloadDataCompleted?.Invoke(this, args);
+    }
+
+    /// <inheritdoc cref="WebClient.OnDownloadFileCompleted(AsyncCompletedEventArgs)"/>
+    protected virtual void OnDownloadFileCompleted(AsyncCompletedEventArgs args)
+    {
+        DownloadFileCompleted?.Invoke(this, args);
+    }
+
+    /// <inheritdoc cref="WebClient.OnOpenReadCompleted(System.Net.OpenReadCompletedEventArgs)"/>
+    protected virtual void OnOpenReadCompleted(OpenReadCompletedEventArgs args)
+    {
+        OpenReadCompleted?.Invoke(this, args);
+    }
+
+    /// <inheritdoc cref="WebClient.OnDownloadProgressChanged(System.Net.DownloadProgressChangedEventArgs)"/>
+    protected virtual void OnDownloadProgressChanged(DownloadProgressChangedEventArgs args)
+    {
+        DownloadProgressChanged?.Invoke(this, args);
+    }
+    #endregion
+
+    #region Download Helpers
+    private async ValueTask DownloadBits(Stream contentStream, Stream downloadStream, long contentStreamLength, object? token, CancellationToken cancellationToken)
+    {
+        ArrayPool<byte> pool = ArrayPool<byte>.Shared;
+        byte[] buffer = pool.Rent(DefaultPooledBufferSize);
+        try
+        {
+            long position = 0;
+            while (position < contentStreamLength || contentStreamLength < 0)
+            {
+                int bytesRead = await contentStream.ReadAsync(buffer, 0, DefaultPooledBufferSize, cancellationToken);
+                if (bytesRead <= 0 || cancellationToken.IsCancellationRequested)
+                    break;
+                await downloadStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                position += bytesRead;
+                int percentage;
+                if (contentStreamLength < 0) percentage = -1;
+                else if (position > long.MaxValue << 7)
+                {
+                    long miniLength = contentStreamLength / 100;
+                    if (miniLength > 0)
+                        percentage = (int)(position / miniLength);
+                    else
+                        percentage = (int)Math.Floor(position * 1.0 / miniLength * 100.0);
+                }
+                else
+                {
+                    percentage = (int)(position * 100 / contentStreamLength);
+                }
+                DownloadProgressChangedEventArgs progressChangedEventArgs = new DownloadProgressChangedEventArgs(percentage, token, position, contentStreamLength);
+                OnDownloadProgressChanged(progressChangedEventArgs);
+            }
+        }
+        finally
+        {
+            pool.Return(buffer);
+        }
+    }
+    #endregion
+
+    /// <inheritdoc/>
+    protected override void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+        base.Dispose(disposing);
+        CancellationTokenSource tokenSource = _tokenSource;
+        if (tokenSource is null)
+            return;
+        bool disposed = false;
+        try
+        {
+            tokenSource.Cancel(true);
+        }
+        catch (ObjectDisposedException)
+        {
+            disposed = true;
+        }
+        catch (AggregateException)
+        {
+            //Do nothing
+        }
+        if (!disposed)
+            tokenSource.Dispose();
+    }
+
+    private static async ValueTask CopyToBetweenStreamAsync(Stream source, Stream destination, CancellationToken token)
+    {
+        ArrayPool<byte> pool = ArrayPool<byte>.Shared;
+        byte[] buffer = pool.Rent(DefaultPooledBufferSize);
+        try
+        {
+            while (true)
+            {
+                int bytesRead = await source.ReadAsync(buffer, 0, DefaultPooledBufferSize, token);
+                if (bytesRead <= 0 || token.IsCancellationRequested)
+                    return;
+                await destination.WriteAsync(buffer, 0, bytesRead, token);
+            }
+        }
+        finally
+        {
+            pool.Return(buffer, clearArray: false);
+        }
+    }
+
+    #region Alternate EventArgs
+    /// <inheritdoc cref="System.Net.DownloadProgressChangedEventArgs"/>
+    public class DownloadProgressChangedEventArgs : ProgressChangedEventArgs
+    {
+        private long m_BytesReceived;
+
+        private long m_TotalBytesToReceive;
+
+        /// <inheritdoc cref="System.Net.DownloadProgressChangedEventArgs.BytesReceived"/>
+        public long BytesReceived => m_BytesReceived;
+
+        /// <inheritdoc cref="System.Net.DownloadProgressChangedEventArgs.TotalBytesToReceive"/>
+        public long TotalBytesToReceive => m_TotalBytesToReceive;
+
+        /// <summary>
+        /// <see cref="DownloadProgressChangedEventArgs"/> 的建構子
+        /// </summary>
+        public DownloadProgressChangedEventArgs(int progressPercentage, object? userToken, long bytesReceived, long totalBytesToReceive)
+            : base(progressPercentage, userToken)
+        {
+            m_BytesReceived = bytesReceived;
+            m_TotalBytesToReceive = totalBytesToReceive;
+        }
+    }
+
+    /// <inheritdoc cref="System.Net.DownloadStringCompletedEventArgs"/>
+    public class DownloadStringCompletedEventArgs : AsyncCompletedEventArgs
+    {
+        private string? m_Result;
+
+        /// <inheritdoc cref="System.Net.DownloadStringCompletedEventArgs.Result"/>
+        public string? Result
+        {
+            get
+            {
+                RaiseExceptionIfNecessary();
+                return m_Result;
+            }
+        }
+
+        /// <summary>
+        /// <see cref="DownloadStringCompletedEventArgs"/> 的建構子
+        /// </summary>
+        public DownloadStringCompletedEventArgs(string? result, Exception? exception, bool cancelled, object? userToken)
+            : base(exception, cancelled, userToken)
+        {
+            m_Result = result;
+        }
+    }
+
+    /// <inheritdoc cref="System.Net.DownloadDataCompletedEventArgs"/>
+    public class DownloadDataCompletedEventArgs : AsyncCompletedEventArgs
+    {
+        private byte[]? m_Result;
+
+        /// <inheritdoc cref="System.Net.DownloadDataCompletedEventArgs.Result"/>
+        public byte[]? Result
+        {
+            get
+            {
+                RaiseExceptionIfNecessary();
+                return m_Result;
+            }
+        }
+
+        internal DownloadDataCompletedEventArgs(byte[]? result, Exception? exception, bool cancelled, object? userToken)
+            : base(exception, cancelled, userToken)
+        {
+            m_Result = result;
+        }
+    }
+
+    /// <inheritdoc cref="System.Net.OpenReadCompletedEventArgs"/>
+    public class OpenReadCompletedEventArgs : AsyncCompletedEventArgs
+    {
+        private Stream? m_Result;
+
+        /// <inheritdoc cref="System.Net.OpenReadCompletedEventArgs.Result"/>
+        public Stream? Result
+        {
+            get
+            {
+                RaiseExceptionIfNecessary();
+                return m_Result;
+            }
+        }
+
+        /// <summary>
+        /// <see cref="OpenReadCompletedEventArgs"/> 的建構子
+        /// </summary>
+        public OpenReadCompletedEventArgs(Stream? result, Exception? exception, bool cancelled, object? userToken)
+            : base(exception, cancelled, userToken)
+        {
+            m_Result = result;
+        }
+    }
+    #endregion
 }
