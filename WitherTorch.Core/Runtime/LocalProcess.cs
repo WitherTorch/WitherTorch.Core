@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using System.Threading;
 
@@ -144,6 +144,20 @@ namespace WitherTorch.Core.Runtime
         /// <inheritdoc />
         public bool Start(in LocalProcessStartInfo startInfo)
         {
+            System.Diagnostics.Process? process = _process;
+            try
+            {
+                if (process is not null)
+                {
+                    if (!process.HasExited)
+                        return false;
+                    process.Dispose();
+                }
+            }
+            catch (Exception)
+            {
+            }
+
             System.Diagnostics.ProcessStartInfo processStartInfo = startInfo.ToProcessStartInfo();
             if (WTCore.RedirectSystemProcessStream)
             {
@@ -153,46 +167,18 @@ namespace WitherTorch.Core.Runtime
                 processStartInfo.RedirectStandardOutput = true;
                 processStartInfo.RedirectStandardInput = true;
             }
-            System.Diagnostics.Process? process = System.Diagnostics.Process.Start(processStartInfo);
-            if (process is null || process.HasExited)
-                return false;
-
-            System.Diagnostics.Process? oldProcess;
-            if ((oldProcess = Interlocked.CompareExchange(ref _process, process, null)) is not null)
+            process = System.Diagnostics.Process.Start(processStartInfo);
+            try
             {
-                try
-                {
-                    if (!oldProcess.HasExited)
-                    {
-                        process.Kill();
-                        process.Dispose();
-                        return false;
-                    }
-                }
-                catch (Exception)
-                {
-                }
-                System.Diagnostics.Process? secondCheckOldProcess;
-                while (!ReferenceEquals(secondCheckOldProcess = Interlocked.CompareExchange(ref _process, process, oldProcess), oldProcess))
-                {
-                    oldProcess.Dispose();
-                    try
-                    {
-                        if (!secondCheckOldProcess.HasExited)
-                        {
-                            process.Kill();
-                            process.Dispose();
-                            return false;
-                        }
-                    }
-                    catch (Exception)
-                    {
-                    }
-                    oldProcess = secondCheckOldProcess;
-                    break;
-                }
+                if (process is null || process.HasExited)
+                    return false;
+            }
+            catch (Exception)
+            {
+                return false;
             }
 
+            _process = process;
             StartCore(process);
             ProcessStarted?.Invoke(this, EventArgs.Empty);
             return true;
@@ -217,7 +203,7 @@ namespace WitherTorch.Core.Runtime
 
         private void Process_Exited(object? sender, EventArgs e)
         {
-            if (sender is not System.Diagnostics.Process process || 
+            if (sender is not System.Diagnostics.Process process ||
                 !ReferenceEquals(Interlocked.CompareExchange(ref _process, null, process), process))
                 return;
             StopCore(process);
