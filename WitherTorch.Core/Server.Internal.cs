@@ -81,7 +81,7 @@ partial class Server
         Server? server = CreateServerInstance(software, serverDirectory);
         if (server is null)
             return null;
-        server.ServerInfoJson = serverInfoJson;
+        server._serverInfoJson = serverInfoJson;
         server.ServerName = serverInfoJson[ServerNameNode]?.GetValue<string>() ?? GetDefaultServerNameCore(Path.GetFullPath(serverDirectory));
         if (!server.LoadServerCore(serverInfoJson))
         {
@@ -98,7 +98,7 @@ partial class Server
         T? server = CreateServerInstanceTyped<T>(software, serverDirectory);
         if (server is null)
             return null;
-        server.ServerInfoJson = serverInfoJson;
+        server._serverInfoJson = serverInfoJson;
         server.ServerName = serverInfoJson[ServerNameNode]?.GetValue<string>() ?? GetDefaultServerNameCore(Path.GetFullPath(serverDirectory));
         if (!server.LoadServerCore(serverInfoJson))
         {

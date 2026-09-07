@@ -64,11 +64,11 @@ partial class Server
         string path = Path.Combine(serverDirectory, "./server_info.json");
         if (!File.Exists(path))
             return null;
-        JsonPropertyFile serverInformation = new JsonPropertyFile(path, useFileWatcher: false);
-        ISoftwareContext? software = SoftwareRegister.GetSoftwareContext(serverInformation[ServerSoftwareNode]?.GetValue<string>(), throwExceptionIfNotRegistered: true);
+        JsonPropertyFile serverInfoJson = new JsonPropertyFile(path, PropertyFileMode.Blocked);
+        ISoftwareContext? software = SoftwareRegister.GetSoftwareContext(serverInfoJson[ServerSoftwareNode]?.GetValue<string>(), throwExceptionIfNotRegistered: true);
         if (software is null)
             return null;
-        return LoadServerCore(software, serverDirectory, serverInformation);
+        return LoadServerCore(software, serverDirectory, serverInfoJson);
     }
 
     /// <summary>
@@ -85,7 +85,7 @@ partial class Server
         string path = Path.Combine(serverDirectory, "./server_info.json");
         if (!File.Exists(path))
             return null;
-        return LoadServerCore(software, serverDirectory, new JsonPropertyFile(path, useFileWatcher: false));
+        return LoadServerCore(software, serverDirectory, new JsonPropertyFile(path, PropertyFileMode.Blocked));
     }
 
     /// <summary>
@@ -102,7 +102,7 @@ partial class Server
         string path = Path.Combine(serverDirectory, "./server_info.json");
         if (!File.Exists(path))
             return null;
-        return LoadServerCore(software, serverDirectory, new JsonPropertyFile(path, useFileWatcher: false));
+        return LoadServerCore(software, serverDirectory, new JsonPropertyFile(path, PropertyFileMode.Blocked));
     }
 
     /// <summary>
@@ -119,7 +119,7 @@ partial class Server
         string path = Path.Combine(serverDirectory, "./server_info.json");
         if (!File.Exists(path))
             return null;
-        return LoadServerCoreTyped<T>(software, serverDirectory, new JsonPropertyFile(path, useFileWatcher: false));
+        return LoadServerCoreTyped<T>(software, serverDirectory, new JsonPropertyFile(path, PropertyFileMode.Blocked));
     }
 
     /// <summary>

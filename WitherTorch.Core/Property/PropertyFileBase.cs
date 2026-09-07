@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.CompilerServices;
 
@@ -7,17 +8,41 @@ using WitherTorch.Core.Utils;
 namespace WitherTorch.Core.Property;
 
 /// <summary>
+/// <see cref="IPropertyFile"/> 物件在建立時所指定的操作模式
+/// </summary>
+public enum PropertyFileMode
+{
+    /// <summary>
+    /// 僅在 <see cref="IPropertyFile.Reload()"/> 與 <see cref="IPropertyFile.Save(bool)"/> 時才建立並操作資料流，其餘時候與檔案本身完全分離
+    /// </summary>
+    Pure,
+    /// <summary>
+    /// 持續監測檔案，在內容有更新時自動同步
+    /// </summary>
+    KeepWatching,
+    /// <summary>
+    /// 持續占用檔案的存取權限，直到該物件的 <see cref="IDisposable.Dispose()"/> 被呼叫
+    /// </summary>
+    Blocked
+}
+
+/// <summary>
 /// <seealso cref="JavaPropertyFile"/>、<seealso cref="JsonPropertyFile"/> 和 <seealso cref="YamlPropertyFile"/> 的基底類別
 /// </summary>
 /// <typeparam name="TValue">設定檔案內所儲存的設定值類型</typeparam>
 public abstract class PropertyFileBase<TValue> : IPropertyFile
 {
-    private readonly string _path;
     private readonly FileModifyWatcher? _watcher;
+    private readonly Stream? _blockingStream;
+    private readonly string _path;
+    private readonly PropertyFileMode _mode;
 
     private IPropertyFileDescriptor? _descriptor;
 
     private bool _loaded, _dirty, _disposed;
+
+    /// <inheritdoc/>
+    public PropertyFileMode Mode => _mode;
 
     /// <inheritdoc/>
     public string FilePath => _path;
@@ -34,28 +59,31 @@ public abstract class PropertyFileBase<TValue> : IPropertyFile
     /// 以指定的設定檔路徑，建立新的 <see cref="PropertyFileBase{TValue}"/> 物件
     /// </summary>
     /// <param name="path">設定檔的路徑</param>
-    public PropertyFileBase(string path) : this(path, WTCore.WatchPropertyFileModified) { }
+    public PropertyFileBase(string path) : this(path, WTCore.DefaultPropertyFileMode) { }
 
     /// <summary>
-    /// 以指定的設定檔路徑，建立新的 <see cref="PropertyFileBase{TValue}"/> 物件，並決定是否持續監測 <paramref name="path"/> 所對應的檔案狀態
+    /// 以指定的設定檔路徑與建立模式，建立新的 <see cref="PropertyFileBase{TValue}"/> 物件
     /// </summary>
     /// <param name="path">設定檔的路徑</param>
-    /// <param name="useFileWatcher">是否持續監測 <paramref name="path"/> 所對應的檔案狀態</param>
-    public PropertyFileBase(string path, bool useFileWatcher)
+    /// <param name="mode">設定檔案物件的建立模式</param>
+    public PropertyFileBase(string path, PropertyFileMode mode)
     {
         _path = path;
-        FileModifyWatcher? watcher;
-        if (useFileWatcher)
+        _mode = mode;
+        switch (mode)
         {
-            watcher = new FileModifyWatcher(path);
-            watcher.Changed += FileWatcher_Changed;
-            watcher.Active();
+            case PropertyFileMode.Pure:
+                break;
+            case PropertyFileMode.KeepWatching:
+                FileModifyWatcher? watcher = new FileModifyWatcher(path);
+                watcher.Changed += FileWatcher_Changed;
+                watcher.Active();
+                _watcher = watcher;
+                break;
+            case PropertyFileMode.Blocked:
+                _blockingStream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
+                break;
         }
-        else
-        {
-            watcher = null;
-        }
-        _watcher = watcher;
     }
 
     /// <summary>
@@ -102,26 +130,21 @@ public abstract class PropertyFileBase<TValue> : IPropertyFile
                 return;
             Unload();
         }
-        string path = _path;
-        Stream? stream = null;
-        if (File.Exists(path))
+        if (TryGetStreamForRead(out Stream? stream, out bool needDispose))
         {
             try
             {
-                stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                LoadCore(stream);
             }
-            catch (Exception)
+            finally
             {
+                if (needDispose)
+                    stream.Dispose();
             }
-        }
-        if (stream is null)
-        {
-            LoadCore(null);
         }
         else
         {
-            LoadCore(stream);
-            stream.Dispose();
+            LoadCore(null);
         }
         _loaded = true;
     }
@@ -158,21 +181,109 @@ public abstract class PropertyFileBase<TValue> : IPropertyFile
         FileModifyWatcher? watcher = _watcher;
         if (watcher is null)
         {
-            Stream stream = new FileStream(_path, FileMode.Create, FileAccess.Write, FileShare.Read);
-            SaveCore(stream);
-            stream.Dispose();
+            if (TryGetStreamForWrite(out Stream? stream, out bool needDispose))
+            {
+                try
+                {
+                    SaveCore(stream);
+                }
+                finally
+                {
+                    if (needDispose)
+                        stream.Dispose();
+                    else
+                        stream.Flush();
+                }
+            }
         }
         else
         {
             watcher.Changed -= FileWatcher_Changed;
             watcher.Deactive();
-            Stream stream = new FileStream(_path, FileMode.Create, FileAccess.Write, FileShare.Read);
-            SaveCore(stream);
-            stream.Dispose();
+            if (TryGetStreamForWrite(out Stream? stream, out bool needDispose))
+            {
+                try
+                {
+                    SaveCore(stream);
+                }
+                finally
+                {
+                    if (needDispose)
+                        stream.Dispose();
+                    else
+                        stream.Flush();
+                }
+            }
             watcher.Changed += FileWatcher_Changed;
             watcher.Active();
         }
         Unload();
+    }
+
+    /// <summary>
+    /// 嘗試取得可用於讀取的 <see cref="Stream"/> 物件
+    /// </summary>
+    /// <param name="result">如果傳回值為 <see langword="true"/>，返回的結果為可讀取的資料流，並需要根據 <paramref name="needDispose"/> 的結果來決定是否要釋放；反之則為 <see langword="null"/></param>
+    /// <param name="needDispose">決定 <paramref name="result"/> 傳回的結果需不需要釋放</param>
+    /// <returns>是否成功取得資料流</returns>
+    protected bool TryGetStreamForRead([NotNullWhen(true)] out Stream? result, out bool needDispose)
+    {
+        Stream? stream = _blockingStream;
+        if (stream is not null)
+        {
+            stream.Position = 0;
+            result = stream;
+            needDispose = false;
+            return true;
+        }
+
+        try
+        {
+            stream = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        }
+        catch (Exception)
+        {
+            result = default;
+            needDispose = false;
+            return false;
+        }
+
+        result = stream;
+        needDispose = true;
+        return true;
+    }
+
+    /// <summary>
+    /// 嘗試取得可用於寫入的 <see cref="Stream"/> 物件
+    /// </summary>
+    /// <param name="result">如果傳回值為 <see langword="true"/>，返回的結果為可寫入的資料流，並需要根據 <paramref name="needDispose"/> 的結果來決定是否要釋放；反之則為 <see langword="null"/></param>
+    /// <param name="needDispose">決定 <paramref name="result"/> 傳回的結果需不需要釋放</param>
+    /// <returns>是否成功取得資料流</returns>
+    protected bool TryGetStreamForWrite([NotNullWhen(true)] out Stream? result, out bool needDispose)
+    {
+        Stream? stream = _blockingStream;
+        if (stream is not null)
+        {
+            stream.Position = 0;
+            result = stream;
+            needDispose = false;
+            return true;
+        }
+
+        try
+        {
+            stream = new FileStream(_path, FileMode.Create, FileAccess.Write, FileShare.Read);
+        }
+        catch (Exception)
+        {
+            result = default;
+            needDispose = false;
+            return false;
+        }
+
+        result = stream;
+        needDispose = true;
+        return true;
     }
 
     /// <summary>
@@ -229,10 +340,11 @@ public abstract class PropertyFileBase<TValue> : IPropertyFile
 
     private void DisposeCore()
     {
-        if (_disposed) 
+        if (_disposed)
             return;
         _disposed = true;
         _watcher?.Deactive();
+        _blockingStream?.Dispose();
     }
 
     /// <inheritdoc cref="object.Finalize()"/>

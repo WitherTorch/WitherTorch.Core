@@ -17,9 +17,10 @@ namespace WitherTorch.Core;
 /// </summary>
 public abstract partial class Server
 {
-    private readonly string _serverDirectory;
     private readonly List<IPersistentTag> _tagList = new();
+    private readonly string _serverDirectory;
 
+    private JsonPropertyFile? _serverInfoJson = null;
     private string _name = string.Empty;
 
     /// <summary>
@@ -80,7 +81,7 @@ public abstract partial class Server
     /// 取得伺服器的 server_info.json (伺服器基礎資訊清單)
     /// </summary>
     /// <returns></returns>
-    public JsonPropertyFile? ServerInfoJson { get; private set; }
+    public JsonPropertyFile? ServerInfoJson => _serverInfoJson;
 
     /// <summary>
     /// <see cref="Server"/> 的建構子
@@ -175,11 +176,11 @@ public abstract partial class Server
     /// </summary>
     public void SaveServer()
     {
-        JsonPropertyFile? serverInfoJson = ServerInfoJson;
+        JsonPropertyFile? serverInfoJson = _serverInfoJson;
         if (serverInfoJson is null)
         {
-            serverInfoJson = new JsonPropertyFile(Path.Combine(ServerDirectory, "./server_info.json"), useFileWatcher: false);
-            ServerInfoJson = serverInfoJson;
+            serverInfoJson = new JsonPropertyFile(Path.Combine(ServerDirectory, "./server_info.json"), PropertyFileMode.Blocked);
+            _serverInfoJson = serverInfoJson;
         }
         serverInfoJson[ServerNameNode] = JsonValue.Create(ServerName);
         serverInfoJson[ServerSoftwareNode] = JsonValue.Create(GetSoftwareId());

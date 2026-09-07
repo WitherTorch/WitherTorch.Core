@@ -1,5 +1,6 @@
 using System;
 
+using WitherTorch.Core.Property;
 using WitherTorch.Core.Runtime;
 using WitherTorch.Core.Utils;
 
@@ -42,7 +43,7 @@ public static class WTCore
     public static bool CheckFileHashIfExist { get; set; } = true; 
     
     /// <summary>
-    /// 是否在設定檔案受到外部更改時，自動重新載入檔案 (該操作為延遲載入，僅在該設定檔未受到任何未儲存的內部更改的情況下生效)
+    /// 取得或指定 <see cref="IPropertyFile"/> 實作的預設建立模式
     /// </summary>
-    public static bool WatchPropertyFileModified { get; set; } = true;
+    public static PropertyFileMode DefaultPropertyFileMode { get; set; } = PropertyFileMode.KeepWatching;
 }

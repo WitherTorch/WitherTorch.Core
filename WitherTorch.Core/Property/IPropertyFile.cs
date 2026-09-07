@@ -8,6 +8,11 @@ namespace WitherTorch.Core.Property;
 public interface IPropertyFile : IDisposable
 {
     /// <summary>
+    /// 取得這個設定檔案的建立模式
+    /// </summary>
+    PropertyFileMode Mode { get; }
+
+    /// <summary>
     /// 取得這個設定檔案的路徑
     /// </summary>
     string FilePath { get; }

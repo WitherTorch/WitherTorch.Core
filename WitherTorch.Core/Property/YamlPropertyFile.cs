@@ -25,11 +25,11 @@ public class YamlPropertyFile : JsonPropertyFile
     public YamlPropertyFile(string path) : base(path) { }
 
     /// <summary>
-    /// 以指定的設定檔路徑，建立新的 <see cref="YamlPropertyFile"/> 物件，並決定是否持續監測 <paramref name="path"/> 所對應的檔案狀態
+    /// 以指定的設定檔路徑與建立模式，建立新的 <see cref="YamlPropertyFile"/> 物件
     /// </summary>
     /// <param name="path">設定檔的路徑</param>
-    /// <param name="useFileWatcher">是否持續監測 <paramref name="path"/> 所對應的檔案狀態</param>
-    public YamlPropertyFile(string path, bool useFileWatcher) : base(path, useFileWatcher) { }
+    /// <param name="mode">設定檔案物件的建立模式</param>
+    public YamlPropertyFile(string path, PropertyFileMode mode) : base(path, mode) { }
 
     /// <inheritdoc/>
     protected override void LoadCore(Stream? stream)
