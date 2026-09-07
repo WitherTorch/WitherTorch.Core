@@ -212,9 +212,9 @@ public class LocalProcess : ILocalProcess
                 processStartInfo.RedirectStandardOutput = true;
                 processStartInfo.RedirectStandardInput = true;
             }
-            process = CLRProcess.Start(processStartInfo);
             try
             {
+                process = CLRProcess.Start(processStartInfo);
                 if (process is null || process.HasExited)
                     return false;
             }
