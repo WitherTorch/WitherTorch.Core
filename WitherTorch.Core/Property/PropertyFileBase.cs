@@ -3,6 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.CompilerServices;
 
+using Microsoft.Win32.SafeHandles;
+
 using WitherTorch.Core.Utils;
 
 namespace WitherTorch.Core.Property;
@@ -33,7 +35,7 @@ public enum PropertyFileMode
 public abstract class PropertyFileBase<TValue> : IPropertyFile
 {
     private readonly FileModifyWatcher? _watcher;
-    private readonly Stream? _blockingStream;
+    private readonly FileStream? _blockingStream;
     private readonly string _path;
     private readonly PropertyFileMode _mode;
 
@@ -46,6 +48,11 @@ public abstract class PropertyFileBase<TValue> : IPropertyFile
 
     /// <inheritdoc/>
     public string FilePath => _path;
+
+    /// <summary>
+    /// 取得該設定檔案所繫結的 <see cref="SafeFileHandle"/> 物件
+    /// </summary>
+    public SafeFileHandle? BlockingFileHandle => _blockingStream?.SafeFileHandle;
 
     /// <summary>
     /// 取得該設定檔案所繫結的 <see cref="FileModifyWatcher"/> 物件
