@@ -52,7 +52,6 @@ partial class Server
         return CreateServerCore(software, serverDirectory);
     }
 
-
     /// <summary>        
     /// 載入位於指定路徑內的伺服器
     /// </summary>
@@ -65,6 +64,23 @@ partial class Server
         if (!File.Exists(path))
             return null;
         JsonPropertyFile serverInfoJson = new JsonPropertyFile(path, PropertyFileMode.Blocked);
+        ISoftwareContext? software = SoftwareRegister.GetSoftwareContext(serverInfoJson[ServerSoftwareNode]?.GetValue<string>(), throwExceptionIfNotRegistered: true);
+        if (software is null)
+            return null;
+        return LoadServerCore(software, serverDirectory, serverInfoJson);
+    }
+
+    /// <summary>        
+    /// 根據 <see cref="JsonPropertyFile"/> 物件的內容，載入資料夾內的伺服器
+    /// </summary>
+    /// <param name="serverInfoJson">包含伺服器資訊的 JSON 檔案</param>
+    /// <exception cref="ServerSoftwareIsNotRegisteredException"/>
+    /// <returns>指定的伺服器，若伺服器不存在則為 <see langword="null"/></returns>
+    public static Server? LoadServer(JsonPropertyFile serverInfoJson)
+    {
+        string? serverDirectory = Path.GetDirectoryName(Path.GetFullPath(serverInfoJson.FilePath));
+        if (!Directory.Exists(serverDirectory))
+            return null;
         ISoftwareContext? software = SoftwareRegister.GetSoftwareContext(serverInfoJson[ServerSoftwareNode]?.GetValue<string>(), throwExceptionIfNotRegistered: true);
         if (software is null)
             return null;

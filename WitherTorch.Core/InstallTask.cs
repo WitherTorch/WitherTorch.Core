@@ -174,6 +174,7 @@ public partial class InstallTask : IDisposable
     /// </summary>
     public virtual void OnInstallFinished()
     {
+        Owner.SaveServer();
         InstallFinished?.Invoke(this, EventArgs.Empty);
     }
 

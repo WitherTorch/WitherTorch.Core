@@ -15,7 +15,7 @@ namespace WitherTorch.Core;
 /// <summary>
 /// 表示一個伺服器，這個類別是抽象類別
 /// </summary>
-public abstract partial class Server
+public abstract partial class Server : IDisposable
 {
     private readonly List<IPersistentTag> _tagList = new();
     private readonly string _serverDirectory;
@@ -81,7 +81,13 @@ public abstract partial class Server
     /// 取得伺服器的 server_info.json (伺服器基礎資訊清單)
     /// </summary>
     /// <returns></returns>
-    public JsonPropertyFile? ServerInfoJson => _serverInfoJson;
+    public JsonPropertyFile ServerInfoJson
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _serverInfoJson ??= new JsonPropertyFile(ServerDirectory, PropertyFileMode.Blocked);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected set => _serverInfoJson = value;
+    }
 
     /// <summary>
     /// <see cref="Server"/> 的建構子
@@ -552,4 +558,11 @@ public abstract partial class Server
     /// 伺服器軟體本身不應使用該屬性。
     /// </remarks>
     public object? Tag { get; set; }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _serverInfoJson?.Dispose();
+        GC.SuppressFinalize(this);
+    }
 }

@@ -79,34 +79,53 @@ partial class Server
     private static Server? LoadServerCore(ISoftwareContext software, string serverDirectory, JsonPropertyFile serverInfoJson)
     {
         Server? server = CreateServerInstance(software, serverDirectory);
-        if (server is null)
-            return null;
-        server._serverInfoJson = serverInfoJson;
-        server.ServerName = serverInfoJson[ServerNameNode]?.GetValue<string>() ?? GetDefaultServerNameCore(Path.GetFullPath(serverDirectory));
-        if (!server.LoadServerCore(serverInfoJson))
+        if (server is not null)
         {
-            (server as IDisposable)?.Dispose();
-            return null;
+            try
+            {
+                server._serverInfoJson = serverInfoJson;
+                server.ServerName = serverInfoJson[ServerNameNode]?.GetValue<string>() ?? GetDefaultServerNameCore(Path.GetFullPath(serverDirectory));
+                if (server.LoadServerCore(serverInfoJson))
+                {
+                    LoadPersistentTags(server, serverInfoJson);
+                    Server? result = server;
+                    server = null;
+                    return result;
+                }
+            }
+            finally
+            {
+                server?.Dispose();
+            }
         }
-        LoadPersistentTags(server, serverInfoJson);
-        return server;
+        return null;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static T? LoadServerCoreTyped<T>(ISoftwareContext software, string serverDirectory, JsonPropertyFile serverInfoJson) where T : Server
     {
         T? server = CreateServerInstanceTyped<T>(software, serverDirectory);
-        if (server is null)
-            return null;
-        server._serverInfoJson = serverInfoJson;
-        server.ServerName = serverInfoJson[ServerNameNode]?.GetValue<string>() ?? GetDefaultServerNameCore(Path.GetFullPath(serverDirectory));
-        if (!server.LoadServerCore(serverInfoJson))
+        if (server is not null)
         {
-            (server as IDisposable)?.Dispose();
-            return null;
+            try
+            {
+                server._serverInfoJson = serverInfoJson;
+                server.ServerName = serverInfoJson[ServerNameNode]?.GetValue<string>() ?? GetDefaultServerNameCore(Path.GetFullPath(serverDirectory));
+                if (server.LoadServerCore(serverInfoJson))
+                {
+                    LoadPersistentTags(server, serverInfoJson);
+                    T? result = server;
+                    server = null;
+                    return result;
+                }
+            }
+            finally
+            {
+                server?.Dispose();
+            }
         }
-        LoadPersistentTags(server, serverInfoJson);
-        return server;
+
+        return null;
     }
 
     private static string GetDefaultServerNameCore(string serverDirectory)
